@@ -315,6 +315,9 @@ input, textarea, select {
 .main-view {
   container-type: inline-size;
   grid-area: main;
+  background: var(--bg-surface);
+  overflow: hidden;
+  height: 100%;
 }
 
 .status-bar { grid-area: status; }
