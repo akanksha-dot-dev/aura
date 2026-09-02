@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAgoraRTC } from '@/hooks/useAgoraRTC';
 import { useAgoraRTM } from '@/hooks/useAgoraRTM';
@@ -15,6 +15,7 @@ import { ActionTracker } from '@/components/ActionTracker';
 import { IncidentStats } from '@/components/IncidentStats';
 import { NarrativeBar } from '@/components/NarrativeBar';
 import { LiveCaptions } from '@/components/LiveCaptions';
+import { PostmortemModal } from '@/components/PostmortemModal';
 
 function DashboardContent() {
   const searchParams = useSearchParams();
@@ -25,9 +26,24 @@ function DashboardContent() {
   const isMockReplay = Boolean(searchParams.get('__AURA_REPLAY_MOCK_STREAM'));
   const speedParam = Math.max(0.1, Number(searchParams.get('speed')) || 1);
 
+  // Postmortem Modal state (auto-opens 2s after resolution per Star 7)
+  const [isPostmortemOpen, setIsPostmortemOpen] = useState(false);
+
   // 1. Central Incident State Engine
   const { state, processEvent, dispatchStateUpdate, claimIC, updateActionStatus } =
     useIncidentState();
+
+  // Auto-open postmortem modal 2 seconds after resolution
+  const prevStatusRef = useRef(state.status);
+  useEffect(() => {
+    if (prevStatusRef.current !== 'resolved' && state.status === 'resolved') {
+      const timer = setTimeout(() => {
+        setIsPostmortemOpen(true);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+    prevStatusRef.current = state.status;
+  }, [state.status]);
 
   // 2. Agora RTC (Audio + Volume Levels)
   const {
@@ -357,6 +373,14 @@ function DashboardContent() {
         onToggleTranscriptDrawer={() => {
           // Slide-out drawer toggle (Tier 2 feature)
         }}
+      />
+
+      {/* 9. SRE Postmortem Report Modal (Star 7) */}
+      <PostmortemModal
+        isOpen={isPostmortemOpen}
+        onClose={() => setIsPostmortemOpen(false)}
+        incident={state}
+        evidenceChainEdges={topologyEdges}
       />
     </div>
   );
