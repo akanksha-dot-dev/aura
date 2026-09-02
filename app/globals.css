@@ -277,6 +277,11 @@ input, textarea, select {
 .timeline-card--action { border-left-color: var(--color-action); }
 .timeline-card--conflict { border-left-color: var(--color-conflict); }
 
+.timeline-card--confirmed {
+  border-left-color: var(--color-fact) !important;
+  background: rgba(59, 212, 162, 0.04);
+}
+
 .timeline-card--disproven {
   animation: card-disprove 400ms var(--ease-standard) forwards;
 }
@@ -284,6 +289,38 @@ input, textarea, select {
 .timeline-card--disproven .timeline-card__content {
   text-decoration: line-through;
   text-decoration-color: var(--color-conflict);
+}
+
+.timeline-card__content--disproven {
+  text-decoration: line-through;
+  text-decoration-color: var(--color-conflict);
+  text-decoration-thickness: 2px;
+  color: var(--text-muted);
+}
+
+.timeline-card__disproven-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: var(--weight-bold);
+  color: var(--color-conflict);
+  background: var(--color-conflict-dim);
+  border: 1px solid var(--color-conflict-border);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-1h);
+}
+
+.timeline-card__stale-tag {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-left: var(--space-1);
 }
 
 .timeline-card--stale {

@@ -1,7 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { EvidenceItem } from '@/lib/types';
+import { springs } from '@/lib/springs';
 import { VoiceBadge } from './VoiceBadge';
 
 export interface TimelineCardProps {
@@ -35,28 +37,42 @@ function formatTime(timestamp: number): string {
 }
 
 export function TimelineCard({ item, displayConfidence }: TimelineCardProps) {
-  const isDisproven =
-    item.category === 'hypothesis' && item.status === 'disproven';
-  const isStale = item.category === 'hypothesis' && item.status === 'stale';
-  const isConfirmed =
-    item.category === 'hypothesis' && item.status === 'confirmed';
+  const isHypothesis = item.category === 'hypothesis';
+  const isDisproven = isHypothesis && item.status === 'disproven';
+  const isConfirmed = isHypothesis && item.status === 'confirmed';
+  const isStale = isHypothesis && item.status === 'stale';
 
-  // Category class modifier
-  const typeClass = isConfirmed
-    ? 'timeline-card--fact'
-    : `timeline-card--${item.category}`;
+  const prevStatusRef = useRef(item.status);
+  const [justDisproven, setJustDisproven] = useState(false);
 
-  // Temporal decay factor for CSS styling (0.1 to 1.0)
+  // Detect active → disproven transition for 3-phase 800ms animation
+  useEffect(() => {
+    if (isHypothesis && prevStatusRef.current === 'active' && item.status === 'disproven') {
+      setJustDisproven(true);
+      const timer = setTimeout(() => setJustDisproven(false), 850);
+      return () => clearTimeout(timer);
+    }
+    prevStatusRef.current = item.status;
+  }, [item.status, isHypothesis]);
+
+  // Temporal decay factor (0.1 to 1.0)
   const decayFactor =
-    item.category === 'hypothesis' && item.confidence > 0
+    isHypothesis && item.confidence > 0
       ? Math.max(0.1, Math.min(1.0, displayConfidence / item.confidence))
       : 1;
 
-  // Max confidence is 85 per D-026, scale to percentage of 85
-  const confidencePercent = Math.min(
-    100,
-    Math.max(0, Math.round((displayConfidence / 85) * 100))
-  );
+  const isDecayedStale = isHypothesis && decayFactor < 0.5 && !isDisproven && !isConfirmed;
+  const isVeryStale = (isStale || (isHypothesis && decayFactor < 0.3)) && !isDisproven && !isConfirmed;
+
+  // Category class modifier
+  const typeClass = isConfirmed
+    ? 'timeline-card--fact timeline-card--confirmed'
+    : `timeline-card--${item.category}`;
+
+  // Scaled percentage of 85 (CONFIDENCE_CAP)
+  const confidencePercent = isConfirmed
+    ? 100
+    : Math.min(100, Math.max(0, Math.round((displayConfidence / 85) * 100)));
 
   const badgeSymbol = {
     fact: '●',
@@ -66,169 +82,176 @@ export function TimelineCard({ item, displayConfidence }: TimelineCardProps) {
     conflict: '⚠',
   }[item.category] ?? '●';
 
-  return (
+  const cardContent = (
     <>
-      <style>{`
-        .timeline-card__header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: var(--space-2);
-          margin-bottom: var(--space-1h);
-        }
-        .timeline-card__meta-left {
-          display: flex;
-          align-items: center;
-          gap: var(--space-2);
-          min-width: 0;
-        }
-        .timeline-card__speaker {
-          display: inline-flex;
-          align-items: center;
-          gap: var(--space-1);
-          font-size: var(--text-xs);
-          font-weight: var(--weight-medium);
-          color: var(--text-primary);
-        }
-        .timeline-card__time {
-          font-family: var(--font-mono);
-          font-size: var(--text-xs);
-          color: var(--text-muted);
-          font-variant-numeric: tabular-nums;
-          white-space: nowrap;
-        }
-        .timeline-card__content {
-          font-size: var(--text-base);
-          line-height: var(--leading-normal);
-          color: var(--text-primary);
-          margin-bottom: var(--space-2);
-          display: -webkit-box;
-          -webkit-line-clamp: 3;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-        .timeline-card__confidence-wrap {
-          display: flex;
-          align-items: center;
-          gap: var(--space-2);
-          margin-top: var(--space-1h);
-        }
-        .timeline-card__confidence-label {
-          font-family: var(--font-mono);
-          font-size: var(--text-xs);
-          color: var(--text-muted);
-          white-space: nowrap;
-        }
-        .timeline-card__confidence-track {
-          flex: 1;
-          height: 4px;
-          background: var(--border-subtle);
-          border-radius: var(--radius-sm);
-          overflow: hidden;
-        }
-        .timeline-card__confidence-fill {
-          height: 100%;
-          border-radius: var(--radius-sm);
-          transition: width var(--duration-normal) var(--ease-standard);
-        }
-        .timeline-card__footer {
-          display: flex;
-          flex-direction: column;
-          gap: var(--space-1);
-          margin-top: var(--space-2);
-          font-family: var(--font-mono);
-          font-size: var(--text-xs);
-          color: var(--text-muted);
-        }
-        .timeline-card__disproven-banner {
-          font-family: var(--font-mono);
-          font-size: var(--text-xs);
-          color: var(--color-conflict);
-          font-weight: var(--weight-semibold);
-          text-transform: uppercase;
-          margin-top: var(--space-1);
-        }
-      `}</style>
-      <article
+      <div className="timeline-card__header">
+        <div className="timeline-card__meta-left">
+          <span
+            className={`badge badge-${isConfirmed ? 'fact' : item.category}`}
+            style={
+              isConfirmed
+                ? {
+                    background: 'var(--color-fact-dim)',
+                    color: 'var(--color-fact)',
+                    borderColor: 'var(--color-fact-border)',
+                  }
+                : undefined
+            }
+          >
+            <span aria-hidden="true">{isConfirmed ? '✓' : badgeSymbol}</span>{' '}
+            {isConfirmed ? 'Confirmed' : item.category}
+          </span>
+
+          {isDecayedStale && (
+            <span className="timeline-card__stale-tag" title="Decayed confidence due to inactivity">
+              (stale)
+            </span>
+          )}
+
+          <div className="timeline-card__speaker">
+            <VoiceBadge
+              displayName={item.speakerName}
+              avatarColor={getSpeakerColor(item.speakerUid)}
+              isSpeaking={false}
+            />
+            <span>{item.speakerName}</span>
+          </div>
+        </div>
+
+        <span className="timeline-card__time">
+          {formatTime(item.timestamp)}
+        </span>
+      </div>
+
+      <p
+        className={`timeline-card__content ${
+          isDisproven ? 'timeline-card__content--disproven' : ''
+        }`}
+      >
+        {item.content}
+      </p>
+
+      {/* Disproven Badge entrance animated with Motion springs.disprove */}
+      <AnimatePresence>
+        {isDisproven && (
+          <motion.div
+            className="timeline-card__disproven-badge"
+            initial={{ opacity: 0, scale: 0.6, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{
+              type: 'spring',
+              stiffness: springs.disprove.stiffness,
+              damping: springs.disprove.damping,
+              mass: springs.disprove.mass,
+            }}
+          >
+            ✕ [DISPROVEN]
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="timeline-card__confidence-wrap">
+        <span className="timeline-card__confidence-label">
+          {isConfirmed
+            ? '✓ Confirmed (100%)'
+            : isDisproven
+            ? 'Disproven (0%)'
+            : `Confidence: ${displayConfidence}%`}
+        </span>
+        <div className="timeline-card__confidence-track">
+          <div
+            className="timeline-card__confidence-fill"
+            style={{
+              width: `${isDisproven ? 0 : confidencePercent}%`,
+              backgroundColor: isConfirmed
+                ? 'var(--color-fact)'
+                : isDisproven
+                ? 'var(--color-conflict)'
+                : item.category === 'fact'
+                ? 'var(--color-fact)'
+                : item.category === 'hypothesis'
+                ? 'var(--color-hypothesis)'
+                : item.category === 'decision'
+                ? 'var(--color-decision)'
+                : item.category === 'action'
+                ? 'var(--color-action)'
+                : 'var(--color-conflict)',
+            }}
+          />
+        </div>
+      </div>
+
+      {(item.relatedTo.length > 0 ||
+        item.assignedTo ||
+        item.decidingMetric) && (
+        <div className="timeline-card__footer">
+          {item.assignedTo && (
+            <div>
+              Assignee: {item.assignedTo}{' '}
+              {item.actionStatus ? `[${item.actionStatus}]` : ''}
+            </div>
+          )}
+          {item.decidingMetric && (
+            <div>Deciding Metric: {item.decidingMetric}</div>
+          )}
+          {item.relatedTo.length > 0 && (
+            <div>Related: {item.relatedTo.join(', ')}</div>
+          )}
+        </div>
+      )}
+    </>
+  );
+
+  // If this is a hypothesis, wrap with motion.article for 3-phase disproval animation
+  if (isHypothesis) {
+    return (
+      <motion.article
         className={`timeline-card ${typeClass} ${
           isDisproven ? 'timeline-card--disproven' : ''
-        } ${isStale ? 'timeline-card--stale' : ''}`}
+        } ${isVeryStale ? 'timeline-card--stale' : ''}`}
         style={
           {
             '--decay-factor': decayFactor,
           } as React.CSSProperties
         }
+        animate={
+          justDisproven
+            ? {
+                boxShadow: [
+                  '0 0 0px transparent',
+                  '0 0 20px var(--color-conflict)',
+                  '0 0 8px var(--color-conflict)',
+                  '0 0 0px transparent',
+                ],
+                scale: [1, 1.02, 0.92, 0.92],
+                opacity: [1, 1, 0.4, 0.4],
+              }
+            : isDisproven
+            ? { scale: 0.92, opacity: 0.4 }
+            : undefined
+        }
+        transition={
+          justDisproven
+            ? {
+                duration: 0.8,
+                times: [0, 0.25, 0.6, 1],
+                ease: 'easeInOut',
+              }
+            : { duration: 0.3 }
+        }
       >
-        <div className="timeline-card__header">
-          <div className="timeline-card__meta-left">
-            <span className={`badge badge-${item.category}`}>
-              <span aria-hidden="true">{badgeSymbol}</span> {item.category}
-            </span>
-            <div className="timeline-card__speaker">
-              <VoiceBadge
-                displayName={item.speakerName}
-                avatarColor={getSpeakerColor(item.speakerUid)}
-                isSpeaking={false}
-              />
-              <span>{item.speakerName}</span>
-            </div>
-          </div>
-          <span className="timeline-card__time">
-            {formatTime(item.timestamp)}
-          </span>
-        </div>
+        {cardContent}
+      </motion.article>
+    );
+  }
 
-        <p className="timeline-card__content">{item.content}</p>
-
-        {isDisproven && (
-          <div className="timeline-card__disproven-banner">
-            ✕ Disproven Hypothesis
-          </div>
-        )}
-
-        <div className="timeline-card__confidence-wrap">
-          <span className="timeline-card__confidence-label">
-            Confidence: {displayConfidence}%
-          </span>
-          <div className="timeline-card__confidence-track">
-            <div
-              className="timeline-card__confidence-fill"
-              style={{
-                width: `${confidencePercent}%`,
-                backgroundColor:
-                  item.category === 'fact'
-                    ? 'var(--color-fact)'
-                    : item.category === 'hypothesis'
-                    ? 'var(--color-hypothesis)'
-                    : item.category === 'decision'
-                    ? 'var(--color-decision)'
-                    : item.category === 'action'
-                    ? 'var(--color-action)'
-                    : 'var(--color-conflict)',
-              }}
-            />
-          </div>
-        </div>
-
-        {(item.relatedTo.length > 0 ||
-          item.assignedTo ||
-          item.decidingMetric) && (
-          <div className="timeline-card__footer">
-            {item.assignedTo && (
-              <div>
-                Assignee: {item.assignedTo}{' '}
-                {item.actionStatus ? `[${item.actionStatus}]` : ''}
-              </div>
-            )}
-            {item.decidingMetric && (
-              <div>Deciding Metric: {item.decidingMetric}</div>
-            )}
-            {item.relatedTo.length > 0 && (
-              <div>Related: {item.relatedTo.join(', ')}</div>
-            )}
-          </div>
-        )}
-      </article>
-    </>
+  // Non-hypothesis cards render standard article element (high performance)
+  return (
+    <article
+      className={`timeline-card ${typeClass}`}
+    >
+      {cardContent}
+    </article>
   );
 }
