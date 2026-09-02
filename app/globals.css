@@ -1256,4 +1256,121 @@ input, textarea, select {
   margin: 0;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   Viewport Media Queries — Responsive Polish (WI-505)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* 1. Laptops and compact desktop monitors (<= 1440px) */
+@media (max-width: 1440px) {
+  .command-center {
+    grid-template-columns: 190px 1fr 210px;
+    grid-template-rows: 48px auto 1fr 60px 38px;
+  }
+
+  .command-center:not(.has-conflict) {
+    grid-template-rows: 48px 0px 1fr 60px 38px;
+  }
+
+  .status-bar {
+    padding: 0 var(--space-3);
+  }
+
+  .main-view__tabs {
+    width: 240px;
+  }
+}
+
+/* 2. Compact laptops and high-res tablets (<= 1200px) */
+@media (max-width: 1200px) {
+  .command-center {
+    grid-template-columns: 175px 1fr 190px;
+  }
+}
+
+/* 3. Small screens / Tablets (<= 1024px): Single-column stack with scrollable areas */
+@media (max-width: 1024px) {
+  .command-center {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .command-center:not(.has-conflict) {
+    height: auto;
+  }
+
+  .status-bar {
+    height: auto;
+    min-height: 48px;
+    position: sticky;
+    top: 0;
+    z-index: var(--z-sticky);
+  }
+
+  .conflict-banner {
+    order: 2;
+  }
+
+  .main-view {
+    order: 3;
+    min-height: 420px;
+    height: 50vh;
+    overflow-x: auto;
+  }
+
+  .speaker-panel {
+    order: 4;
+    max-height: 260px;
+    overflow-y: auto;
+  }
+
+  .action-tracker {
+    order: 5;
+    max-height: 280px;
+    overflow-y: auto;
+  }
+
+  .narrative-bar {
+    order: 6;
+    height: 64px;
+  }
+
+  .incident-stats {
+    order: 7;
+    height: auto;
+    padding: var(--space-2);
+  }
+
+  .live-captions {
+    order: 8;
+    position: sticky;
+    bottom: 0;
+    z-index: var(--z-sticky);
+  }
+}
+
+/* 4. Mobile viewports (<= 768px): Typography & lobby polish */
+@media (max-width: 768px) {
+  :root {
+    --text-3xl: 1.625rem;
+    --text-2xl: 1.25rem;
+  }
+
+  .status-bar {
+    padding: var(--space-2);
+  }
+
+  .main-view__tabs {
+    width: 100%;
+  }
+
+  .transcript-drawer {
+    max-height: 80vh;
+  }
+}
+
+
 
