@@ -1,11 +1,12 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { Participant } from '@/lib/types';
 import { VoiceBadge } from './VoiceBadge';
 import { SilenceCounter } from './SilenceCounter';
 import { CognitiveLoadMeter } from './CognitiveLoadMeter';
 import { TempoIndicator } from './TempoIndicator';
+import { useVoiceWaveform } from '@/hooks/useVoiceWaveform';
 
 export interface SpeakerPanelProps {
   participants: Record<string, Participant>;
@@ -15,6 +16,7 @@ export interface SpeakerPanelProps {
   agentIsSpeaking: boolean;
   cognitiveLoadScore: number; // 0-100
   tempoLevel: number; // 1-5
+  agentAudioTrack?: MediaStreamTrack | null;
 }
 
 const PERSONA_COLORS: Record<string, string> = {
@@ -49,7 +51,15 @@ export function SpeakerPanel({
   agentIsSpeaking,
   cognitiveLoadScore,
   tempoLevel,
+  agentAudioTrack,
 }: SpeakerPanelProps) {
+  const waveformCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  useVoiceWaveform({
+    canvasRef: waveformCanvasRef,
+    audioTrack: agentAudioTrack,
+    isSpeaking: agentIsSpeaking,
+  });
+
   const participantList = Object.values(participants).filter(
     (p) => p.uid !== agentUid
   );
@@ -201,6 +211,21 @@ export function SpeakerPanel({
           white-space: nowrap;
         }
 
+        .speaker-row__waveform-wrap {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          height: 20px;
+          margin-top: var(--space-1);
+        }
+
+        .speaker-row__waveform {
+          display: block;
+          width: 100%;
+          height: 20px;
+        }
+
         .speaker-panel__bottom {
           display: flex;
           flex-direction: column;
@@ -317,6 +342,17 @@ export function SpeakerPanel({
                 <SilenceCounter
                   agentLastSpokeAt={agentLastSpokeAt}
                   agentIsSpeaking={agentIsSpeaking}
+                />
+              </div>
+
+              {/* Golden Voice Waveform (Star 1 Visual Proof) */}
+              <div className="speaker-row__waveform-wrap">
+                <canvas
+                  ref={waveformCanvasRef}
+                  className="speaker-row__waveform"
+                  width={180}
+                  height={20}
+                  aria-label="AURA voice activity waveform"
                 />
               </div>
             </div>
