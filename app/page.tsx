@@ -1,11 +1,12 @@
 'use client';
 
-import React, { Suspense, useEffect, useMemo } from 'react';
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAgoraRTC } from '@/hooks/useAgoraRTC';
 import { useAgoraRTM } from '@/hooks/useAgoraRTM';
 import { useIncidentState } from '@/hooks/useIncidentState';
 import { Participant } from '@/lib/types';
+import { startMockReplay } from '@/lib/mockReplay';
 import { StatusBar } from '@/components/StatusBar';
 import { SpeakerPanel } from '@/components/SpeakerPanel';
 import { ConflictBanner } from '@/components/ConflictBanner';
@@ -21,9 +22,11 @@ function DashboardContent() {
   const name = searchParams.get('name') || 'Operator';
   const role = searchParams.get('role') || 'Incident Responder';
   const channel = searchParams.get('channel') || 'incident-war-room';
+  const isMockReplay = Boolean(searchParams.get('__AURA_REPLAY_MOCK_STREAM'));
+  const speedParam = Math.max(0.1, Number(searchParams.get('speed')) || 1);
 
   // 1. Central Incident State Engine
-  const { state, processEvent, claimIC, updateActionStatus } =
+  const { state, processEvent, dispatchStateUpdate, claimIC, updateActionStatus } =
     useIncidentState();
 
   // 2. Agora RTC (Audio + Volume Levels)
@@ -37,12 +40,31 @@ function DashboardContent() {
     uid,
   });
 
-  // 3. Agora RTM (Intelligence Telemetry Stream)
+  // 3. Agora RTM (Intelligence Telemetry Stream) - disabled during mock replay
   useAgoraRTM({
     channelName: channel,
     uid,
     onEvent: processEvent,
+    enabled: !isMockReplay,
   });
+
+  // 4. Mock Replay Stream (when ?__AURA_REPLAY_MOCK_STREAM is present)
+  const [mockTranscript, setMockTranscript] = useState<string | null>(null);
+  const [mockSpeaker, setMockSpeaker] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isMockReplay) return;
+
+    const cleanup = startMockReplay(processEvent, dispatchStateUpdate, {
+      speedMultiplier: speedParam,
+      onSpeech: (speaker, transcript) => {
+        setMockSpeaker(speaker);
+        setMockTranscript(transcript);
+      },
+    });
+
+    return cleanup;
+  }, [isMockReplay, speedParam, processEvent, dispatchStateUpdate]);
 
   // Automatically attempt RTC audio join on mount
   useEffect(() => {
@@ -164,7 +186,11 @@ function DashboardContent() {
     ? effectiveParticipants[speakingUid]?.displayName ?? speakingUid
     : null;
 
-  const currentTranscript = activeSpeakerName
+  const captionSpeakerName = mockSpeaker ?? activeSpeakerName;
+
+  const currentTranscript = mockTranscript
+    ? mockTranscript
+    : activeSpeakerName
     ? `${activeSpeakerName} is transmitting telemetry and situational updates...`
     : 'Voice channel active — monitoring real-time communications...';
 
@@ -272,7 +298,7 @@ function DashboardContent() {
 
       {/* 8. Live Captions */}
       <LiveCaptions
-        currentSpeakerName={activeSpeakerName}
+        currentSpeakerName={captionSpeakerName}
         currentTranscript={currentTranscript}
         onToggleTranscriptDrawer={() => {
           // Slide-out drawer toggle (Tier 2 feature)

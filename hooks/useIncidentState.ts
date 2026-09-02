@@ -18,6 +18,7 @@ import { COST_RATE_PER_SECOND, CONFIDENCE_CAP } from '@/lib/constants';
 export interface UseIncidentStateReturn {
   state: IncidentState;
   processEvent: (event: RTMDashboardEvent) => void;
+  dispatchStateUpdate: (update: Record<string, unknown>) => void;
   resolveIncident: () => void;
   claimIC: (uid: string) => void;
   releaseIC: () => void;
@@ -43,6 +44,7 @@ export const INITIAL_INCIDENT_STATE: IncidentState = {
 
 type IncidentAction =
   | { type: 'PROCESS_RTM_EVENT'; event: RTMDashboardEvent }
+  | { type: 'DISPATCH_STATE_UPDATE'; update: Record<string, unknown> }
   | { type: 'RESOLVE_INCIDENT' }
   | { type: 'CLAIM_IC'; uid: string }
   | { type: 'RELEASE_IC' }
@@ -63,6 +65,63 @@ function incidentReducer(
       };
       updated.cognitiveLoadScore = calculateCognitiveLoad(updated);
       return updated;
+    }
+
+    case 'DISPATCH_STATE_UPDATE': {
+      const { update } = action;
+      let nextEvidence = [...state.evidenceItems];
+      let nextStatus = state.status;
+      let nextResolvedAt = state.resolvedAt;
+
+      if (update.confirmHypothesis) {
+        const id = String(update.confirmHypothesis);
+        nextEvidence = nextEvidence.map((item) =>
+          item.id === id ? { ...item, status: 'confirmed' as HypothesisStatus } : item
+        );
+      }
+
+      if (update.disproveHypothesis) {
+        const id = String(update.disproveHypothesis);
+        nextEvidence = nextEvidence.map((item) =>
+          item.id === id ? { ...item, status: 'disproven' as HypothesisStatus } : item
+        );
+      }
+
+      if (update.resolveConflict) {
+        const id = String(update.resolveConflict);
+        nextEvidence = nextEvidence.map((item) =>
+          item.id === id ? { ...item, status: 'disproven' as HypothesisStatus } : item
+        );
+      }
+
+      if (update.updateStatus) {
+        const s = update.updateStatus as IncidentStatus;
+        if (s) {
+          nextStatus = s;
+          if (s === 'resolved' && !nextResolvedAt) {
+            nextResolvedAt = Date.now();
+          }
+        }
+      }
+
+      if (update.resolvedAt) {
+        nextResolvedAt =
+          update.resolvedAt === 'NOW' ? Date.now() : Number(update.resolvedAt);
+      }
+
+      const nextState: IncidentState = {
+        ...state,
+        evidenceItems: nextEvidence,
+        status: nextStatus,
+        resolvedAt: nextResolvedAt,
+        eventSeq: state.eventSeq + 1,
+      };
+
+      nextState.currentOODAPhase =
+        nextStatus === 'resolved' ? 'RESOLVED' : classifyOODAPhase(nextState);
+      nextState.cognitiveLoadScore = calculateCognitiveLoad(nextState);
+
+      return nextState;
     }
 
     case 'CLAIM_IC': {
@@ -376,9 +435,17 @@ export function useIncidentState(
     []
   );
 
+  const dispatchStateUpdate = useCallback(
+    (update: Record<string, unknown>) => {
+      dispatch({ type: 'DISPATCH_STATE_UPDATE', update });
+    },
+    []
+  );
+
   return {
     state,
     processEvent,
+    dispatchStateUpdate,
     resolveIncident,
     claimIC,
     releaseIC,
