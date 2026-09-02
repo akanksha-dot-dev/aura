@@ -339,25 +339,134 @@ input, textarea, select {
   animation: resolve-pulse 1.5s ease-out forwards;
 }
 
-/* ─── Container Queries Setup ─── */
+/* ─── Container Queries Setup (WI-503) ───
+   All 8 command center grid areas declare inline-size container context */
+.status-bar {
+  container-type: inline-size;
+  container-name: status;
+  grid-area: status;
+}
+
 .speaker-panel {
   container-type: inline-size;
+  container-name: speakers;
   grid-area: speakers;
 }
 
-.action-tracker {
+.conflict-banner {
   container-type: inline-size;
-  grid-area: actions;
+  container-name: conflict;
+  grid-area: conflict;
 }
 
 .main-view {
   container-type: inline-size;
+  container-name: main;
   grid-area: main;
   background: var(--bg-surface);
   overflow: hidden;
   height: 100%;
   display: flex;
   flex-direction: column;
+}
+
+.action-tracker {
+  container-type: inline-size;
+  container-name: actions;
+  grid-area: actions;
+}
+
+.incident-stats {
+  container-type: inline-size;
+  container-name: stats;
+  grid-area: stats;
+}
+
+.narrative-bar {
+  container-type: inline-size;
+  container-name: narrative;
+  grid-area: narrative;
+}
+
+.live-captions {
+  container-type: inline-size;
+  container-name: captions;
+  grid-area: captions;
+}
+
+/* ─── Container Query Breakpoints (WI-503) ─── */
+
+/* 1. StatusBar: wrap into 2 rows when narrower than 900px */
+@container status (max-width: 900px) {
+  .status-bar {
+    flex-wrap: wrap;
+    height: auto !important;
+    min-height: 48px;
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-2);
+    gap: var(--space-2);
+  }
+  .status-bar__left {
+    min-width: 100%;
+    justify-content: space-between;
+  }
+  .status-bar__center,
+  .status-bar__right {
+    flex: 1 1 auto;
+  }
+}
+
+/* 2. SpeakerPanel: collapse engagement heatbars when narrower than 200px */
+@container speakers (max-width: 200px) {
+  .speaker-row__heatbar-wrap {
+    display: none !important;
+  }
+  .speaker-panel {
+    padding-left: var(--space-2);
+    padding-right: var(--space-2);
+  }
+  .speaker-row__name {
+    max-width: 80px;
+  }
+}
+
+/* 3. ActionTracker: stack status badge and meta vertically when narrower than 220px */
+@container actions (max-width: 220px) {
+  .action-card__meta {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: var(--space-1) !important;
+  }
+  .action-card {
+    padding: var(--space-1h) !important;
+  }
+}
+
+/* 4. MainView: adapt tab and card density for narrow panel widths (< 450px) */
+@container main (max-width: 450px) {
+  .main-view__tabs {
+    width: 100%;
+  }
+  .timeline-card {
+    padding: var(--space-2);
+  }
+}
+
+/* 5. NarrativeBar: hide inflection point labels on narrow widths (< 500px) */
+@container narrative (max-width: 500px) {
+  .narrative-bar__inflection-label {
+    display: none !important;
+  }
+}
+
+/* 6. IncidentStats: compact stats items on narrow widths (< 180px) */
+@container stats (max-width: 180px) {
+  .incident-stats {
+    padding: var(--space-1) !important;
+  }
+  .incident-stats__item {
+    padding: 2px 4px !important;
+  }
 }
 
 .main-view__header {
@@ -452,12 +561,6 @@ input, textarea, select {
   min-height: 0;
   overflow: hidden;
 }
-
-.status-bar { grid-area: status; }
-.conflict-banner { grid-area: conflict; }
-.narrative-bar { grid-area: narrative; }
-.incident-stats { grid-area: stats; }
-.live-captions { grid-area: captions; }
 
 /* ─── Command Center Grid Shell ─── */
 .command-center {
