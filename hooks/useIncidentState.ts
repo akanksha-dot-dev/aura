@@ -133,7 +133,7 @@ function incidentReducer(
       const payload = event.payload || {};
 
       let nextEvidence = [...state.evidenceItems];
-      let nextParticipants = { ...state.participants };
+      const nextParticipants = { ...state.participants };
       let nextStatus = state.status;
       let nextResolvedAt = state.resolvedAt;
       let nextIC = state.incidentCommanderUid;

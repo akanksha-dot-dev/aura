@@ -17,6 +17,17 @@ export interface UseAgoraRTMReturn {
   disconnect: () => Promise<void>;
 }
 
+interface RtmClientInstance {
+  addEventListener: (
+    event: string,
+    handler: (data: Record<string, unknown>) => void
+  ) => void;
+  login: (options: { token?: string }) => Promise<void>;
+  subscribe: (channelName: string) => Promise<void>;
+  unsubscribe: (channelName: string) => Promise<void>;
+  logout: () => Promise<void>;
+}
+
 const MAX_DEDUP_SET_SIZE = 1000;
 
 export function useAgoraRTM({
@@ -28,10 +39,13 @@ export function useAgoraRTM({
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const clientRef = useRef<any>(null);
+  const clientRef = useRef<RtmClientInstance | null>(null);
   const isConnectingRef = useRef(false);
   const onEventRef = useRef(onEvent);
-  onEventRef.current = onEvent;
+
+  useEffect(() => {
+    onEventRef.current = onEvent;
+  }, [onEvent]);
 
   const seenEventIdsRef = useRef<Set<string>>(new Set());
   const eventBufferRef = useRef<RTMDashboardEvent[]>([]);
@@ -102,7 +116,6 @@ export function useAgoraRTM({
     }
 
     isConnectingRef.current = true;
-    setError(null);
 
     try {
       // 1. Fetch token from /api/token
@@ -128,13 +141,13 @@ export function useAgoraRTM({
       const AgoraRTM = (await import('agora-rtm-sdk')).default;
 
       // 3. Initialize RTM Client
-      const client = new AgoraRTM.RTM(appId, uid);
+      const client = new AgoraRTM.RTM(appId, uid) as unknown as RtmClientInstance;
       clientRef.current = client;
 
       // 4. Attach event listeners
-      client.addEventListener('message', (event: any) => {
+      client.addEventListener('message', (eventData: Record<string, unknown>) => {
         try {
-          let rawData = event?.message;
+          let rawData = eventData?.message;
           if (rawData instanceof Uint8Array) {
             rawData = new TextDecoder().decode(rawData);
           }
@@ -145,7 +158,7 @@ export function useAgoraRTM({
 
           // Check if message is a dashboard event
           const isDashboardEvent =
-            event?.customType === 'dashboard_event' ||
+            eventData?.customType === 'dashboard_event' ||
             parsed?.customType === 'dashboard_event' ||
             parsed?.type === 'dashboard_event';
 
@@ -162,13 +175,17 @@ export function useAgoraRTM({
         }
       });
 
-      client.addEventListener('linkState', (event: any) => {
-        if (event?.currentState === 'CONNECTED') {
+      client.addEventListener('linkState', (eventData: Record<string, unknown>) => {
+        const stateStr =
+          typeof eventData?.currentState === 'string'
+            ? eventData.currentState
+            : '';
+        if (stateStr === 'CONNECTED') {
           setIsConnected(true);
         } else if (
-          event?.currentState === 'DISCONNECTED' ||
-          event?.currentState === 'FAILED' ||
-          event?.currentState === 'SUSPENDED'
+          stateStr === 'DISCONNECTED' ||
+          stateStr === 'FAILED' ||
+          stateStr === 'SUSPENDED'
         ) {
           setIsConnected(false);
         }
@@ -181,6 +198,7 @@ export function useAgoraRTM({
       await client.subscribe(channelName);
 
       setIsConnected(true);
+      setError(null);
     } catch (err) {
       const errMsg =
         err instanceof Error ? err.message : 'Failed to connect to Agora RTM';
@@ -195,13 +213,17 @@ export function useAgoraRTM({
   useEffect(() => {
     let mounted = true;
 
-    if (enabled && channelName && uid && mounted) {
-      connect();
+    if (enabled && channelName && uid) {
+      const init = async () => {
+        if (!mounted) return;
+        await connect();
+      };
+      void init();
     }
 
     return () => {
       mounted = false;
-      disconnect();
+      void disconnect();
     };
   }, [enabled, channelName, uid, connect, disconnect]);
 

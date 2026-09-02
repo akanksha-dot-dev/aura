@@ -248,7 +248,9 @@ export async function POST(request: NextRequest) {
     });
 
     // 4. Strip ConvAI custom fields (turn_id, timestamp) for upstream OpenAI compatibility
-    const { turn_id: _turnId, timestamp: _ts, ...cleanBody } = body;
+    const cleanBody = { ...body };
+    delete cleanBody.turn_id;
+    delete cleanBody.timestamp;
     const isStream = body.stream !== false;
     const modelToUse = body.model || 'gpt-4o-mini';
 
