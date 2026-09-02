@@ -49,6 +49,8 @@ export function useVoiceWaveform({
     let rafId: number;
     let timeStep = 0;
 
+    let resumeAudio: (() => void) | null = null;
+
     // 1. Setup AudioContext if audioTrack is provided
     try {
       const AudioCtxClass =
@@ -69,10 +71,14 @@ export function useVoiceWaveform({
 
         // Resume audio context on user interaction if suspended
         if (audioCtx.state === 'suspended') {
-          const resumeAudio = () => {
-            audioCtx?.resume();
-            window.removeEventListener('click', resumeAudio);
-            window.removeEventListener('keydown', resumeAudio);
+          resumeAudio = () => {
+            if (audioCtx && audioCtx.state === 'suspended') {
+              audioCtx.resume().catch(() => {});
+            }
+            if (resumeAudio) {
+              window.removeEventListener('click', resumeAudio);
+              window.removeEventListener('keydown', resumeAudio);
+            }
           };
           window.addEventListener('click', resumeAudio, { once: true });
           window.addEventListener('keydown', resumeAudio, { once: true });
@@ -155,6 +161,10 @@ export function useVoiceWaveform({
     return () => {
       cancelAnimationFrame(rafId);
       setIsActive(false);
+      if (resumeAudio) {
+        window.removeEventListener('click', resumeAudio);
+        window.removeEventListener('keydown', resumeAudio);
+      }
       if (sourceNode) {
         sourceNode.disconnect();
       }

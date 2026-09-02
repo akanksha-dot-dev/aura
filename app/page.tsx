@@ -117,14 +117,14 @@ function DashboardContent() {
     }));
   }, [transcriptHistory, state.evidenceItems]);
 
-  // Automatically attempt RTC audio join on mount
+  // Automatically attempt RTC audio join on mount (skipped during mock replay)
   useEffect(() => {
-    if (!isJoined && channel && uid) {
+    if (!isMockReplay && !isJoined && channel && uid) {
       joinChannel().catch((err: unknown) => {
         console.warn('[Dashboard] Agora RTC join standby:', err);
       });
     }
-  }, [isJoined, channel, uid, joinChannel]);
+  }, [isMockReplay, isJoined, channel, uid, joinChannel]);
 
   // Merge local user into participant list if not yet dispatched via RTM
   const effectiveParticipants: Record<string, Participant> = useMemo(() => {

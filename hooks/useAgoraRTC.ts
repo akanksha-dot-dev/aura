@@ -150,7 +150,11 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to join voice channel';
       setError(message);
-      console.error('[useAgoraRTC] Join error:', err);
+      if (message.includes('credentials not configured')) {
+        console.info('[useAgoraRTC] Voice channel on standby (Agora credentials not configured in .env.local).');
+      } else {
+        console.error('[useAgoraRTC] Join error:', err);
+      }
     }
   }, [channelName, uid, propAppId]);
 
