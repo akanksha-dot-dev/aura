@@ -416,27 +416,37 @@ function DashboardContent() {
   );
 }
 
+function ViewTransition({ children, name = 'main-view' }: { children: React.ReactNode; name?: string }) {
+  return (
+    <div style={{ viewTransitionName: name } as React.CSSProperties} className="view-transition-wrapper">
+      {children}
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   return (
-    <Suspense
-      fallback={
-        <div
-          style={{
-            height: '100vh',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'var(--bg-base)',
-            color: 'var(--color-aura)',
-            fontFamily: 'var(--font-mono)',
-            fontSize: 'var(--text-sm)',
-          }}
-        >
-          INITIALIZING AURA COMMAND BRIDGE...
-        </div>
-      }
-    >
-      <DashboardContent />
-    </Suspense>
+    <ViewTransition name="main-view">
+      <Suspense
+        fallback={
+          <div
+            style={{
+              height: '100vh',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'var(--bg-base)',
+              color: 'var(--color-aura)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 'var(--text-sm)',
+            }}
+          >
+            INITIALIZING AURA COMMAND BRIDGE...
+          </div>
+        }
+      >
+        <DashboardContent />
+      </Suspense>
+    </ViewTransition>
   );
 }

@@ -1,9 +1,17 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LobbyScreen } from '@/components/LobbyScreen';
 import { PersonaConfig } from '@/lib/constants';
+
+function ViewTransition({ children, name = 'main-view' }: { children: React.ReactNode; name?: string }) {
+  return (
+    <div style={{ viewTransitionName: name } as React.CSSProperties} className="view-transition-wrapper">
+      {children}
+    </div>
+  );
+}
 
 function LobbyContent() {
   const router = useRouter();
@@ -19,7 +27,16 @@ function LobbyContent() {
       role: persona.role,
       channel,
     });
-    router.push(`/?${params.toString()}`);
+    const targetUrl = `/?${params.toString()}`;
+
+    // Graceful native View Transition API with fallback
+    if (typeof document !== 'undefined' && 'startViewTransition' in document) {
+      (document as unknown as { startViewTransition: (cb: () => void) => void }).startViewTransition(() => {
+        router.push(targetUrl);
+      });
+    } else {
+      router.push(targetUrl);
+    }
   };
 
   return <LobbyScreen onJoin={handleJoin} isConnecting={isConnecting} />;
@@ -27,8 +44,10 @@ function LobbyContent() {
 
 export default function LobbyPage() {
   return (
-    <Suspense fallback={<div style={{ minHeight: '100vh', background: 'var(--bg-base)' }} />}>
-      <LobbyContent />
-    </Suspense>
+    <ViewTransition name="main-view">
+      <Suspense fallback={<div style={{ minHeight: '100vh', background: 'var(--bg-base)' }} />}>
+        <LobbyContent />
+      </Suspense>
+    </ViewTransition>
   );
 }
