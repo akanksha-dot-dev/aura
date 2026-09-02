@@ -16,6 +16,7 @@ import { IncidentStats } from '@/components/IncidentStats';
 import { NarrativeBar } from '@/components/NarrativeBar';
 import { LiveCaptions } from '@/components/LiveCaptions';
 import { PostmortemModal } from '@/components/PostmortemModal';
+import { TranscriptDrawer, TranscriptEntry } from '@/components/TranscriptDrawer';
 
 function DashboardContent() {
   const searchParams = useSearchParams();
@@ -28,6 +29,9 @@ function DashboardContent() {
 
   // Postmortem Modal state (auto-opens 2s after resolution per Star 7)
   const [isPostmortemOpen, setIsPostmortemOpen] = useState(false);
+  // Transcript Drawer state (WI-502)
+  const [isTranscriptDrawerOpen, setIsTranscriptDrawerOpen] = useState(false);
+  const [transcriptHistory, setTranscriptHistory] = useState<TranscriptEntry[]>([]);
 
   // 1. Central Incident State Engine
   const { state, processEvent, dispatchStateUpdate, claimIC, updateActionStatus } =
@@ -76,11 +80,33 @@ function DashboardContent() {
       onSpeech: (speaker, transcript) => {
         setMockSpeaker(speaker);
         setMockTranscript(transcript);
+        setTranscriptHistory((prev) => [
+          ...prev,
+          {
+            id: `speech-${Date.now()}-${prev.length}`,
+            speakerName: speaker || 'Incident Responder',
+            timestamp: Date.now(),
+            text: transcript,
+          },
+        ]);
       },
     });
 
     return cleanup;
   }, [isMockReplay, speedParam, processEvent, dispatchStateUpdate]);
+
+  // Combined transcript entries (from real-time speech history or epistemic evidence stream)
+  const effectiveTranscripts = useMemo<TranscriptEntry[]>(() => {
+    if (transcriptHistory.length > 0) {
+      return transcriptHistory;
+    }
+    return state.evidenceItems.map((e) => ({
+      id: `ev-${e.id}`,
+      speakerName: e.speakerName || 'Incident Responder',
+      timestamp: e.timestamp,
+      text: e.content,
+    }));
+  }, [transcriptHistory, state.evidenceItems]);
 
   // Automatically attempt RTC audio join on mount
   useEffect(() => {
@@ -401,7 +427,7 @@ function DashboardContent() {
         currentSpeakerName={captionSpeakerName}
         currentTranscript={currentTranscript}
         onToggleTranscriptDrawer={() => {
-          // Slide-out drawer toggle (Tier 2 feature)
+          setIsTranscriptDrawerOpen((prev) => !prev);
         }}
       />
 
@@ -411,6 +437,13 @@ function DashboardContent() {
         onClose={() => setIsPostmortemOpen(false)}
         incident={state}
         evidenceChainEdges={topologyEdges}
+      />
+
+      {/* 10. Transcript Drawer (WI-502) */}
+      <TranscriptDrawer
+        isOpen={isTranscriptDrawerOpen}
+        onClose={() => setIsTranscriptDrawerOpen(false)}
+        entries={effectiveTranscripts}
       />
     </div>
   );
