@@ -380,8 +380,11 @@ export async function POST(request: NextRequest) {
           ],
         },
         llm: {
-          credential_mode: 'managed',
-          vendor: 'openai',
+          vendor: 'custom',
+          url:
+            process.env.PROXY_URL ||
+            'https://aura.akanksha.dev/api/llm/proxy',
+          api_key: process.env.INTERNAL_PROXY_SECRET || '',
           system_messages: [
             {
               role: 'system',
@@ -398,6 +401,17 @@ export async function POST(request: NextRequest) {
             temperature: 0.1,
             max_tokens: 1024,
           },
+          mcp_servers: [
+            {
+              name: 'aura-incident-mcp',
+              endpoint:
+                process.env.MCP_URL ||
+                'https://aura.akanksha.dev/api/mcp/sse',
+              transport: 'streamable_http',
+              allowed_tools: ['*'],
+              timeout_ms: 4000,
+            },
+          ],
         },
         tts: {
           credential_mode: 'managed',
