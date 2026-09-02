@@ -334,7 +334,8 @@ input, textarea, select {
   transition: color 500ms var(--ease-standard);
 }
 
-.main-view--resolved {
+.main-view--resolved,
+.command-center--resolved .main-view {
   animation: resolve-pulse 1.5s ease-out forwards;
 }
 

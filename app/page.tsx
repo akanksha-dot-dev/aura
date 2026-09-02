@@ -206,7 +206,7 @@ function DashboardContent() {
     if (state.evidenceItems.length === 0) {
       return [{ timestamp: state.openedAt, value: 15 }];
     }
-    return state.evidenceItems.map((item, idx) => ({
+    const history = state.evidenceItems.map((item, idx) => ({
       timestamp: item.timestamp,
       value: Math.min(
         100,
@@ -216,10 +216,25 @@ function DashboardContent() {
         )
       ),
     }));
-  }, [state.evidenceItems, state.openedAt]);
+
+    if (state.status === 'resolved') {
+      const resolvedTimestamp =
+        state.resolvedAt ||
+        (state.evidenceItems.length > 0
+          ? state.evidenceItems[state.evidenceItems.length - 1].timestamp
+          : state.openedAt);
+
+      history.push({
+        timestamp: resolvedTimestamp,
+        value: 10,
+      });
+    }
+
+    return history;
+  }, [state.evidenceItems, state.openedAt, state.status, state.resolvedAt]);
 
   const inflectionPoints = useMemo(() => {
-    return state.evidenceItems
+    const points = state.evidenceItems
       .filter(
         (e) =>
           e.category === 'conflict' ||
@@ -236,7 +251,22 @@ function DashboardContent() {
             ? 'IC directive'
             : 'Hypothesis confirmed',
       }));
-  }, [state.evidenceItems]);
+
+    if (state.status === 'resolved') {
+      const resolvedTimestamp =
+        state.resolvedAt ||
+        (state.evidenceItems.length > 0
+          ? state.evidenceItems[state.evidenceItems.length - 1].timestamp
+          : state.openedAt);
+
+      points.push({
+        timestamp: resolvedTimestamp,
+        label: 'Resolved (mitigated)',
+      });
+    }
+
+    return points;
+  }, [state.evidenceItems, state.status, state.resolvedAt, state.openedAt]);
 
   // Speaker with highest volume for live caption highlight
   const speakingUid = useMemo(() => {
