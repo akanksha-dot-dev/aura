@@ -127,6 +127,11 @@ export function useAgoraRTM({
 
       if (!tokenRes.ok) {
         const errData = await tokenRes.json().catch(() => ({}));
+        if (tokenRes.status === 500 && String(errData.error).includes('credentials not configured')) {
+          console.info('[useAgoraRTM] Telemetry standby: Agora credentials not configured in .env.local');
+          setError('Agora telemetry standby (credentials not configured)');
+          return;
+        }
         throw new Error(
           errData.error || `Failed to fetch RTM token (HTTP ${tokenRes.status})`
         );

@@ -119,6 +119,11 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
 
       if (!tokenRes.ok) {
         const errJson = await tokenRes.json().catch(() => ({}));
+        if (tokenRes.status === 500 && String(errJson.error).includes('credentials not configured')) {
+          console.info('[useAgoraRTC] Voice standby: Agora credentials not configured in .env.local');
+          setError('Agora voice standby (credentials not configured)');
+          return;
+        }
         throw new Error(errJson.error || `Failed to get Agora token (HTTP ${tokenRes.status})`);
       }
 
