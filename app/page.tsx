@@ -18,6 +18,7 @@ import { LiveCaptions } from '@/components/LiveCaptions';
 import { PostmortemModal } from '@/components/PostmortemModal';
 import { TranscriptDrawer, TranscriptEntry } from '@/components/TranscriptDrawer';
 import { AgoraAnalyticsOverlay } from '@/components/AgoraAnalyticsOverlay';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 function DashboardContent() {
   const searchParams = useSearchParams();
@@ -480,27 +481,29 @@ function ViewTransition({ children, name = 'main-view' }: { children: React.Reac
 
 export default function DashboardPage() {
   return (
-    <ViewTransition name="main-view">
-      <Suspense
-        fallback={
-          <div
-            style={{
-              height: '100vh',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'var(--bg-base)',
-              color: 'var(--color-aura)',
-              fontFamily: 'var(--font-mono)',
-              fontSize: 'var(--text-sm)',
-            }}
-          >
-            INITIALIZING AURA COMMAND BRIDGE...
-          </div>
-        }
-      >
-        <DashboardContent />
-      </Suspense>
-    </ViewTransition>
+    <ErrorBoundary fallbackMessage="Operational fault detected on Command Bridge.">
+      <ViewTransition name="main-view">
+        <Suspense
+          fallback={
+            <div
+              style={{
+                height: '100vh',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'var(--bg-base)',
+                color: 'var(--color-aura)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 'var(--text-sm)',
+              }}
+            >
+              INITIALIZING AURA COMMAND BRIDGE...
+            </div>
+          }
+        >
+          <DashboardContent />
+        </Suspense>
+      </ViewTransition>
+    </ErrorBoundary>
   );
 }

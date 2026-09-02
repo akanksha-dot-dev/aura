@@ -3,6 +3,7 @@
 import React, { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LobbyScreen } from '@/components/LobbyScreen';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { PersonaConfig } from '@/lib/constants';
 
 function ViewTransition({ children, name = 'main-view' }: { children: React.ReactNode; name?: string }) {
@@ -44,10 +45,12 @@ function LobbyContent() {
 
 export default function LobbyPage() {
   return (
-    <ViewTransition name="main-view">
-      <Suspense fallback={<div style={{ minHeight: '100vh', background: 'var(--bg-base)' }} />}>
-        <LobbyContent />
-      </Suspense>
-    </ViewTransition>
+    <ErrorBoundary fallbackMessage="Failed to initialize incident lobby.">
+      <ViewTransition name="main-view">
+        <Suspense fallback={<div style={{ minHeight: '100vh', background: 'var(--bg-base)' }} />}>
+          <LobbyContent />
+        </Suspense>
+      </ViewTransition>
+    </ErrorBoundary>
   );
 }
