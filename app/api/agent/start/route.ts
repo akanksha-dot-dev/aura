@@ -364,23 +364,27 @@ export async function POST(request: NextRequest) {
         asr: {
           credential_mode: 'managed',
           vendor: 'deepgram',
-          model: 'nova-3',
           language: 'en-US',
-          keywords: [
-            { word: 'AURA', boost: 3 },
-            { word: 'rollback', boost: 2 },
-            { word: 'connection pool', boost: 2 },
-            { word: 'p99 latency', boost: 2 },
-            { word: 'SEV-1', boost: 2 },
-            { word: 'readback', boost: 2 },
-            { word: 'confirm', boost: 2 },
-            { word: 'Kubernetes', boost: 1 },
-            { word: 'Datadog', boost: 1 },
-            { word: 'Postgres', boost: 1 },
-          ],
+          params: {
+            model: 'nova-3',
+            url: 'wss://api.deepgram.com/v1/listen',
+            keywords: [
+              'AURA',
+              'rollback',
+              'connection pool',
+              'p99 latency',
+              'SEV-1',
+              'readback',
+              'confirm',
+              'Kubernetes',
+              'Datadog',
+              'Postgres',
+            ],
+          },
         },
         llm: {
           vendor: 'custom',
+          style: 'openai',
           url:
             process.env.PROXY_URL ||
             'https://aura.akanksha.dev/api/llm/proxy',
@@ -415,10 +419,12 @@ export async function POST(request: NextRequest) {
         },
         tts: {
           credential_mode: 'managed',
-          vendor: 'minimax',
-          model: 'speech-2.8-turbo',
-          params: { speed: 0.92 },
-          skip_patterns: ['\\[.*?\\]', 'https?://\\S+', 'NO_RESPONSE'],
+          vendor: 'openai',
+          params: {
+            model: 'tts-1',
+            voice: 'alloy',
+            url: 'https://api.openai.com/v1/audio/speech',
+          },
         },
         turn_detection: {
           type: 'agora_vad',
@@ -429,13 +435,7 @@ export async function POST(request: NextRequest) {
           },
         },
         filler_words: {
-          enable: true,
-          response_wait_ms: 800,
-          words: [
-            'Analyzing incident telemetry...',
-            'Cross-referencing database metrics...',
-            'Logging to timeline...',
-          ],
+          enable: false,
         },
       },
     };
