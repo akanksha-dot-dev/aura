@@ -17,6 +17,7 @@ import { NarrativeBar } from '@/components/NarrativeBar';
 import { LiveCaptions } from '@/components/LiveCaptions';
 import { PostmortemModal } from '@/components/PostmortemModal';
 import { TranscriptDrawer, TranscriptEntry } from '@/components/TranscriptDrawer';
+import { AgoraAnalyticsOverlay } from '@/components/AgoraAnalyticsOverlay';
 
 function DashboardContent() {
   const searchParams = useSearchParams();
@@ -32,6 +33,8 @@ function DashboardContent() {
   // Transcript Drawer state (WI-502)
   const [isTranscriptDrawerOpen, setIsTranscriptDrawerOpen] = useState(false);
   const [transcriptHistory, setTranscriptHistory] = useState<TranscriptEntry[]>([]);
+  // Agora Analytics Overlay state (WI-506)
+  const [isAnalyticsCollapsed, setIsAnalyticsCollapsed] = useState(false);
 
   // 1. Central Incident State Engine
   const { state, processEvent, dispatchStateUpdate, claimIC, updateActionStatus } =
@@ -444,6 +447,19 @@ function DashboardContent() {
         isOpen={isTranscriptDrawerOpen}
         onClose={() => setIsTranscriptDrawerOpen(false)}
         entries={effectiveTranscripts}
+      />
+
+      {/* 11. Agora Analytics Overlay (WI-506) */}
+      <AgoraAnalyticsOverlay
+        mos={connectionState === 'CONNECTED' ? 4.3 : 4.1}
+        jitter={connectionState === 'CONNECTED' ? 8 : 12}
+        rtt={connectionState === 'CONNECTED' ? 38 : 45}
+        packetLoss={connectionState === 'CONNECTED' ? 0.0 : 0.1}
+        sttLatencyMs={42}
+        llmLatencyMs={185}
+        ttsLatencyMs={92}
+        isCollapsed={isAnalyticsCollapsed}
+        onToggle={() => setIsAnalyticsCollapsed((prev) => !prev)}
       />
     </div>
   );
