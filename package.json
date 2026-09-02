@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "pages:build": "npx @cloudflare/next-on-pages",
+    "pages:dev": "npx wrangler pages dev .vercel/output/static --compatibility-flag=nodejs_compat"
   },
   "dependencies": {
     "agora-access-token": "^2.0.4",
@@ -21,6 +23,7 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
+    "@cloudflare/next-on-pages": "^1.13.16",
     "@faker-js/faker": "^10.6.0",
     "@types/d3-force": "^3.0.10",
     "@types/node": "^20",
