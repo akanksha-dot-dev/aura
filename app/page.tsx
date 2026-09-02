@@ -93,6 +93,11 @@ function DashboardContent() {
           },
         ]);
       },
+      onCelebration: () => {
+        setTimeout(() => {
+          setIsPostmortemOpen(true);
+        }, 2000);
+      },
     });
 
     return cleanup;

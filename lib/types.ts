@@ -109,25 +109,31 @@ export function getDisplayConfidence(item: EvidenceItem): number {
 // OODA Loop Phase Auto-Classification (D-024)
 export function classifyOODAPhase(state: IncidentState): OODAPhase {
   if (state.status === 'resolved') return 'RESOLVED';
-  
+  if (state.evidenceItems.length === 0) return 'OBSERVE';
+
+  const lastItem = state.evidenceItems[state.evidenceItems.length - 1];
+
+  // Immediate operational transitions based on most recent event
+  if (lastItem?.category === 'decision') return 'DECIDE';
+  if (lastItem?.category === 'action') return 'ACT';
+
   const now = Date.now();
   const windowMs = 120_000; // 2-minute sliding window
-  const recent = state.evidenceItems.filter(e => e.timestamp > now - windowMs);
-  
-  if (recent.length === 0) return 'OBSERVE';
-  
+  const timeFiltered = state.evidenceItems.filter((e) => e.timestamp > now - windowMs);
+  const recent = timeFiltered.length >= 2 ? timeFiltered : state.evidenceItems.slice(-4);
+
   const counts = {
-    fact: recent.filter(e => e.category === 'fact').length,
-    hypothesis: recent.filter(e => e.category === 'hypothesis').length,
-    decision: recent.filter(e => e.category === 'decision').length,
-    action: recent.filter(e => e.category === 'action').length,
-    conflict: recent.filter(e => e.category === 'conflict').length,
+    fact: recent.filter((e) => e.category === 'fact').length,
+    hypothesis: recent.filter((e) => e.category === 'hypothesis' && e.status === 'active').length,
+    decision: recent.filter((e) => e.category === 'decision').length,
+    action: recent.filter((e) => e.category === 'action' && e.actionStatus !== 'done').length,
+    conflict: recent.filter((e) => e.category === 'conflict' && e.status === 'active').length,
   };
   const total = recent.length;
-  
-  if (counts.action / total > 0.3) return 'ACT';
-  if (counts.decision / total > 0.25) return 'DECIDE';
-  if ((counts.hypothesis + counts.conflict) / total > 0.3) return 'ORIENT';
+
+  if (counts.action > 0 || counts.action / total > 0.25) return 'ACT';
+  if (counts.decision / total > 0.2) return 'DECIDE';
+  if (counts.hypothesis + counts.conflict > 0) return 'ORIENT';
   return 'OBSERVE';
 }
 

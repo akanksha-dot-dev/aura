@@ -9,6 +9,7 @@ import {
   ClassificationType,
   HypothesisStatus,
   IncidentStatus,
+  OODAPhase,
   Participant,
   calculateCognitiveLoad,
   classifyOODAPhase,
@@ -94,12 +95,31 @@ function incidentReducer(
         );
       }
 
+      if (update.completeAction) {
+        const actionIds = Array.isArray(update.completeAction)
+          ? update.completeAction.map(String)
+          : [String(update.completeAction)];
+        nextEvidence = nextEvidence.map((item) =>
+          actionIds.includes(item.id)
+            ? { ...item, actionStatus: 'done' as ActionStatus }
+            : item
+        );
+      }
+
       if (update.updateStatus) {
         const s = update.updateStatus as IncidentStatus;
         if (s) {
           nextStatus = s;
-          if (s === 'resolved' && !nextResolvedAt) {
-            nextResolvedAt = Date.now();
+          if (s === 'resolved') {
+            if (!nextResolvedAt) {
+              nextResolvedAt = Date.now();
+            }
+            // All action items are completed when incident is resolved
+            nextEvidence = nextEvidence.map((item) =>
+              item.category === 'action' && item.actionStatus !== 'done'
+                ? { ...item, actionStatus: 'done' as ActionStatus }
+                : item
+            );
           }
         }
       }
@@ -117,8 +137,13 @@ function incidentReducer(
         eventSeq: state.eventSeq + 1,
       };
 
-      nextState.currentOODAPhase =
-        nextStatus === 'resolved' ? 'RESOLVED' : classifyOODAPhase(nextState);
+      if (update.currentOODAPhase || update.oodaPhase) {
+        nextState.currentOODAPhase = (update.currentOODAPhase || update.oodaPhase) as OODAPhase;
+      } else {
+        nextState.currentOODAPhase =
+          nextStatus === 'resolved' ? 'RESOLVED' : classifyOODAPhase(nextState);
+      }
+
       nextState.cognitiveLoadScore = calculateCognitiveLoad(nextState);
 
       return nextState;
@@ -219,7 +244,7 @@ function incidentReducer(
               : [],
             status:
               (payload.status as HypothesisStatus) ||
-              (category === 'hypothesis' ? 'active' : 'confirmed'),
+              (category === 'hypothesis' || category === 'conflict' ? 'active' : 'confirmed'),
             assignedTo: payload.assignedTo ? String(payload.assignedTo) : undefined,
             eta: payload.eta ? Number(payload.eta) : undefined,
             actionStatus: payload.actionStatus
