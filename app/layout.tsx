@@ -17,8 +17,29 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AURA — Incident Command Center",
-  description: "Voice-native AI Incident Commander",
+  metadataBase: new URL("https://aura.akanksha.dev"),
+  title: "AURA — AI Voice Incident Commander",
+  description:
+    "Voice AI war room participant powered by Agora ConvAI. Real-time incident coordination, epistemic classification, and automated SRE postmortems.",
+  applicationName: "AURA",
+  icons: {
+    icon: "/favicon.ico",
+  },
+  openGraph: {
+    title: "AURA — AI Voice Incident Commander",
+    description:
+      "Voice AI war room participant powered by Agora ConvAI. Real-time incident coordination, epistemic classification, and automated SRE postmortems.",
+    siteName: "AURA",
+    type: "website",
+    url: "https://aura.akanksha.dev",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AURA — AI Voice Incident Commander",
+    description:
+      "Voice AI war room participant powered by Agora ConvAI. Real-time incident coordination, epistemic classification, and automated SRE postmortems.",
+  },
 };
 
 export default function RootLayout({
