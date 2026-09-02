@@ -348,3 +348,157 @@ input, textarea, select {
 .command-center:not(.has-conflict) {
   grid-template-rows: 48px 0px 1fr 64px 40px;
 }
+
+/* ─── Incident Topology Graph (Star 3 & 5) ─── */
+.topology-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 250px;
+  background: var(--bg-surface);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.topology-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.topology-empty-message {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.05em;
+}
+
+.topology-empty-pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-aura);
+  animation: aura-glow-pulse 2s infinite ease-in-out;
+}
+
+.topology-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.topology-edge {
+  transition: stroke 0.2s ease;
+}
+
+.topology-edge--causal {
+  stroke: rgba(255, 255, 255, 0.2);
+  stroke-width: 1px;
+}
+
+.topology-edge--conflict {
+  stroke: var(--color-conflict);
+  stroke-width: 2px;
+  stroke-dasharray: 4 3;
+}
+
+.topology-edge--contradicts {
+  stroke: var(--color-conflict);
+  stroke-width: 1.5px;
+  stroke-dasharray: 3 3;
+}
+
+.topology-node-group {
+  transition: opacity 0.2s ease;
+}
+
+.topology-node {
+  transition: all 0.2s ease;
+}
+
+.topology-node:hover {
+  filter: brightness(1.25);
+}
+
+.topology-node--disproven {
+  opacity: 0.35;
+}
+
+.topology-label {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  fill: var(--text-secondary);
+  pointer-events: none;
+  user-select: none;
+}
+
+.topology-label--disproven {
+  text-decoration: line-through;
+  opacity: 0.5;
+  fill: var(--color-conflict);
+}
+
+.topology-tooltip {
+  position: absolute;
+  background: var(--bg-surface-raised);
+  border: 1px solid var(--border-emphasis);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  pointer-events: none;
+  z-index: 50;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  max-width: 280px;
+  backdrop-filter: blur(8px);
+}
+
+.topology-tooltip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.topology-tooltip-badge {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: var(--weight-semibold);
+  padding: 1px 4px;
+  border-radius: 2px;
+  border: 1px solid;
+}
+
+.topology-tooltip-confidence {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  color: var(--text-secondary);
+}
+
+.topology-tooltip-status {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  text-transform: uppercase;
+}
+
+.topology-tooltip-content {
+  margin: 0 0 var(--space-1) 0;
+  color: var(--text-primary);
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+  word-break: break-word;
+}
+
+.topology-tooltip-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--text-muted);
+  font-size: 0.625rem;
+}
