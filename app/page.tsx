@@ -5,12 +5,12 @@ import { useSearchParams } from 'next/navigation';
 import { useAgoraRTC } from '@/hooks/useAgoraRTC';
 import { useAgoraRTM } from '@/hooks/useAgoraRTM';
 import { useIncidentState } from '@/hooks/useIncidentState';
-import { Participant } from '@/lib/types';
+import { Participant, TopologyNode, TopologyEdge } from '@/lib/types';
 import { startMockReplay } from '@/lib/mockReplay';
 import { StatusBar } from '@/components/StatusBar';
 import { SpeakerPanel } from '@/components/SpeakerPanel';
 import { ConflictBanner } from '@/components/ConflictBanner';
-import { TimelineFeed } from '@/components/TimelineFeed';
+import { MainView } from '@/components/MainView';
 import { ActionTracker } from '@/components/ActionTracker';
 import { IncidentStats } from '@/components/IncidentStats';
 import { NarrativeBar } from '@/components/NarrativeBar';
@@ -131,6 +131,59 @@ function DashboardContent() {
       ).length,
     [state.evidenceItems]
   );
+
+  // Derived Topology Graph Data (Nodes & Edges) for MainView
+  const topologyNodes = useMemo<TopologyNode[]>(() => {
+    return state.evidenceItems.map((item) => ({
+      id: item.id,
+      category: item.category,
+      content:
+        item.content.length > 50
+          ? `${item.content.substring(0, 47)}…`
+          : item.content,
+      fullContent: item.content,
+      speakerUid: item.speakerUid,
+      speakerName: item.speakerName,
+      confidence: item.confidence,
+      timestamp: item.timestamp,
+      status: item.status,
+    }));
+  }, [state.evidenceItems]);
+
+  const topologyEdges = useMemo<TopologyEdge[]>(() => {
+    const edges: TopologyEdge[] = [];
+    const nodeIds = new Set(state.evidenceItems.map((e) => e.id));
+
+    state.evidenceItems.forEach((item) => {
+      // 1. Causal edges from relatedTo
+      item.relatedTo.forEach((relId) => {
+        if (nodeIds.has(relId)) {
+          edges.push({
+            source: relId,
+            target: item.id,
+            type: 'causal',
+          });
+        }
+      });
+
+      // 2. Conflict edges
+      if (item.category === 'conflict') {
+        if (
+          item.relatedTo.length >= 2 &&
+          nodeIds.has(item.relatedTo[0]) &&
+          nodeIds.has(item.relatedTo[1])
+        ) {
+          edges.push({
+            source: item.relatedTo[0],
+            target: item.relatedTo[1],
+            type: 'conflict',
+          });
+        }
+      }
+    });
+
+    return edges;
+  }, [state.evidenceItems]);
 
   // Derived tension history & inflection markers for NarrativeBar
   const tensionHistory = useMemo(() => {
@@ -265,13 +318,14 @@ function DashboardContent() {
         }
       />
 
-      {/* 4. Main View: Timeline Feed */}
-      <main className="main-view">
-        <TimelineFeed
-          evidenceItems={state.evidenceItems}
-          incidentOpenedAt={state.openedAt}
-        />
-      </main>
+      {/* 4. Main View: Tabbed Container (Timeline ↔ Topology) */}
+      <MainView
+        evidenceItems={state.evidenceItems}
+        incidentOpenedAt={state.openedAt}
+        nodes={topologyNodes}
+        edges={topologyEdges}
+        isResolved={state.status === 'resolved'}
+      />
 
       {/* 5. Action Tracker */}
       <ActionTracker

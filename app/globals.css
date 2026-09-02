@@ -355,6 +355,101 @@ input, textarea, select {
   background: var(--bg-surface);
   overflow: hidden;
   height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-view__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-3);
+  height: 36px;
+  background: var(--bg-surface-raised);
+  border-bottom: 1px solid var(--border-default);
+  flex-shrink: 0;
+}
+
+.main-view__tabs {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  width: 270px;
+}
+
+.main-view__tab {
+  flex: 1;
+  height: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1h);
+  padding: 0 var(--space-2);
+  transition: color var(--duration-fast) var(--ease-standard);
+  user-select: none;
+}
+
+.main-view__tab:hover {
+  color: var(--text-primary);
+}
+
+.main-view__tab--active {
+  color: var(--color-aura);
+  font-weight: var(--weight-semibold);
+}
+
+.main-view__tab-icon {
+  font-size: 0.75rem;
+}
+
+.main-view__tab-count {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+}
+
+.main-view__tab--active .main-view__tab-count {
+  background: var(--color-aura-dim);
+  color: var(--color-aura);
+}
+
+.main-view__tab-indicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 50%;
+  height: 2px;
+  background: var(--color-aura);
+  box-shadow: 0 0 6px var(--color-aura-glow);
+  transition: transform var(--duration-fast) var(--ease-standard);
+  pointer-events: none;
+}
+
+.main-view__meta-hint {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.main-view__panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .status-bar { grid-area: status; }
