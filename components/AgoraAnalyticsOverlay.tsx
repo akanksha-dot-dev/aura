@@ -60,7 +60,13 @@ export function AgoraAnalyticsOverlay({
         title="Open Agora Telemetry & Pipeline Analytics"
         aria-label="Open Agora Telemetry Analytics"
       >
-        <span className="agora-analytics-btn__icon">📊</span>
+        <span className="agora-analytics-btn__icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M18 20V10" />
+            <path d="M12 20V4" />
+            <path d="M6 20v-6" />
+          </svg>
+        </span>
         <style>{`
           .agora-analytics-btn {
             position: fixed;
@@ -76,17 +82,20 @@ export function AgoraAnalyticsOverlay({
             justify-content: center;
             cursor: pointer;
             z-index: 50;
+            color: var(--text-secondary);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-            transition: all var(--duration-fast);
+            transition: background-color var(--duration-fast), border-color var(--duration-fast), color var(--duration-fast), box-shadow var(--duration-fast);
           }
           .agora-analytics-btn:hover {
             background: var(--bg-surface-hover);
             border-color: var(--color-aura);
-            transform: scale(1.05);
+            color: var(--color-aura);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
           }
           .agora-analytics-btn__icon {
-            font-size: 14px;
-            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
           }
         `}</style>
       </button>

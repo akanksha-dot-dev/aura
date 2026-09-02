@@ -41,55 +41,55 @@ interface SimulationLink {
 function getNodeColors(category: ClassificationType, status?: string) {
   if (status === 'disproven') {
     return {
-      fill: 'rgba(232, 84, 84, 0.25)',
+      fill: 'var(--color-conflict-dim)',
       stroke: 'var(--color-conflict)',
       text: 'var(--color-conflict)',
-      badge: '#E85454',
+      badge: 'var(--color-conflict)',
     };
   }
 
   switch (category) {
     case 'fact':
       return {
-        fill: 'rgba(59, 212, 162, 0.8)',
+        fill: 'var(--color-fact-dim)',
         stroke: 'var(--color-fact)',
         text: 'var(--color-fact)',
-        badge: '#3BD4A2',
+        badge: 'var(--color-fact)',
       };
     case 'hypothesis':
       return {
-        fill: 'rgba(232, 168, 56, 0.8)',
+        fill: 'var(--color-hypothesis-dim)',
         stroke: 'var(--color-hypothesis)',
         text: 'var(--color-hypothesis)',
-        badge: '#E8A838',
+        badge: 'var(--color-hypothesis)',
       };
     case 'decision':
       return {
-        fill: 'rgba(123, 140, 255, 0.8)',
+        fill: 'var(--color-decision-dim)',
         stroke: 'var(--color-decision)',
         text: 'var(--color-decision)',
-        badge: '#7B8CFF',
+        badge: 'var(--color-decision)',
       };
     case 'action':
       return {
-        fill: 'rgba(232, 125, 62, 0.8)',
+        fill: 'var(--color-action-dim)',
         stroke: 'var(--color-action)',
         text: 'var(--color-action)',
-        badge: '#E87D3E',
+        badge: 'var(--color-action)',
       };
     case 'conflict':
       return {
-        fill: 'rgba(232, 84, 84, 0.8)',
+        fill: 'var(--color-conflict-dim)',
         stroke: 'var(--color-conflict)',
         text: 'var(--color-conflict)',
-        badge: '#E85454',
+        badge: 'var(--color-conflict)',
       };
     default:
       return {
-        fill: 'rgba(142, 138, 157, 0.8)',
+        fill: 'var(--bg-surface-raised)',
         stroke: 'var(--text-secondary)',
         text: 'var(--text-secondary)',
-        badge: '#8E8A9D',
+        badge: 'var(--text-secondary)',
       };
   }
 }

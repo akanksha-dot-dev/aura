@@ -60,7 +60,7 @@ export function ActionTracker({ actions, onStatusChange }: ActionTrackerProps) {
           font-family: var(--font-sans);
           font-size: var(--text-xs);
           color: var(--text-muted);
-          font-style: italic;
+          font-style: normal;
           padding: var(--space-2) 0;
         }
 

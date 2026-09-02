@@ -216,7 +216,12 @@ export function StatusBar({
             title="Elapsed incident duration"
             aria-label={`Elapsed time: ${formatTimer(elapsedSeconds)}`}
           >
-            <span aria-hidden="true">⏱</span>
+            <span aria-hidden="true" style={{ display: 'inline-flex', alignItems: 'center' }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            </span>
             <span>{formatTimer(elapsedSeconds)}</span>
           </div>
 
@@ -225,7 +230,12 @@ export function StatusBar({
               className="status-bar__ic status-bar__ic--locked"
               title={`Incident Commander: ${icName}`}
             >
-              <span aria-hidden="true">🔒</span>
+              <span aria-hidden="true" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+              </span>
               <span>{icName} (IC)</span>
             </div>
           ) : (

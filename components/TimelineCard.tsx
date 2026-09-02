@@ -12,15 +12,21 @@ export interface TimelineCardProps {
 }
 
 const PERSONA_COLORS: Record<string, string> = {
-  sarah_ic: '#E85454',
-  marcus_sre: '#3BD4A2',
-  priya_pm: '#7B8CFF',
-  aura_agent: '#D4A853',
+  sarah_ic: 'var(--color-conflict)',
+  marcus_sre: 'var(--color-fact)',
+  priya_pm: 'var(--color-decision)',
+  aura_agent: 'var(--color-aura)',
 };
 
 function getSpeakerColor(uid: string): string {
   if (PERSONA_COLORS[uid]) return PERSONA_COLORS[uid];
-  const palette = ['#E85454', '#3BD4A2', '#7B8CFF', '#E8A838', '#E87D3E'];
+  const palette = [
+    'var(--color-conflict)',
+    'var(--color-fact)',
+    'var(--color-decision)',
+    'var(--color-hypothesis)',
+    'var(--color-action)',
+  ];
   let hash = 0;
   for (let i = 0; i < uid.length; i++) {
     hash = (hash + uid.charCodeAt(i)) % palette.length;

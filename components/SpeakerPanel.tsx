@@ -20,15 +20,21 @@ export interface SpeakerPanelProps {
 }
 
 const PERSONA_COLORS: Record<string, string> = {
-  sarah_ic: '#E85454',
-  marcus_sre: '#3BD4A2',
-  priya_pm: '#7B8CFF',
-  aura_agent: '#D4A853',
+  sarah_ic: 'var(--color-conflict)',
+  marcus_sre: 'var(--color-fact)',
+  priya_pm: 'var(--color-decision)',
+  aura_agent: 'var(--color-aura)',
 };
 
 function getAvatarColor(uid: string): string {
   if (PERSONA_COLORS[uid]) return PERSONA_COLORS[uid];
-  const palette = ['#E85454', '#3BD4A2', '#7B8CFF', '#E8A838', '#E87D3E'];
+  const palette = [
+    'var(--color-conflict)',
+    'var(--color-fact)',
+    'var(--color-decision)',
+    'var(--color-hypothesis)',
+    'var(--color-action)',
+  ];
   let hash = 0;
   for (let i = 0; i < uid.length; i++) {
     hash = (hash + uid.charCodeAt(i)) % palette.length;
@@ -113,7 +119,7 @@ export function SpeakerPanel({
           font-family: var(--font-sans);
           font-size: var(--text-xs);
           color: var(--text-muted);
-          font-style: italic;
+          font-style: normal;
           padding: var(--space-2) 0;
         }
 
@@ -292,7 +298,10 @@ export function SpeakerPanel({
                           title="Incident Commander"
                           aria-label="Incident Commander"
                         >
-                          🔒
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                          </svg>
                         </span>
                       )}
                     </div>

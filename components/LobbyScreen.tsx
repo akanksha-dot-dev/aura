@@ -10,215 +10,97 @@ interface LobbyScreenProps {
 
 export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) {
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: 'var(--space-6)',
-      background: 'var(--bg-base)',
-    }}>
-      <div style={{
-        width: '100%',
-        maxWidth: '640px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 'var(--space-6)',
-      }}>
+    <div className="lobby-container">
+      <div className="lobby-content">
         {/* Header */}
-        <div style={{ textAlign: 'center' }}>
-          <h1 style={{
-            fontSize: 'var(--text-3xl)',
-            fontWeight: 'var(--weight-bold)',
-            color: 'var(--color-aura)',
-            letterSpacing: '0.05em',
-            marginBottom: 'var(--space-1)',
-          }}>
+        <header className="lobby-header">
+          <h1 className="lobby-title">
             AURA
           </h1>
-          <p style={{
-            fontSize: 'var(--text-lg)',
-            color: 'var(--text-secondary)',
-            fontWeight: 'var(--weight-medium)',
-          }}>
+          <p className="lobby-subtitle">
             Incident Command Center
           </p>
-        </div>
+        </header>
 
         {/* Scenario Card */}
-        <div style={{
-          background: 'var(--bg-surface)',
-          border: '1px solid var(--border-default)',
-          borderRadius: 'var(--radius-xl)',
-          padding: 'var(--space-5)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 'var(--space-2)',
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 'var(--space-1)',
-          }}>
-            <span style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: 'var(--text-xs)',
-              fontWeight: 'var(--weight-semibold)',
-              color: 'var(--color-conflict)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-            }}>
+        <section className="lobby-scenario-card" aria-labelledby="active-scenario-title">
+          <div className="lobby-scenario-header">
+            <span className="lobby-scenario-tag">
               Active Scenario
             </span>
             <span className="badge badge-conflict">SEV-1 OUTAGE</span>
           </div>
-          <h2 style={{
-            fontSize: 'var(--text-md)',
-            fontWeight: 'var(--weight-semibold)',
-            color: 'var(--text-primary)',
-          }}>
+          <h2 id="active-scenario-title" className="lobby-scenario-title">
             Payment Service Checkout Outage
           </h2>
-          <ul style={{
-            listStyle: 'none',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'var(--space-1h)',
-            color: 'var(--text-secondary)',
-            fontSize: 'var(--text-base)',
-          }}>
-            <li style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          <ul className="lobby-scenario-list">
+            <li className="lobby-scenario-item">
               <span style={{ color: 'var(--color-conflict)' }}>•</span> Error rates spiked to 42% on payment services.
             </li>
-            <li style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <li className="lobby-scenario-item">
               <span style={{ color: 'var(--color-conflict)' }}>•</span> Checkout page is frozen for customers.
             </li>
-            <li style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <li className="lobby-scenario-item">
               <span style={{ color: 'var(--color-hypothesis)' }}>•</span> Suspected: PR #492 deployed 15 minutes ago.
             </li>
           </ul>
-        </div>
+        </section>
 
         {/* Join as section */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 'var(--space-3)',
-        }}>
-          <div style={{
-            fontSize: 'var(--text-xs)',
-            fontFamily: 'var(--font-mono)',
-            fontWeight: 'var(--weight-semibold)',
-            color: 'var(--text-secondary)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-          }}>
+        <section className="lobby-persona-list" aria-label="Participant selection">
+          <div className="lobby-section-title">
             Join War Room As:
           </div>
 
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'var(--space-3)',
-          }}>
+          <div className="lobby-persona-list">
             {PERSONAS.map((persona) => (
               <button
                 key={persona.uid}
                 disabled={isConnecting}
                 onClick={() => onJoin(persona)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--space-4)',
-                  padding: 'var(--space-4) var(--space-5)',
-                  background: 'var(--bg-surface-raised)',
-                  border: '1px solid var(--border-default)',
-                  borderLeft: `4px solid ${persona.avatarColor}`,
-                  borderRadius: 'var(--radius-lg)',
-                  color: 'var(--text-primary)',
-                  textAlign: 'left',
-                  cursor: isConnecting ? 'not-allowed' : 'pointer',
-                  opacity: isConnecting ? 0.6 : 1,
-                  transition: 'background var(--duration-fast) var(--ease-standard), transform var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard)',
-                }}
-                onMouseEnter={(e) => {
-                  if (!isConnecting) {
-                    e.currentTarget.style.background = 'var(--bg-surface-hover)';
-                    e.currentTarget.style.transform = 'translateY(-1px)';
-                    e.currentTarget.style.borderColor = 'var(--border-emphasis)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isConnecting) {
-                    e.currentTarget.style.background = 'var(--bg-surface-raised)';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.borderColor = 'var(--border-default)';
-                  }
-                }}
+                className="lobby-persona-btn"
+                type="button"
               >
-                <div style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: 'var(--radius-full)',
-                  background: persona.avatarColor,
-                  color: 'var(--text-inverse)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 'var(--text-sm)',
-                  fontWeight: 'var(--weight-bold)',
-                  flexShrink: 0,
-                }}>
+                <div
+                  className="lobby-persona-avatar"
+                  style={{
+                    backgroundColor: persona.avatarColor,
+                    color: 'var(--text-inverse)',
+                  }}
+                  aria-hidden="true"
+                >
                   {persona.displayName[0]}
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flexGrow: 1 }}>
-                  <span style={{
-                    fontSize: 'var(--text-md)',
-                    fontWeight: 'var(--weight-semibold)',
-                    color: 'var(--text-primary)',
-                  }}>
+                <div className="lobby-persona-info">
+                  <span className="lobby-persona-name">
                     {persona.displayName}
                   </span>
-                  <span style={{
-                    fontSize: 'var(--text-sm)',
-                    color: 'var(--text-secondary)',
-                  }}>
+                  <span className="lobby-persona-role">
                     {persona.role}
                   </span>
                 </div>
-                <div style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 'var(--text-xs)',
-                  color: 'var(--text-muted)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--space-1)',
-                }}>
-                  ENTER →
+                <div className="lobby-persona-cta">
+                  <span>ENTER</span>
+                  <span aria-hidden="true">→</span>
                 </div>
               </button>
             ))}
           </div>
-        </div>
+        </section>
 
         {/* Info Box */}
-        <div style={{
-          background: 'var(--bg-surface)',
-          border: '1px solid var(--border-subtle)',
-          borderRadius: 'var(--radius-md)',
-          padding: 'var(--space-3) var(--space-4)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--space-2)',
-          fontSize: 'var(--text-sm)',
-          color: 'var(--text-secondary)',
-        }}>
-          <span style={{ color: 'var(--color-aura)' }}>💡</span>
+        <div className="lobby-info-box" role="note">
+          <span className="lobby-info-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="16" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12.01" y2="8" />
+            </svg>
+          </span>
           <span>AURA will join automatically after the first participant connects. Speak naturally.</span>
         </div>
       </div>
     </div>
   );
 }
+

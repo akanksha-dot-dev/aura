@@ -272,7 +272,7 @@ export function PostmortemModal({
                             x={cx}
                             y={cy + 4}
                             textAnchor="middle"
-                            fill="#FFFFFF"
+                            fill="var(--text-primary)"
                             fontSize="10"
                             fontFamily="var(--font-mono)"
                             fontWeight="bold"
@@ -396,12 +396,12 @@ export function PostmortemModal({
                 </div>
               </section>
 
-              {/* Section 6: Media Artifacts */}
+              {/* Day 6 Artifact Placeholders */}
               <section className="postmortem-section">
-                <h3 className="postmortem-section__title">
-                  6. Telemetry Artifacts & Compliance
+                <h3 className="postmortem-subtitle">
+                  Compliance Artifacts & Recordings
                 </h3>
-                <div className="postmortem-media-buttons">
+                <div className="postmortem-media-grid">
                   <a
                     href={recordingUrl || '#recording-placeholder'}
                     className={`postmortem-media-btn ${
@@ -410,11 +410,16 @@ export function PostmortemModal({
                     onClick={(e) => {
                       if (!recordingUrl) {
                         e.preventDefault();
-                        alert('Cloud recording available via Agora Console storage.');
+                        alert('Incident room audio recording will be finalized post-session.');
                       }
                     }}
                   >
-                    <span>▶ Play Compliance Recording</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1h)' }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <polygon points="5 3 19 12 5 21 5 3" />
+                      </svg>
+                      Play Compliance Recording
+                    </span>
                   </a>
                   <a
                     href={transcriptUrl || '#transcript-placeholder'}
@@ -428,7 +433,14 @@ export function PostmortemModal({
                       }
                     }}
                   >
-                    <span>📥 Download .VTT Cross-Talk Transcript</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1h)' }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                      </svg>
+                      Download .VTT Cross-Talk Transcript
+                    </span>
                   </a>
                 </div>
               </section>
