@@ -454,7 +454,7 @@ function DashboardContent() {
         mos={connectionState === 'CONNECTED' ? 4.3 : 4.1}
         jitter={connectionState === 'CONNECTED' ? 8 : 12}
         rtt={connectionState === 'CONNECTED' ? 38 : 45}
-        packetLoss={connectionState === 'CONNECTED' ? 0.0 : 0.1}
+        packetLoss={connectionState === 'CONNECTED' ? 0 : 0.1}
         sttLatencyMs={42}
         llmLatencyMs={185}
         ttsLatencyMs={92}

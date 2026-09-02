@@ -6,9 +6,9 @@ export interface PersonaConfig {
 }
 
 export const PERSONAS: PersonaConfig[] = [
-  { uid: 'sarah_oncall', displayName: 'Sarah', role: 'Incident Commander', avatarColor: '#E85454' },
-  { uid: 'marcus_devops', displayName: 'Marcus', role: 'Senior SRE', avatarColor: '#3BD4A2' },
-  { uid: 'priya_lead', displayName: 'Priya', role: 'Product Manager', avatarColor: '#7B8CFF' },
+  { uid: 'sarah_oncall', displayName: 'Sarah', role: 'Incident Commander', avatarColor: 'var(--color-conflict)' },
+  { uid: 'marcus_devops', displayName: 'Marcus', role: 'Senior SRE', avatarColor: 'var(--color-fact)' },
+  { uid: 'priya_lead', displayName: 'Priya', role: 'Product Manager', avatarColor: 'var(--color-decision)' },
 ];
 
 export const AGENT_UID = 'aura_agent';
