@@ -50,6 +50,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      data-theme="dark"
       className={`${ibmPlexSans.variable} ${ibmPlexMono.variable}`}
     >
       <body>{children}</body>
