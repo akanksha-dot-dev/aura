@@ -34,6 +34,14 @@ function getSpeakerColor(uid: string): string {
   return palette[hash];
 }
 
+function getSpeakerRole(uid: string, speakerName?: string): string {
+  if (uid === 'aura_agent' || speakerName?.toLowerCase().includes('aura')) return 'AURA AI';
+  if (uid.includes('sarah') || speakerName?.toLowerCase().includes('sarah')) return 'Incident Commander';
+  if (uid.includes('marcus') || speakerName?.toLowerCase().includes('marcus')) return 'Senior SRE';
+  if (uid.includes('priya') || speakerName?.toLowerCase().includes('priya')) return 'Product Lead';
+  return 'Responder';
+}
+
 function formatTime(timestamp: number): string {
   const d = new Date(timestamp);
   const hours = d.getHours().toString().padStart(2, '0');
@@ -88,6 +96,8 @@ export function TimelineCard({ item, displayConfidence }: TimelineCardProps) {
     conflict: '⚠',
   }[item.category] ?? '●';
 
+  const speakerRole = getSpeakerRole(item.speakerUid, item.speakerName);
+
   const cardContent = (
     <>
       <div className="timeline-card__header">
@@ -105,12 +115,12 @@ export function TimelineCard({ item, displayConfidence }: TimelineCardProps) {
             }
           >
             <span aria-hidden="true">{isConfirmed ? '✓' : badgeSymbol}</span>{' '}
-            {isConfirmed ? 'Confirmed' : item.category}
+            <span>{isConfirmed ? 'Confirmed' : item.category}</span>
           </span>
 
           {isDecayedStale && (
-            <span className="timeline-card__stale-tag" title="Decayed confidence due to inactivity">
-              (stale)
+            <span className="timeline-card__stale-badge" title="Decayed confidence due to inactivity">
+              Stale
             </span>
           )}
 
@@ -120,7 +130,10 @@ export function TimelineCard({ item, displayConfidence }: TimelineCardProps) {
               avatarColor={getSpeakerColor(item.speakerUid)}
               isSpeaking={false}
             />
-            <span>{item.speakerName}</span>
+            <div className="timeline-card__speaker-info">
+              <span className="timeline-card__speaker-name">{item.speakerName}</span>
+              <span className="timeline-card__speaker-role">{speakerRole}</span>
+            </div>
           </div>
         </div>
 
@@ -158,13 +171,16 @@ export function TimelineCard({ item, displayConfidence }: TimelineCardProps) {
       </AnimatePresence>
 
       <div className="timeline-card__confidence-wrap">
-        <span className="timeline-card__confidence-label">
-          {isConfirmed
-            ? '✓ Confirmed (100%)'
-            : isDisproven
-            ? 'Disproven (0%)'
-            : `Confidence: ${displayConfidence}%`}
-        </span>
+        <div className="timeline-card__confidence-header">
+          <span className="timeline-card__confidence-title">Confidence</span>
+          <span className="timeline-card__confidence-label">
+            {isConfirmed
+              ? '✓ Confirmed (100%)'
+              : isDisproven
+              ? 'Disproven (0%)'
+              : `${displayConfidence}%`}
+          </span>
+        </div>
         <div className="timeline-card__confidence-track">
           <div
             className="timeline-card__confidence-fill"
@@ -193,16 +209,34 @@ export function TimelineCard({ item, displayConfidence }: TimelineCardProps) {
         item.decidingMetric) && (
         <div className="timeline-card__footer">
           {item.assignedTo && (
-            <div>
-              Assignee: {item.assignedTo}{' '}
-              {item.actionStatus ? `[${item.actionStatus}]` : ''}
-            </div>
+            <span className="meta-chip meta-chip--assignee">
+              <svg className="meta-chip__icon" width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0-2.21-3.58-4-6-4s-6 1.79-6 4v1h12v-1zm-10.8-1c.7-1.02 2.6-2 4.8-2s4.1.98 4.8 2H3.2z"/>
+              </svg>
+              <span>{item.assignedTo}</span>
+              {item.actionStatus && (
+                <span className={`meta-chip__status meta-chip__status--${item.actionStatus}`}>
+                  {item.actionStatus}
+                </span>
+              )}
+            </span>
           )}
           {item.decidingMetric && (
-            <div>Deciding Metric: {item.decidingMetric}</div>
+            <span className="meta-chip meta-chip--metric" title={`Deciding Metric: ${item.decidingMetric}`}>
+              <svg className="meta-chip__icon" width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5v-3zM2.5 2a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zm6.5.5A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zM1 10.5A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zm7.5 1a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5z"/>
+              </svg>
+              <span>{item.decidingMetric}</span>
+            </span>
           )}
           {item.relatedTo.length > 0 && (
-            <div>Related: {item.relatedTo.join(', ')}</div>
+            <span className="meta-chip meta-chip--related">
+              <svg className="meta-chip__icon" width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1.002 1.002 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4.018 4.018 0 0 1-.128-1.287z"/>
+                <path d="M6.586 4.672A3 3 0 0 0 7.414 9.5l.775-.776a2 2 0 0 1-.896-3.346L9.12 3.55a2 2 0 1 1 2.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 0 0-4.243-4.243L6.586 4.672z"/>
+              </svg>
+              <span>{item.relatedTo.join(', ')}</span>
+            </span>
           )}
         </div>
       )}
