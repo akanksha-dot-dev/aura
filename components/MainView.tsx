@@ -11,6 +11,8 @@ export interface MainViewProps {
   nodes: TopologyNode[];
   edges: TopologyEdge[];
   isResolved?: boolean;
+  activeTab?: 'timeline' | 'topology';
+  onTabChange?: (tab: 'timeline' | 'topology') => void;
 }
 
 export function MainView({
@@ -19,8 +21,16 @@ export function MainView({
   nodes,
   edges,
   isResolved = false,
+  activeTab: controlledActiveTab,
+  onTabChange,
 }: MainViewProps) {
-  const [activeTab, setActiveTab] = useState<'timeline' | 'topology'>('timeline');
+  const [internalActiveTab, setInternalActiveTab] = useState<'timeline' | 'topology'>('timeline');
+  const activeTab = controlledActiveTab ?? internalActiveTab;
+
+  const handleTabSelect = (tab: 'timeline' | 'topology') => {
+    setInternalActiveTab(tab);
+    onTabChange?.(tab);
+  };
 
   return (
     <main
@@ -43,7 +53,7 @@ export function MainView({
             className={`main-view__tab ${
               activeTab === 'timeline' ? 'main-view__tab--active' : ''
             }`}
-            onClick={() => setActiveTab('timeline')}
+            onClick={() => handleTabSelect('timeline')}
           >
             <span className="main-view__tab-icon" aria-hidden="true">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -52,6 +62,7 @@ export function MainView({
             </span>
             <span>Timeline</span>
             <span className="main-view__tab-count">{evidenceItems.length}</span>
+            {activeTab !== 'timeline' && <kbd className="keyboard-hint-badge" title="Press T to switch view">T</kbd>}
           </button>
 
           <button
@@ -63,7 +74,7 @@ export function MainView({
             className={`main-view__tab ${
               activeTab === 'topology' ? 'main-view__tab--active' : ''
             }`}
-            onClick={() => setActiveTab('topology')}
+            onClick={() => handleTabSelect('topology')}
           >
             <span className="main-view__tab-icon" aria-hidden="true">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -76,6 +87,7 @@ export function MainView({
             </span>
             <span>Topology Graph</span>
             <span className="main-view__tab-count">{nodes.length}</span>
+            {activeTab !== 'topology' && <kbd className="keyboard-hint-badge" title="Press T to switch view">T</kbd>}
           </button>
 
           {/* Sliding Underline Indicator */}

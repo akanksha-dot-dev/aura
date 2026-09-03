@@ -1806,3 +1806,26 @@ input, textarea, select {
     scroll-behavior: auto !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Mission Control Keyboard Shortcut Micro-Badges
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.keyboard-hint-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: var(--weight-bold);
+  background: var(--bg-surface-raised);
+  color: var(--text-tertiary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xs);
+  padding: 1px 4px;
+  line-height: 1;
+  text-transform: uppercase;
+  margin-left: var(--space-1);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+

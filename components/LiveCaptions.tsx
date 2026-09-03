@@ -127,10 +127,11 @@ export function LiveCaptions({
           type="button"
           className="live-captions__drawer-btn"
           onClick={onToggleTranscriptDrawer}
-          title="Toggle Full Transcript Drawer"
+          title="Toggle Full Transcript Drawer (Press J)"
         >
           <span>▼</span>
           <span>Full</span>
+          <kbd className="keyboard-hint-badge">J</kbd>
         </button>
       </div>
     </>

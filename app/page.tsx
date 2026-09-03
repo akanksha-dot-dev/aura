@@ -19,6 +19,11 @@ import { PostmortemModal } from '@/components/PostmortemModal';
 import { TranscriptDrawer, TranscriptEntry } from '@/components/TranscriptDrawer';
 import { AgoraAnalyticsOverlay } from '@/components/AgoraAnalyticsOverlay';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import {
+  playConflictEarcon,
+  playActionCompletedEarcon,
+  playResolutionEarcon,
+} from '@/lib/audioCues';
 
 function DashboardContent() {
   const searchParams = useSearchParams();
@@ -31,22 +36,46 @@ function DashboardContent() {
   const initialCostRate = Math.max(1, Number(searchParams.get('costRate')) || 150);
   const [costRate, setCostRate] = useState<number>(initialCostRate);
 
-  // Postmortem Modal state (auto-opens 2s after resolution per Star 7)
+  // View tabs & Modal states
+  const [mainViewTab, setMainViewTab] = useState<'timeline' | 'topology'>('timeline');
   const [isPostmortemOpen, setIsPostmortemOpen] = useState(false);
-  // Transcript Drawer state (WI-502)
   const [isTranscriptDrawerOpen, setIsTranscriptDrawerOpen] = useState(false);
   const [transcriptHistory, setTranscriptHistory] = useState<TranscriptEntry[]>([]);
-  // Agora Analytics Overlay state (WI-506)
   const [isAnalyticsCollapsed, setIsAnalyticsCollapsed] = useState(false);
+
+  // Global Mission-Control Keyboard Shortcuts (T: Tab, J: Drawer, P: Postmortem, Esc: Close)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
+
+      if (e.key === 't' || e.key === 'T') {
+        setMainViewTab((prev) => (prev === 'timeline' ? 'topology' : 'timeline'));
+      } else if (e.key === 'j' || e.key === 'J') {
+        setIsTranscriptDrawerOpen((prev) => !prev);
+      } else if (e.key === 'p' || e.key === 'P') {
+        setIsPostmortemOpen((prev) => !prev);
+      } else if (e.key === 'Escape') {
+        setIsTranscriptDrawerOpen(false);
+        setIsPostmortemOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // 1. Central Incident State Engine
   const { state, processEvent, dispatchStateUpdate, claimIC, updateActionStatus } =
     useIncidentState();
 
-  // Auto-open postmortem modal 2 seconds after resolution
+  // Auto-open postmortem modal 2 seconds after resolution + play resolution chime
   const prevStatusRef = useRef(state.status);
   useEffect(() => {
     if (prevStatusRef.current !== 'resolved' && state.status === 'resolved') {
+      playResolutionEarcon();
       const timer = setTimeout(() => {
         setIsPostmortemOpen(true);
       }, 2000);
@@ -185,6 +214,24 @@ function DashboardContent() {
       ).length,
     [state.evidenceItems]
   );
+
+  // Auditory Operational Earcons (Contradictions & Completed Actions)
+  const prevConflictRef = useRef(false);
+  useEffect(() => {
+    const hasConflict = Boolean(activeConflict);
+    if (!prevConflictRef.current && hasConflict) {
+      playConflictEarcon();
+    }
+    prevConflictRef.current = hasConflict;
+  }, [activeConflict]);
+
+  const prevActionCountRef = useRef(actionCompletedCount);
+  useEffect(() => {
+    if (actionCompletedCount > prevActionCountRef.current) {
+      playActionCompletedEarcon();
+    }
+    prevActionCountRef.current = actionCompletedCount;
+  }, [actionCompletedCount]);
 
   // Derived Topology Graph Data (Nodes & Edges) for MainView
   const topologyNodes = useMemo<TopologyNode[]>(() => {
@@ -426,6 +473,8 @@ function DashboardContent() {
         nodes={topologyNodes}
         edges={topologyEdges}
         isResolved={state.status === 'resolved'}
+        activeTab={mainViewTab}
+        onTabChange={setMainViewTab}
       />
 
       {/* 5. Action Tracker */}
