@@ -25,6 +25,21 @@ export function AgoraAnalyticsOverlay({
   isCollapsed,
   onToggle,
 }: AgoraAnalyticsOverlayProps) {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (isCollapsed) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        onToggle();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isCollapsed, onToggle]);
+
   // MOS color coding
   const getMosColor = (score: number) => {
     if (score >= 3.5) return 'var(--color-fact)';
@@ -52,7 +67,7 @@ export function AgoraAnalyticsOverlay({
   const ttsMeta = getLatencyMeta(ttsLatencyMs, 600, 200, 500);
 
   return (
-    <div className="agora-telemetry-container">
+    <div className="agora-telemetry-container" ref={containerRef}>
       <style>{`
         .agora-telemetry-container {
           position: relative;
@@ -116,18 +131,18 @@ export function AgoraAnalyticsOverlay({
 
         .agora-telemetry-popover {
           position: absolute;
-          bottom: calc(100% + 8px);
+          bottom: calc(100% + 12px);
           right: 0;
-          width: 230px;
-          background: var(--bg-surface-raised);
+          width: 250px;
+          background: rgba(26, 25, 42, 0.96);
           border: 1px solid var(--border-emphasis);
           border-radius: var(--radius-md);
           padding: var(--space-3);
-          z-index: var(--z-dropdown);
+          z-index: 500;
           font-family: var(--font-mono);
           font-size: var(--text-xs);
-          box-shadow: var(--shadow-panel);
-          backdrop-filter: blur(8px);
+          box-shadow: 0 12px 36px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08);
+          backdrop-filter: blur(16px);
         }
 
         .agora-telemetry-popover__header {

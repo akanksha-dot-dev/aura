@@ -5,7 +5,7 @@ import React from 'react';
 export interface LiveCaptionsProps {
   currentSpeakerName: string | null;
   currentTranscript: string;
-  onToggleTranscriptDrawer: () => void;
+  onToggleTranscriptDrawer?: () => void;
 }
 
 export function LiveCaptions({
@@ -23,8 +23,6 @@ export function LiveCaptions({
           width: 100%;
           background: transparent;
           border: none;
-          border-left: 1px solid var(--border-subtle);
-          border-right: 1px solid var(--border-subtle);
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -39,6 +37,7 @@ export function LiveCaptions({
           align-items: center;
           gap: var(--space-2);
           min-width: 0;
+          flex: 1;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -73,6 +72,8 @@ export function LiveCaptions({
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
+          min-width: 0;
+          flex-shrink: 1;
         }
 
         .live-captions__cursor {
@@ -94,6 +95,10 @@ export function LiveCaptions({
         .live-captions__standby {
           color: var(--text-muted);
           font-style: normal;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          min-width: 0;
         }
 
         .live-captions__drawer-btn {
@@ -110,6 +115,8 @@ export function LiveCaptions({
           color: var(--text-secondary);
           cursor: pointer;
           flex-shrink: 0;
+          margin-left: var(--space-3);
+          z-index: 5;
           transition: background var(--duration-fast) var(--ease-standard),
                       color var(--duration-fast) var(--ease-standard);
         }
@@ -153,15 +160,17 @@ export function LiveCaptions({
           )}
         </div>
 
-        <button
-          type="button"
-          className="live-captions__drawer-btn"
-          onClick={onToggleTranscriptDrawer}
-          title="Toggle Full Transcript Drawer (Press J)"
-        >
-          <span>Log</span>
-          <kbd className="keyboard-hint-badge">J</kbd>
-        </button>
+        {onToggleTranscriptDrawer && (
+          <button
+            type="button"
+            className="live-captions__drawer-btn"
+            onClick={onToggleTranscriptDrawer}
+            title="Toggle Full Transcript Drawer (Press J)"
+          >
+            <span>Log</span>
+            <kbd className="keyboard-hint-badge">J</kbd>
+          </button>
+        )}
       </div>
     </>
   );

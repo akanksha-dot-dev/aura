@@ -17,6 +17,8 @@ export interface StatusBarProps {
   onClaimIC?: () => void;
   costRate?: number;
   onRateChange?: (newRate: number) => void;
+  isCostPaused?: boolean;
+  onToggleCostPause?: () => void;
 }
 
 function formatTimer(totalSeconds: number): string {
@@ -42,6 +44,8 @@ export function StatusBar({
   onClaimIC,
   costRate,
   onRateChange,
+  isCostPaused,
+  onToggleCostPause,
 }: StatusBarProps) {
   const [activeElapsed, setActiveElapsed] = useState<number>(0);
 
@@ -262,6 +266,8 @@ export function StatusBar({
             resolvedAt={resolvedAt}
             baseRate={costRate}
             onRateChange={onRateChange}
+            isPaused={isCostPaused}
+            onTogglePause={onToggleCostPause}
           />
 
           <div

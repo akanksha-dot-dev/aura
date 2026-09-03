@@ -10,6 +10,8 @@ export interface CostCounterProps {
   resolvedAt?: number;
   baseRate?: number;
   onRateChange?: (newRate: number) => void;
+  isPaused?: boolean;
+  onTogglePause?: () => void;
 }
 
 export function CostCounter({
@@ -18,10 +20,22 @@ export function CostCounter({
   resolvedAt,
   baseRate = 150,
   onRateChange,
+  isPaused: externalIsPaused,
+  onTogglePause: externalOnTogglePause,
 }: CostCounterProps) {
+  const [internalIsPaused, setInternalIsPaused] = React.useState(false);
+  const isPaused = externalIsPaused !== undefined ? externalIsPaused : internalIsPaused;
+  const togglePause = () => {
+    if (externalOnTogglePause) {
+      externalOnTogglePause();
+    } else {
+      setInternalIsPaused((p) => !p);
+    }
+  };
+
   const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
   const [customRateInput, setCustomRateInput] = React.useState(baseRate.toString());
-  const cost = useCostCounter(incidentStatus, openedAt, resolvedAt, baseRate);
+  const cost = useCostCounter(incidentStatus, openedAt, resolvedAt, baseRate, isPaused);
   const isResolved = incidentStatus === 'resolved';
 
   const formattedCost = new Intl.NumberFormat('en-US', {
@@ -43,6 +57,7 @@ export function CostCounter({
   }).format(baseRate * 3600);
 
   const PRESETS = [
+    { label: 'Halt ($0/s)', rate: 0 },
     { label: 'SaaS ($25/s)', rate: 25 },
     { label: 'Mid ($75/s)', rate: 75 },
     { label: 'E-Comm ($150/s)', rate: 150 },
@@ -58,7 +73,7 @@ export function CostCounter({
 
   const handleApplyCustom = (e: React.FormEvent) => {
     e.preventDefault();
-    const parsed = Math.max(1, Math.min(100000, Number(customRateInput) || baseRate));
+    const parsed = Math.max(0, Math.min(100000, Number(customRateInput) || 0));
     onRateChange?.(parsed);
     setIsPopoverOpen(false);
   };
@@ -108,6 +123,40 @@ export function CostCounter({
           color: var(--color-fact);
           text-shadow: none;
         }
+        .cost-counter-value--paused {
+          color: var(--color-hypothesis);
+          text-shadow: 0 0 8px rgba(235, 180, 50, 0.3);
+        }
+        .cost-counter-pause-btn {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          font-weight: var(--weight-bold);
+          color: var(--text-secondary);
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-xs);
+          padding: 1px 4px;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 2px;
+          transition: all var(--duration-fast) var(--ease-standard);
+        }
+        .cost-counter-pause-btn:hover {
+          color: var(--color-aura);
+          border-color: var(--color-aura);
+          background: var(--bg-surface-hover);
+        }
+        .cost-counter-pause-btn--paused {
+          color: var(--color-hypothesis);
+          border-color: var(--color-hypothesis);
+          background: rgba(235, 180, 50, 0.12);
+          animation: cost-pause-flash 1.5s ease-in-out infinite alternate;
+        }
+        @keyframes cost-pause-flash {
+          0% { opacity: 0.75; }
+          100% { opacity: 1; }
+        }
         .cost-counter-savings {
           font-family: var(--font-mono);
           font-size: var(--text-xs);
@@ -134,6 +183,32 @@ export function CostCounter({
           flex-direction: column;
           gap: var(--space-2);
           text-align: left;
+        }
+        .cost-popover__pause-btn {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding: var(--space-2);
+          font-family: var(--font-mono);
+          font-size: var(--text-xs);
+          font-weight: var(--weight-bold);
+          border-radius: var(--radius-sm);
+          cursor: pointer;
+          border: 1px solid var(--border-default);
+          background: var(--bg-base);
+          color: var(--text-primary);
+          transition: all var(--duration-fast);
+        }
+        .cost-popover__pause-btn:hover {
+          border-color: var(--color-aura);
+          background: var(--bg-elevated);
+        }
+        .cost-popover__pause-btn--active {
+          background: rgba(235, 180, 50, 0.12);
+          border-color: var(--color-hypothesis);
+          color: var(--color-hypothesis);
         }
         .cost-popover__title {
           font-family: var(--font-mono);
@@ -214,9 +289,31 @@ export function CostCounter({
         title="Click to adjust incident financial burn rate"
       >
         <div className="cost-counter-interactive-wrapper">
-          <span className="cost-counter-edit-badge" aria-hidden="true">${baseRate}/s</span>
+          {!isResolved && (
+            <button
+              type="button"
+              className={`cost-counter-pause-btn ${isPaused ? 'cost-counter-pause-btn--paused' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                togglePause();
+              }}
+              title={isPaused ? "Resume financial loss ticker" : "Pause financial loss ticker"}
+              aria-label={isPaused ? "Resume financial loss calculation" : "Pause financial loss calculation"}
+            >
+              {isPaused ? '▶ RESUME' : '⏸ PAUSE'}
+            </button>
+          )}
+          <span className="cost-counter-edit-badge" aria-hidden="true">
+            {isPaused ? 'PAUSED' : `$${baseRate}/s`}
+          </span>
           <span
-            className={`cost-counter-value ${isResolved ? 'cost-counter-value--resolved cost-counter--resolved' : ''}`}
+            className={`cost-counter-value ${
+              isResolved
+                ? 'cost-counter-value--resolved cost-counter--resolved'
+                : isPaused
+                ? 'cost-counter-value--paused'
+                : ''
+            }`}
           >
             {formattedCost}
           </span>
@@ -224,6 +321,10 @@ export function CostCounter({
         {isResolved ? (
           <span className="cost-counter-savings">
             Saved: ~{estimatedSavings}
+          </span>
+        ) : isPaused ? (
+          <span className="cost-rate-badge" style={{ color: 'var(--color-hypothesis)' }}>
+            ⏸ Telemetry Halted
           </span>
         ) : (
           <span className="cost-rate-badge">
@@ -247,6 +348,13 @@ export function CostCounter({
                 ✕
               </button>
             </div>
+            <button
+              type="button"
+              className={`cost-popover__pause-btn ${isPaused ? 'cost-popover__pause-btn--active' : ''}`}
+              onClick={() => togglePause()}
+            >
+              {isPaused ? '▶ Resume Loss Calculation' : '⏸ Stop / Pause Loss Calculation'}
+            </button>
             <div className="cost-popover__hourly">
               Current: ${baseRate}/s ({hourlyRateFormatted}/hr)
             </div>

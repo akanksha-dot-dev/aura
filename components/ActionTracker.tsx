@@ -31,7 +31,7 @@ export function ActionTracker({ actions, onStatusChange }: ActionTrackerProps) {
       <style>{`
         .action-tracker {
           grid-area: actions;
-          width: 250px;
+          width: 100%;
           height: 100%;
           background: var(--bg-surface);
           border-left: 1px solid var(--border-default);
@@ -207,8 +207,8 @@ export function ActionTracker({ actions, onStatusChange }: ActionTrackerProps) {
         }
 
         .action-card--done .action-card__content {
-          text-decoration: line-through;
           color: var(--text-secondary);
+          opacity: 0.82;
         }
 
         .action-card__footer {
@@ -230,7 +230,7 @@ export function ActionTracker({ actions, onStatusChange }: ActionTrackerProps) {
           padding: 1px 6px 1px 3px;
           font-size: 10px;
           color: var(--text-secondary);
-          max-width: 120px;
+          max-width: 155px;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;

@@ -222,10 +222,9 @@ export function SpeakerPanel({
 
         .speaker-row__role-tag {
           font-family: var(--font-mono);
-          font-size: 0.5625rem;
+          font-size: 0.625rem;
           color: var(--text-muted);
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
+          letter-spacing: 0.02em;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -295,6 +294,62 @@ export function SpeakerPanel({
           display: block;
           width: 100%;
           height: 22px;
+        }
+
+        .speaker-panel__bridge-telemetry {
+          margin: var(--space-2) 0;
+          padding: var(--space-2);
+          background: var(--bg-surface-raised);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-sm);
+          font-family: var(--font-mono);
+        }
+
+        .bridge-telemetry__header {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin-bottom: var(--space-1);
+          border-bottom: 1px solid var(--border-subtle);
+          padding-bottom: 3px;
+        }
+
+        .bridge-telemetry__dot {
+          width: 5px;
+          height: 5px;
+          border-radius: 50%;
+          background: var(--color-fact);
+          box-shadow: 0 0 6px var(--color-fact);
+        }
+
+        .bridge-telemetry__title {
+          font-size: 0.625rem;
+          font-weight: var(--weight-bold);
+          color: var(--color-aura);
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+        }
+
+        .bridge-telemetry__grid {
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+        }
+
+        .bridge-telemetry__row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-size: 0.5625rem;
+        }
+
+        .bridge-telemetry__label {
+          color: var(--text-muted);
+        }
+
+        .bridge-telemetry__val {
+          color: var(--text-secondary);
+          font-weight: var(--weight-medium);
         }
 
         .speaker-panel__bottom {
@@ -429,7 +484,7 @@ export function SpeakerPanel({
                       </span>
                     </div>
                     <span className="speaker-row__role-tag speaker-row__role-tag--aura">
-                      AI Incident Commander
+                      AI Commander
                     </span>
                   </div>
                 </div>
@@ -449,6 +504,28 @@ export function SpeakerPanel({
                   aria-label="AURA voice activity waveform"
                 />
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Acoustic Bridge Telemetry Card (Eliminates dead space) */}
+        <div className="speaker-panel__bridge-telemetry" aria-label="Acoustic Bridge Status">
+          <div className="bridge-telemetry__header">
+            <span className="bridge-telemetry__dot" aria-hidden="true" />
+            <span className="bridge-telemetry__title">SD-RTN™ Acoustic Bridge</span>
+          </div>
+          <div className="bridge-telemetry__grid">
+            <div className="bridge-telemetry__row">
+              <span className="bridge-telemetry__label">Codec:</span>
+              <span className="bridge-telemetry__val">OPUS 48kHz</span>
+            </div>
+            <div className="bridge-telemetry__row">
+              <span className="bridge-telemetry__label">Audio Processing:</span>
+              <span className="bridge-telemetry__val">AEC • ANS • AGC</span>
+            </div>
+            <div className="bridge-telemetry__row">
+              <span className="bridge-telemetry__label">Voice Channels:</span>
+              <span className="bridge-telemetry__val">{participantList.length + 1} Active</span>
             </div>
           </div>
         </div>

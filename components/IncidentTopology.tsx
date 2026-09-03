@@ -175,22 +175,22 @@ export function IncidentTopology({
 
     if (!simulationRef.current) {
       const sim = forceSimulation<SimulationNode>(newSimNodes)
-        .force('charge', forceManyBody<SimulationNode>().strength(-120))
+        .force('charge', forceManyBody<SimulationNode>().strength(-380))
         .force(
           'link',
           forceLink<SimulationNode, SimulationLink>(newSimLinks)
             .id((d) => d.id)
-            .distance(80)
-            .strength(0.3)
+            .distance(130)
+            .strength(0.4)
         )
         .force('center', forceCenter<SimulationNode>(width / 2, height / 2))
         .force(
           'collision',
-          forceCollide<SimulationNode>().radius((d) => getNodeRadius(d.confidence, d.status) + 12)
+          forceCollide<SimulationNode>().radius((d) => Math.max(56, getNodeRadius(d.confidence, d.status) + 36))
         )
-        .force('x', forceX<SimulationNode>(width / 2).strength(0.05))
-        .force('y', forceY<SimulationNode>(height / 2).strength(0.05))
-        .alphaDecay(0.02);
+        .force('x', forceX<SimulationNode>(width / 2).strength(0.04))
+        .force('y', forceY<SimulationNode>(height / 2).strength(0.04))
+        .alphaDecay(0.025);
 
       let rafId: number;
       sim.on('tick', () => {
@@ -215,7 +215,21 @@ export function IncidentTopology({
         typeof forceLink<SimulationNode, SimulationLink>
       >;
       if (linkForce) {
-        linkForce.links(newSimLinks);
+        linkForce.links(newSimLinks).distance(130);
+      }
+
+      const chargeForce = sim.force('charge') as ReturnType<
+        typeof forceManyBody<SimulationNode>
+      >;
+      if (chargeForce) {
+        chargeForce.strength(-380);
+      }
+
+      const collideForce = sim.force('collision') as ReturnType<
+        typeof forceCollide<SimulationNode>
+      >;
+      if (collideForce) {
+        collideForce.radius((d) => Math.max(56, getNodeRadius(d.confidence, d.status) + 36));
       }
 
       const centerForce = sim.force('center') as ReturnType<typeof forceCenter<SimulationNode>>;
@@ -388,33 +402,48 @@ export function IncidentTopology({
                   r={radius}
                   fill={colors.fill}
                   stroke={colors.stroke}
-                  strokeWidth={1.5}
+                  strokeWidth={isHovered ? 2.5 : 1.5}
                   opacity={isDisproven ? 0.35 : 1}
                 />
 
-                {/* Node Label (Truncated, below node) */}
+                {/* Inner Epistemic Category Glyph */}
                 <text
-                  className={`topology-label ${isDisproven ? 'topology-label--disproven' : ''}`}
-                  y={radius + 14}
                   textAnchor="middle"
+                  dy="3.5"
+                  fill={colors.badge}
+                  fontSize={Math.max(9, Math.round(radius * 0.58))}
+                  fontFamily="var(--font-mono)"
+                  fontWeight="bold"
+                  pointerEvents="none"
                 >
-                  {node.content.length > 28
-                    ? `${node.content.substring(0, 26)}…`
-                    : node.content}
+                  {isDisproven ? '✕' : node.category[0].toUpperCase()}
                 </text>
 
-                {/* Disproven Strikethrough Line across label */}
-                {isDisproven && (
-                  <line
-                    x1={-30}
-                    y1={radius + 10}
-                    x2={30}
-                    y2={radius + 10}
-                    stroke="var(--color-conflict)"
-                    strokeWidth={1.5}
-                    opacity={0.8}
+                {/* Node Label with Glass Capsule Backdrop */}
+                <g transform={`translate(0, ${radius + 15})`} pointerEvents="none">
+                  <rect
+                    x={-(Math.min(node.content.length, 22) * 3.2 + 8)}
+                    y="-9"
+                    width={(Math.min(node.content.length, 22) * 6.4 + 16)}
+                    height="17"
+                    rx="3"
+                    fill="rgba(19, 18, 25, 0.92)"
+                    stroke={isHovered ? colors.stroke : "rgba(255, 255, 255, 0.1)"}
+                    strokeWidth={isHovered ? "1" : "0.5"}
                   />
-                )}
+                  <text
+                    className={`topology-label ${isDisproven ? 'topology-label--disproven' : ''}`}
+                    y="3"
+                    textAnchor="middle"
+                    fill={isHovered ? "var(--text-primary)" : "var(--text-secondary)"}
+                    fontSize="10"
+                    fontFamily="var(--font-sans)"
+                  >
+                    {node.content.length > 22
+                      ? `${node.content.substring(0, 20)}…`
+                      : node.content}
+                  </text>
+                </g>
               </g>
             );
           })}

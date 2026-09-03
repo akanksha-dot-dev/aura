@@ -30,18 +30,18 @@ export function IncidentStats({
           display: flex;
           align-items: center;
           justify-content: flex-end;
-          gap: 6px;
-          padding: 0 var(--space-3);
+          gap: 5px;
+          padding: 0 var(--space-2);
           font-family: var(--font-mono);
           user-select: none;
-          flex-wrap: wrap;
+          flex-wrap: nowrap;
         }
 
         .stat-chip {
           display: inline-flex;
           align-items: center;
-          gap: 5px;
-          padding: 3px 8px;
+          gap: 4px;
+          padding: 3px 6px;
           border-radius: var(--radius-sm);
           font-size: 0.6875rem;
           font-weight: var(--weight-medium);
@@ -49,6 +49,7 @@ export function IncidentStats({
           border: 1px solid var(--border-subtle);
           white-space: nowrap;
           line-height: 1.2;
+          flex-shrink: 0;
         }
 
         .stat-chip__bullet {

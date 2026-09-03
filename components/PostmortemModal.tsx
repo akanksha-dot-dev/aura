@@ -350,30 +350,42 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
                           <circle
                             cx={cx}
                             cy={cy}
-                            r={16}
+                            r={15}
                             fill={fillColor}
-                            opacity={isDis ? 0.35 : 0.85}
+                            opacity={isDis ? 0.35 : 0.9}
                             stroke={fillColor}
                             strokeWidth={1.5}
                           />
                           <text
                             x={cx}
-                            y={cy + 4}
+                            y={cy + 3.5}
                             textAnchor="middle"
                             fill="var(--text-primary)"
-                            fontSize="10"
+                            fontSize="9"
                             fontFamily="var(--font-mono)"
                             fontWeight="bold"
                           >
-                            {isDis ? '✕' : node.id.replace('evt-', '')}
+                            {isDis ? '✕' : node.id.replace('evt-', '').substring(0, 4)}
                           </text>
+                          {/* Epistemic Category Badge */}
+                          <rect
+                            x={cx - 32}
+                            y={cy + 22}
+                            width="64"
+                            height="16"
+                            rx="3"
+                            fill="rgba(255, 255, 255, 0.05)"
+                            stroke="rgba(255, 255, 255, 0.1)"
+                            strokeWidth="0.5"
+                          />
                           <text
                             x={cx}
-                            y={cy + 30}
+                            y={cy + 33.5}
                             textAnchor="middle"
                             fill="var(--text-secondary)"
-                            fontSize="9"
+                            fontSize="8.5"
                             fontFamily="var(--font-mono)"
+                            letterSpacing="0.04em"
                           >
                             {node.category.toUpperCase()}
                           </text>
