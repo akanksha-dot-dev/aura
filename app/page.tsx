@@ -88,6 +88,13 @@ function DashboardContent() {
     prevStatusRef.current = state.status;
   }, [state.status]);
 
+  // Dynamic browser tab title: [SEV-1] Incident Title — AURA
+  useEffect(() => {
+    const prefix = state.severity ? `[${state.severity.toUpperCase()}]` : '';
+    const statusTag = state.status === 'resolved' ? '✓' : '⚠';
+    document.title = `${statusTag} ${prefix} ${state.title || 'Incident'} — AURA`;
+  }, [state.severity, state.title, state.status]);
+
   // 2. Agora RTC (Audio + Volume Levels)
   const {
     joinChannel,

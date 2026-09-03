@@ -48,6 +48,21 @@ export function StatusBar({
   onToggleCostPause,
 }: StatusBarProps) {
   const [activeElapsed, setActiveElapsed] = useState<number>(0);
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('aura-theme') as 'dark' | 'light') || 'dark';
+    }
+    return 'dark';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('aura-theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
 
   useEffect(() => {
     if (status === 'resolved') {
@@ -96,9 +111,11 @@ export function StatusBar({
           align-items: center;
           justify-content: space-between;
           padding: 0 var(--space-4);
-          background: var(--bg-surface-raised);
-          border-bottom: 1px solid var(--border-default);
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+          background: var(--bg-glass-panel);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border-bottom: 1px solid var(--border-glass);
+          box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
           height: 52px;
           z-index: var(--z-sticky);
           user-select: none;
@@ -114,41 +131,58 @@ export function StatusBar({
         .status-bar__severity {
           display: inline-flex;
           align-items: center;
-          gap: var(--space-1h);
+          gap: 6px;
           padding: 3px 10px;
           border-radius: var(--radius-md);
-          font-family: var(--font-mono);
-          font-size: 0.8125rem;
-          font-weight: var(--weight-bold);
-          letter-spacing: 0.06em;
+          font-family: var(--font-sans);
+          font-size: 0.75rem;
+          font-weight: 600;
+          letter-spacing: 0.04em;
           white-space: nowrap;
           flex-shrink: 0;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+          border: 1px solid transparent;
+        }
+
+        .status-bar__sev-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: currentColor;
+          animation: sev-pulse 1.8s ease-in-out infinite;
         }
 
         .status-bar__severity--sev0 {
-          background: var(--color-sev0);
-          color: var(--text-inverse);
-          animation: sev-pulse 1.8s ease-in-out infinite;
+          background: rgba(232, 84, 84, 0.15);
+          color: var(--color-sev0);
+          border-color: rgba(232, 84, 84, 0.3);
         }
         .status-bar__severity--sev1 {
-          background: var(--color-sev1);
-          color: var(--text-inverse);
-          animation: sev-pulse 2s ease-in-out infinite;
+          background: rgba(232, 125, 62, 0.15);
+          color: var(--color-sev1);
+          border-color: rgba(232, 125, 62, 0.3);
         }
-        .status-bar__severity--sev2 { background: var(--color-sev2); color: var(--text-inverse); }
-        .status-bar__severity--sev3 { background: var(--color-sev3); color: var(--text-primary); }
+        .status-bar__severity--sev2 {
+          background: rgba(232, 168, 56, 0.15);
+          color: var(--color-sev2);
+          border-color: rgba(232, 168, 56, 0.3);
+        }
+        .status-bar__severity--sev3 {
+          background: rgba(142, 138, 157, 0.15);
+          color: var(--text-secondary);
+          border-color: var(--border-glass);
+        }
 
         @keyframes sev-pulse {
           0%, 100% {
-            box-shadow: 0 0 0 0px color-mix(in srgb, currentColor 40%, transparent);
+            opacity: 1;
           }
           50% {
-            box-shadow: 0 0 8px 2px color-mix(in srgb, currentColor 30%, transparent);
+            opacity: 0.4;
           }
         }
 
         .status-bar__title {
+          font-family: var(--font-sans);
           font-size: var(--text-md);
           font-weight: var(--weight-semibold);
           color: var(--text-primary);
@@ -175,9 +209,9 @@ export function StatusBar({
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          padding: 3px 8px;
-          background: var(--bg-surface);
-          border: 1px solid var(--border-subtle);
+          padding: 4px 8px;
+          background: var(--bg-glass);
+          border: 1px solid var(--border-glass);
           border-radius: var(--radius-sm);
           font-family: var(--font-mono);
           font-size: var(--text-sm);
@@ -191,22 +225,22 @@ export function StatusBar({
           display: inline-flex;
           align-items: center;
           gap: var(--space-1);
-          font-family: var(--font-mono);
+          font-family: var(--font-sans);
           font-size: var(--text-xs);
-          padding: 3px 8px;
+          padding: 4px 8px;
           border-radius: var(--radius-md);
           white-space: nowrap;
         }
 
         .status-bar__ic--locked {
-          background: var(--bg-surface);
-          border: 1px solid var(--border-emphasis);
+          background: var(--bg-glass);
+          border: 1px solid var(--border-glass);
           color: var(--color-aura);
           font-weight: var(--weight-medium);
         }
 
         .status-bar__ic--claim {
-          background: var(--color-decision-dim);
+          background: var(--bg-glass);
           border: 1px solid var(--color-decision-border);
           color: var(--color-decision);
           font-weight: var(--weight-semibold);
@@ -219,13 +253,33 @@ export function StatusBar({
           color: var(--text-inverse);
         }
 
+        .status-bar__theme-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          border-radius: var(--radius-sm);
+          background: var(--bg-glass);
+          border: 1px solid var(--border-glass);
+          color: var(--text-secondary);
+          cursor: pointer;
+          transition: all var(--duration-fast) var(--ease-standard);
+        }
+
+        .status-bar__theme-btn:hover {
+          color: var(--color-aura);
+          border-color: var(--border-glass-emphasis);
+          background: var(--bg-glass-hover);
+        }
+
         .status-bar__conn-meter {
           display: inline-flex;
           align-items: center;
           gap: 3px;
-          padding: 3px 6px;
-          background: var(--bg-surface);
-          border: 1px solid var(--border-subtle);
+          padding: 4px 6px;
+          background: var(--bg-glass);
+          border: 1px solid var(--border-glass);
           border-radius: var(--radius-sm);
           flex-shrink: 0;
         }
@@ -246,7 +300,7 @@ export function StatusBar({
         {/* Left Section: Severity + Incident Title */}
         <div className="status-bar__left">
           <span className={`status-bar__severity ${severityClass}`}>
-            <span aria-hidden="true">●</span> {severity}
+            <span className="status-bar__sev-dot" aria-hidden="true" /> {severity}
           </span>
           <h1 className="status-bar__title" title={incidentTitle}>
             {incidentTitle}
@@ -258,7 +312,7 @@ export function StatusBar({
           <OODAIndicator currentPhase={currentOODAPhase} />
         </div>
 
-        {/* Right Section: Cost + Timer + IC Lock + Connection */}
+        {/* Right Section: Cost + Timer + IC Lock + Theme Toggle + Connection */}
         <div className="status-bar__right">
           <CostCounter
             incidentStatus={status}
@@ -283,6 +337,32 @@ export function StatusBar({
             </span>
             <span>{formatTimer(elapsedSeconds)}</span>
           </div>
+
+          <button
+            type="button"
+            className="status-bar__theme-btn"
+            onClick={toggleTheme}
+            title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
+            aria-label={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
+          >
+            {theme === 'dark' ? (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="5" />
+                <line x1="12" y1="1" x2="12" y2="3" />
+                <line x1="12" y1="21" x2="12" y2="23" />
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                <line x1="1" y1="12" x2="3" y2="12" />
+                <line x1="21" y1="12" x2="23" y2="12" />
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            )}
+          </button>
 
           {icName ? (
             <div

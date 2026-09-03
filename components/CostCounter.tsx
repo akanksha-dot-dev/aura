@@ -128,29 +128,29 @@ export function CostCounter({
           text-shadow: 0 0 8px rgba(235, 180, 50, 0.3);
         }
         .cost-counter-pause-btn {
-          font-family: var(--font-mono);
-          font-size: 9px;
-          font-weight: var(--weight-bold);
-          color: var(--text-secondary);
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid var(--border-subtle);
-          border-radius: var(--radius-xs);
-          padding: 1px 4px;
+          font-family: var(--font-sans);
+          font-size: 11px;
+          color: var(--text-muted);
+          background: var(--bg-glass);
+          border: 1px solid var(--border-glass);
+          border-radius: var(--radius-sm);
+          width: 22px;
+          height: 22px;
           cursor: pointer;
           display: inline-flex;
           align-items: center;
-          gap: 2px;
+          justify-content: center;
           transition: all var(--duration-fast) var(--ease-standard);
         }
         .cost-counter-pause-btn:hover {
           color: var(--color-aura);
-          border-color: var(--color-aura);
-          background: var(--bg-surface-hover);
+          border-color: var(--border-glass-emphasis);
+          background: var(--bg-glass-hover);
         }
         .cost-counter-pause-btn--paused {
           color: var(--color-hypothesis);
           border-color: var(--color-hypothesis);
-          background: rgba(235, 180, 50, 0.12);
+          background: var(--color-hypothesis-dim);
           animation: cost-pause-flash 1.5s ease-in-out infinite alternate;
         }
         @keyframes cost-pause-flash {
@@ -158,94 +158,85 @@ export function CostCounter({
           100% { opacity: 1; }
         }
         .cost-counter-savings {
-          font-family: var(--font-mono);
-          font-size: var(--text-xs);
+          font-family: var(--font-sans);
+          font-size: 0.625rem;
           color: var(--color-fact);
-          font-variant-numeric: tabular-nums;
+          font-weight: var(--weight-medium);
         }
         .cost-rate-badge {
-          font-family: var(--font-mono);
-          font-size: 10px;
-          color: var(--text-secondary);
+          font-family: var(--font-sans);
+          font-size: 0.625rem;
+          color: var(--text-muted);
         }
         .cost-popover {
           position: absolute;
-          top: calc(100% + 8px);
+          top: calc(100% + var(--space-2));
           right: 0;
-          background: var(--bg-surface);
+          background: var(--bg-surface-raised);
           border: 1px solid var(--border-default);
+          box-shadow: var(--shadow-float);
           border-radius: var(--radius-md);
-          box-shadow: var(--shadow-lg);
           padding: var(--space-3);
-          width: 260px;
-          z-index: 1000;
+          z-index: var(--z-modal);
+          width: 240px;
           display: flex;
           flex-direction: column;
           gap: var(--space-2);
-          text-align: left;
-        }
-        .cost-popover__pause-btn {
-          width: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 6px;
-          padding: var(--space-2);
-          font-family: var(--font-mono);
-          font-size: var(--text-xs);
-          font-weight: var(--weight-bold);
-          border-radius: var(--radius-sm);
-          cursor: pointer;
-          border: 1px solid var(--border-default);
-          background: var(--bg-base);
-          color: var(--text-primary);
-          transition: all var(--duration-fast);
-        }
-        .cost-popover__pause-btn:hover {
-          border-color: var(--color-aura);
-          background: var(--bg-elevated);
-        }
-        .cost-popover__pause-btn--active {
-          background: rgba(235, 180, 50, 0.12);
-          border-color: var(--color-hypothesis);
-          color: var(--color-hypothesis);
+          cursor: default;
         }
         .cost-popover__title {
-          font-family: var(--font-mono);
+          font-family: var(--font-sans);
           font-size: var(--text-xs);
           font-weight: var(--weight-semibold);
           color: var(--text-primary);
-          text-transform: uppercase;
-          letter-spacing: var(--tracking-wider);
           display: flex;
-          justify-content: space-between;
           align-items: center;
+          justify-content: space-between;
+        }
+        .cost-popover__pause-btn {
+          font-family: var(--font-sans);
+          font-size: var(--text-xs);
+          font-weight: var(--weight-medium);
+          padding: var(--space-1) var(--space-2);
+          background: var(--bg-surface);
+          border: 1px solid var(--border-default);
+          border-radius: var(--radius-sm);
+          color: var(--text-secondary);
+          cursor: pointer;
+          transition: all var(--duration-fast) var(--ease-standard);
+        }
+        .cost-popover__pause-btn:hover {
+          color: var(--text-primary);
+          border-color: var(--color-aura);
+        }
+        .cost-popover__pause-btn--active {
+          border-color: var(--color-hypothesis);
+          color: var(--color-hypothesis);
+          background: rgba(235, 180, 50, 0.12);
         }
         .cost-popover__hourly {
           font-family: var(--font-mono);
-          font-size: 11px;
-          color: var(--color-aura);
-          margin-bottom: var(--space-1);
+          font-size: 10px;
+          color: var(--text-muted);
         }
         .cost-popover__presets {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: var(--space-1);
+          gap: 4px;
         }
         .cost-popover__preset-btn {
           font-family: var(--font-mono);
-          font-size: 11px;
-          background: var(--bg-base);
-          border: 1px solid var(--border-default);
+          font-size: 10px;
+          padding: 4px 6px;
+          background: var(--bg-surface);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-xs);
           color: var(--text-secondary);
-          padding: var(--space-1) var(--space-2);
-          border-radius: var(--radius-sm);
           cursor: pointer;
-          text-align: center;
+          text-align: left;
           transition: all var(--duration-fast) var(--ease-standard);
         }
         .cost-popover__preset-btn:hover {
-          background: var(--bg-elevated);
           color: var(--text-primary);
           border-color: var(--color-aura);
         }
@@ -300,12 +291,9 @@ export function CostCounter({
               title={isPaused ? "Resume financial loss ticker" : "Pause financial loss ticker"}
               aria-label={isPaused ? "Resume financial loss calculation" : "Pause financial loss calculation"}
             >
-              {isPaused ? '▶ RESUME' : '⏸ PAUSE'}
+              {isPaused ? '▶' : '⏸'}
             </button>
           )}
-          <span className="cost-counter-edit-badge" aria-hidden="true">
-            {isPaused ? 'PAUSED' : `$${baseRate}/s`}
-          </span>
           <span
             className={`cost-counter-value ${
               isResolved
@@ -317,6 +305,9 @@ export function CostCounter({
           >
             {formattedCost}
           </span>
+          <span className="cost-counter-edit-badge" aria-hidden="true">
+            {isPaused ? 'PAUSED' : `$${baseRate}/s`}
+          </span>
         </div>
         {isResolved ? (
           <span className="cost-counter-savings">
@@ -324,13 +315,9 @@ export function CostCounter({
           </span>
         ) : isPaused ? (
           <span className="cost-rate-badge" style={{ color: 'var(--color-hypothesis)' }}>
-            ⏸ Telemetry Halted
+            ⏸ Halted
           </span>
-        ) : (
-          <span className="cost-rate-badge">
-            {hourlyRateFormatted}/hr
-          </span>
-        )}
+        ) : null}
 
         {isPopoverOpen && !isResolved && (
           <div
