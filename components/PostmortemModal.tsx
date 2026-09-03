@@ -215,6 +215,355 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
           aria-modal="true"
           aria-labelledby="postmortem-title"
         >
+          <style>{`
+            .postmortem-overlay {
+              position: fixed;
+              inset: 0;
+              background: var(--bg-overlay);
+              backdrop-filter: blur(12px);
+              -webkit-backdrop-filter: blur(12px);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              z-index: 1000;
+              padding: var(--space-4);
+            }
+
+            .postmortem-modal {
+              background: var(--bg-glass-panel);
+              backdrop-filter: blur(16px);
+              -webkit-backdrop-filter: blur(16px);
+              border: 1px solid var(--border-glass-emphasis);
+              border-radius: var(--radius-xl);
+              max-width: 860px;
+              width: 94vw;
+              max-height: 88vh;
+              display: flex;
+              flex-direction: column;
+              overflow: hidden;
+              box-shadow: var(--shadow-modal), 0 0 60px rgba(0, 0, 0, 0.65);
+              font-family: var(--font-sans);
+              color: var(--text-primary);
+            }
+
+            .postmortem-header {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              padding: var(--space-3) var(--space-5);
+              border-bottom: 1px solid var(--border-glass);
+              background: var(--bg-glass);
+              backdrop-filter: blur(12px);
+              -webkit-backdrop-filter: blur(12px);
+            }
+
+            .postmortem-header__title-wrap {
+              display: flex;
+              flex-direction: column;
+              gap: 2px;
+            }
+
+            .postmortem-header__tag {
+              font-family: var(--font-sans);
+              font-size: var(--text-xs);
+              color: var(--color-aura);
+              letter-spacing: 0.1em;
+              text-transform: uppercase;
+              font-weight: var(--weight-semibold);
+            }
+
+            .postmortem-header__title {
+              font-family: var(--font-sans);
+              font-size: var(--text-lg);
+              font-weight: var(--weight-bold);
+              color: var(--text-primary);
+              margin: 0;
+            }
+
+            .postmortem-close-btn {
+              background: var(--bg-glass);
+              border: 1px solid var(--border-glass);
+              color: var(--text-secondary);
+              border-radius: var(--radius-md);
+              width: 32px;
+              height: 32px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              cursor: pointer;
+              font-size: var(--text-sm);
+              backdrop-filter: blur(8px);
+              -webkit-backdrop-filter: blur(8px);
+              transition: all var(--duration-fast);
+            }
+
+            .postmortem-close-btn:hover {
+              background: var(--bg-glass-hover);
+              color: var(--text-primary);
+              border-color: var(--border-glass-emphasis);
+            }
+
+            .postmortem-body {
+              padding: var(--space-5);
+              overflow-y: auto;
+              display: flex;
+              flex-direction: column;
+              gap: var(--space-5);
+            }
+
+            .postmortem-section {
+              display: flex;
+              flex-direction: column;
+              gap: var(--space-2);
+            }
+
+            .postmortem-section__title,
+            .postmortem-subtitle {
+              font-family: var(--font-sans);
+              font-size: var(--text-xs);
+              font-weight: var(--weight-semibold);
+              letter-spacing: 0.08em;
+              color: var(--color-aura);
+              text-transform: uppercase;
+              border-bottom: 1px solid var(--border-glass);
+              padding-bottom: var(--space-1);
+              margin: 0;
+            }
+
+            .postmortem-summary-grid {
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+              gap: var(--space-2);
+            }
+
+            .postmortem-summary-item {
+              background: var(--bg-glass-raised);
+              border: 1px solid var(--border-glass);
+              border-radius: var(--radius-md);
+              padding: var(--space-2h) var(--space-3);
+              display: flex;
+              flex-direction: column;
+              gap: 2px;
+              backdrop-filter: blur(8px);
+              -webkit-backdrop-filter: blur(8px);
+            }
+
+            .postmortem-summary-item--full {
+              grid-column: 1 / -1;
+              background: color-mix(in srgb, var(--color-fact) 8%, var(--bg-glass-raised));
+              border-left: 3px solid var(--color-fact);
+              border-top: 1px solid var(--border-glass);
+              border-right: 1px solid var(--border-glass);
+              border-bottom: 1px solid var(--border-glass);
+            }
+
+            .postmortem-summary-label {
+              font-family: var(--font-sans);
+              font-size: 10px;
+              font-weight: var(--weight-medium);
+              color: var(--text-muted);
+              text-transform: uppercase;
+              letter-spacing: 0.05em;
+              display: block;
+            }
+
+            .postmortem-summary-value {
+              font-family: var(--font-sans);
+              font-size: var(--text-sm);
+              font-weight: var(--weight-semibold);
+              color: var(--text-primary);
+            }
+
+            .postmortem-summary-value.root-cause {
+              font-family: var(--font-sans);
+              font-size: var(--text-xs);
+              line-height: var(--leading-normal);
+              color: var(--text-primary);
+            }
+
+            .postmortem-chain-container {
+              background: var(--bg-glass-raised);
+              border: 1px solid var(--border-glass);
+              border-radius: var(--radius-md);
+              padding: var(--space-3);
+              overflow-x: auto;
+              backdrop-filter: blur(8px);
+              -webkit-backdrop-filter: blur(8px);
+            }
+
+            .postmortem-timeline-table {
+              display: flex;
+              flex-direction: column;
+              background: var(--bg-glass-raised);
+              border: 1px solid var(--border-glass);
+              border-radius: var(--radius-md);
+              overflow: hidden;
+              backdrop-filter: blur(8px);
+              -webkit-backdrop-filter: blur(8px);
+            }
+
+            .postmortem-timeline-row {
+              display: grid;
+              grid-template-columns: 75px 105px 1fr 175px;
+              gap: var(--space-2);
+              align-items: center;
+              padding: var(--space-2) var(--space-3);
+              border-bottom: 1px solid var(--border-glass);
+              font-size: var(--text-xs);
+              transition: background-color var(--duration-fast);
+            }
+
+            .postmortem-timeline-row:last-child {
+              border-bottom: none;
+            }
+
+            .postmortem-timeline-row:hover {
+              background: var(--bg-glass-hover);
+            }
+
+            .postmortem-timeline-row--disproven {
+              opacity: 0.45;
+            }
+
+            .postmortem-row-time {
+              font-family: var(--font-mono);
+              font-size: 11px;
+              color: var(--text-muted);
+            }
+
+            .postmortem-row-content {
+              font-family: var(--font-sans);
+              color: var(--text-primary);
+              line-height: var(--leading-normal);
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+            }
+
+            .postmortem-row-speaker {
+              font-family: var(--font-sans);
+              font-size: 11px;
+              font-weight: var(--weight-medium);
+              color: var(--text-secondary);
+              text-align: right;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+            }
+
+            .postmortem-disproven-list {
+              display: flex;
+              flex-direction: column;
+              gap: var(--space-2);
+            }
+
+            .postmortem-disproven-item {
+              display: flex;
+              gap: var(--space-2);
+              align-items: flex-start;
+              background: rgba(232, 84, 84, 0.06);
+              border: 1px solid rgba(232, 84, 84, 0.2);
+              border-radius: var(--radius-md);
+              padding: var(--space-2h) var(--space-3);
+              font-size: var(--text-xs);
+              font-family: var(--font-sans);
+              backdrop-filter: blur(6px);
+              -webkit-backdrop-filter: blur(6px);
+            }
+
+            .postmortem-disproven-mark {
+              color: var(--color-conflict);
+              font-weight: bold;
+              font-family: var(--font-sans);
+              margin-top: 1px;
+            }
+
+            .postmortem-disproven-meta {
+              display: block;
+              color: var(--text-muted);
+              font-family: var(--font-sans);
+              font-size: 11px;
+              margin-top: 2px;
+            }
+
+            .postmortem-metrics-grid {
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+              gap: var(--space-2);
+            }
+
+            .postmortem-metric-box {
+              background: var(--bg-glass-raised);
+              border: 1px solid var(--border-glass);
+              border-radius: var(--radius-md);
+              padding: var(--space-3) var(--space-2);
+              text-align: center;
+              display: flex;
+              flex-direction: column;
+              gap: 3px;
+              backdrop-filter: blur(8px);
+              -webkit-backdrop-filter: blur(8px);
+              transition: all var(--duration-fast);
+            }
+
+            .postmortem-metric-box:hover {
+              background: var(--bg-glass-hover);
+              border-color: var(--border-glass-emphasis);
+              transform: translateY(-1px);
+            }
+
+            .postmortem-metric-num {
+              font-family: var(--font-mono);
+              font-size: var(--text-xl);
+              font-weight: var(--weight-bold);
+              color: var(--text-primary);
+              display: block;
+            }
+
+            .postmortem-metric-label {
+              font-size: 10px;
+              font-family: var(--font-sans);
+              font-weight: var(--weight-medium);
+              color: var(--text-muted);
+              text-transform: uppercase;
+              letter-spacing: 0.04em;
+              display: block;
+            }
+
+            .postmortem-media-grid,
+            .postmortem-media-buttons {
+              display: flex;
+              gap: var(--space-2);
+              flex-wrap: wrap;
+            }
+
+            .postmortem-media-btn {
+              display: inline-flex;
+              align-items: center;
+              gap: var(--space-2);
+              background: var(--bg-glass);
+              border: 1px solid var(--border-glass-emphasis);
+              border-radius: var(--radius-md);
+              padding: var(--space-2) var(--space-4);
+              color: var(--text-primary);
+              font-family: var(--font-sans);
+              font-size: var(--text-xs);
+              font-weight: var(--weight-semibold);
+              text-decoration: none;
+              cursor: pointer;
+              box-shadow: var(--shadow-glass);
+              backdrop-filter: blur(8px);
+              -webkit-backdrop-filter: blur(8px);
+              transition: all var(--duration-fast);
+            }
+
+            .postmortem-media-btn:hover {
+              background: var(--bg-glass-hover);
+              border-color: var(--color-aura);
+              transform: translateY(-1px);
+              box-shadow: var(--shadow-glass), 0 4px 12px rgba(0, 0, 0, 0.3);
+            }
+          `}</style>
           <motion.div
             className="postmortem-modal"
             initial={{ opacity: 0, scale: 0.95, y: 16 }}
@@ -384,7 +733,8 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
                             textAnchor="middle"
                             fill="var(--text-secondary)"
                             fontSize="8.5"
-                            fontFamily="var(--font-mono)"
+                            fontFamily="var(--font-sans)"
+                            fontWeight="600"
                             letterSpacing="0.04em"
                           >
                             {node.category.toUpperCase()}

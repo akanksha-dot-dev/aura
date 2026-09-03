@@ -1,14 +1,32 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { EvidenceItem, ActionStatus } from '@/lib/types';
 
 export interface ActionTrackerProps {
   actions: EvidenceItem[];
   onStatusChange: (actionId: string, newStatus: ActionStatus) => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
-export function ActionTracker({ actions, onStatusChange }: ActionTrackerProps) {
+export function ActionTracker({
+  actions,
+  onStatusChange,
+  isCollapsed: externalIsCollapsed,
+  onToggleCollapse: externalOnToggleCollapse,
+}: ActionTrackerProps) {
+  const [internalCollapsed, setInternalCollapsed] = useState(false);
+  const isCollapsed = externalIsCollapsed !== undefined ? externalIsCollapsed : internalCollapsed;
+
+  const toggleCollapse = () => {
+    if (externalOnToggleCollapse) {
+      externalOnToggleCollapse();
+    } else {
+      setInternalCollapsed((prev) => !prev);
+    }
+  };
+
   const handleCycleStatus = (action: EvidenceItem) => {
     const current = action.actionStatus ?? 'pending';
     let next: ActionStatus;
@@ -33,13 +51,21 @@ export function ActionTracker({ actions, onStatusChange }: ActionTrackerProps) {
           grid-area: actions;
           width: 100%;
           height: 100%;
-          background: var(--bg-surface);
-          border-left: 1px solid var(--border-default);
+          background: var(--bg-glass-panel);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border-left: 1px solid var(--border-glass);
           display: flex;
           flex-direction: column;
           padding: var(--space-3);
           overflow-y: auto;
           user-select: none;
+          box-shadow: var(--shadow-glass);
+          transition: background-color var(--duration-fast) var(--ease-standard);
+        }
+
+        .action-tracker.is-collapsed {
+          padding-bottom: var(--space-2);
         }
 
         .action-tracker__header {
@@ -47,28 +73,67 @@ export function ActionTracker({ actions, onStatusChange }: ActionTrackerProps) {
           align-items: center;
           justify-content: space-between;
           margin-bottom: var(--space-3);
-          padding-bottom: var(--space-1);
-          border-bottom: 1px solid var(--border-subtle);
+          padding-bottom: var(--space-2);
+          border-bottom: 1px solid var(--border-glass);
+          gap: var(--space-2);
+        }
+
+        .action-tracker.is-collapsed .action-tracker__header {
+          margin-bottom: 0;
+          border-bottom: none;
+          padding-bottom: 0;
+        }
+
+        .action-tracker__title-group {
+          display: flex;
+          align-items: center;
+          gap: var(--space-2);
         }
 
         .action-tracker__title {
-          font-family: var(--font-mono);
+          font-family: var(--font-sans);
           font-size: var(--text-xs);
-          font-weight: var(--weight-bold);
+          font-weight: var(--weight-medium);
           color: var(--text-secondary);
-          letter-spacing: 0.1em;
+          letter-spacing: 0.08em;
           text-transform: uppercase;
+        }
+
+        .action-tracker__controls {
+          display: flex;
+          align-items: center;
+          gap: var(--space-1h);
         }
 
         .action-tracker__count-badge {
           font-family: var(--font-mono);
           font-size: 10px;
           font-weight: var(--weight-semibold);
-          padding: 1px 6px;
-          background: var(--bg-surface-raised);
-          border: 1px solid var(--border-default);
-          border-radius: var(--radius-sm);
+          padding: 1px 7px;
+          background: var(--bg-glass-raised);
+          border: 1px solid var(--border-glass);
+          border-radius: var(--radius-full);
           color: var(--color-aura);
+        }
+
+        .action-tracker__collapse-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 22px;
+          height: 22px;
+          border-radius: var(--radius-sm);
+          background: var(--bg-glass);
+          border: 1px solid var(--border-glass);
+          color: var(--text-secondary);
+          cursor: pointer;
+          transition: all var(--duration-fast) var(--ease-standard);
+        }
+
+        .action-tracker__collapse-btn:hover {
+          background: var(--bg-glass-hover);
+          color: var(--text-primary);
+          border-color: var(--border-glass-emphasis);
         }
 
         .action-tracker__list {
@@ -77,28 +142,36 @@ export function ActionTracker({ actions, onStatusChange }: ActionTrackerProps) {
           gap: var(--space-2);
         }
 
+        .action-tracker.is-collapsed .action-tracker__list {
+          display: none;
+        }
+
         .action-tracker__empty {
           font-family: var(--font-sans);
           font-size: var(--text-xs);
           color: var(--text-muted);
-          font-style: normal;
-          padding: var(--space-3) 0;
+          padding: var(--space-5) var(--space-3);
           text-align: center;
-          background: var(--bg-surface-raised);
-          border: 1px dashed var(--border-subtle);
+          background: var(--bg-glass);
+          border: 1px dashed var(--border-glass);
           border-radius: var(--radius-md);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
         }
 
         .action-card {
           display: flex;
           flex-direction: column;
           gap: var(--space-2);
-          padding: var(--space-2) var(--space-2h);
-          background: var(--bg-surface-raised);
+          padding: var(--space-2h) var(--space-3);
+          background: var(--bg-glass-raised);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
           border-radius: var(--radius-md);
-          border: 1px solid var(--border-subtle);
+          border: 1px solid var(--border-glass);
           cursor: pointer;
           position: relative;
+          box-shadow: var(--shadow-card);
           transition: background-color var(--duration-fast) var(--ease-standard),
                       border-color var(--duration-fast) var(--ease-standard),
                       box-shadow var(--duration-fast) var(--ease-standard),
@@ -115,7 +188,7 @@ export function ActionTracker({ actions, onStatusChange }: ActionTrackerProps) {
 
         .action-card--done {
           border-left: 3px solid var(--color-fact);
-          opacity: 0.85;
+          opacity: 0.82;
         }
 
         .action-card--blocked {
@@ -123,10 +196,10 @@ export function ActionTracker({ actions, onStatusChange }: ActionTrackerProps) {
         }
 
         .action-card:hover {
-          background: var(--bg-surface-hover);
-          border-color: var(--border-emphasis);
-          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-          transform: translateY(-1px);
+          background: var(--bg-glass-hover);
+          border-color: var(--border-glass-emphasis);
+          box-shadow: var(--shadow-glass), 0 4px 14px rgba(0, 0, 0, 0.25);
+          transform: translateY(-1px) scale(1.01);
         }
 
         .action-card:focus-visible {
@@ -147,7 +220,7 @@ export function ActionTracker({ actions, onStatusChange }: ActionTrackerProps) {
           font-weight: var(--weight-bold);
           color: var(--text-secondary);
           background: rgba(255, 255, 255, 0.04);
-          border: 1px solid var(--border-subtle);
+          border: 1px solid var(--border-glass);
           border-radius: var(--radius-sm);
           padding: 1px 5px;
           letter-spacing: 0.04em;
@@ -157,26 +230,26 @@ export function ActionTracker({ actions, onStatusChange }: ActionTrackerProps) {
           display: inline-flex;
           align-items: center;
           gap: 4px;
-          font-family: var(--font-mono);
-          font-size: 9px;
-          font-weight: var(--weight-bold);
-          padding: 1px 6px;
+          font-family: var(--font-sans);
+          font-size: 10px;
+          font-weight: var(--weight-medium);
+          padding: 1px 7px;
           border-radius: var(--radius-full);
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
+          text-transform: capitalize;
+          letter-spacing: 0.02em;
         }
 
         .action-card__status-pill--pending {
-          background: var(--color-hypothesis-dim);
-          color: var(--color-hypothesis);
-          border: 1px solid var(--color-hypothesis-border);
+          background: rgba(255, 255, 255, 0.06);
+          color: var(--text-secondary);
+          border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .action-card__status-pill--in_progress {
-          background: var(--color-decision-dim);
-          color: var(--color-decision);
-          border: 1px solid var(--color-decision-border);
-          animation: action-pulse 1.8s ease-in-out infinite;
+          background: var(--color-hypothesis-dim);
+          color: var(--color-hypothesis);
+          border: 1px solid var(--color-hypothesis-border);
+          animation: action-pulse 2s ease-in-out infinite;
         }
 
         .action-card__status-pill--done {
@@ -193,10 +266,11 @@ export function ActionTracker({ actions, onStatusChange }: ActionTrackerProps) {
 
         @keyframes action-pulse {
           0%, 100% { opacity: 1; }
-          50% { opacity: 0.45; }
+          50% { opacity: 0.55; }
         }
 
         .action-card__content {
+          font-family: var(--font-sans);
           font-size: var(--text-xs);
           line-height: var(--leading-normal);
           color: var(--text-primary);
@@ -224,10 +298,11 @@ export function ActionTracker({ actions, onStatusChange }: ActionTrackerProps) {
           display: inline-flex;
           align-items: center;
           gap: 4px;
-          background: var(--bg-base);
-          border: 1px solid var(--border-subtle);
+          background: var(--bg-glass);
+          border: 1px solid var(--border-glass);
           border-radius: var(--radius-full);
-          padding: 1px 6px 1px 3px;
+          padding: 1px 7px 1px 3px;
+          font-family: var(--font-sans);
           font-size: 10px;
           color: var(--text-secondary);
           max-width: 155px;
@@ -237,12 +312,12 @@ export function ActionTracker({ actions, onStatusChange }: ActionTrackerProps) {
         }
 
         .action-card__assignee-avatar {
-          width: 13px;
-          height: 13px;
+          width: 14px;
+          height: 14px;
           border-radius: var(--radius-full);
-          background: var(--bg-surface-hover);
+          background: var(--bg-glass-hover);
           color: var(--color-aura);
-          font-family: var(--font-mono);
+          font-family: var(--font-sans);
           font-size: 8px;
           font-weight: var(--weight-bold);
           display: flex;
@@ -262,12 +337,45 @@ export function ActionTracker({ actions, onStatusChange }: ActionTrackerProps) {
         }
       `}</style>
 
-      <section className="action-tracker" aria-label="Incident action items">
+      <section
+        className={`action-tracker ${isCollapsed ? 'is-collapsed' : ''}`}
+        aria-label="Incident action items"
+      >
         <div className="action-tracker__header">
-          <span className="action-tracker__title">Action Items</span>
-          <span className="action-tracker__count-badge">
-            {doneCount}/{actions.length}
-          </span>
+          <div className="action-tracker__title-group">
+            <span className="action-tracker__title">Action Items</span>
+          </div>
+          <div className="action-tracker__controls">
+            <span className="action-tracker__count-badge">
+              {doneCount}/{actions.length}
+            </span>
+            <button
+              type="button"
+              className="action-tracker__collapse-btn"
+              onClick={toggleCollapse}
+              title={isCollapsed ? 'Expand Action Items' : 'Collapse Action Items'}
+              aria-label={isCollapsed ? 'Expand Action Items' : 'Collapse Action Items'}
+              aria-expanded={!isCollapsed}
+            >
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{
+                  transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                  transition: 'transform var(--duration-fast) var(--ease-standard)',
+                }}
+                aria-hidden="true"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div className="action-tracker__list">
@@ -323,7 +431,10 @@ export function ActionTracker({ actions, onStatusChange }: ActionTrackerProps) {
                   <div className="action-card__content">{act.content}</div>
 
                   <div className="action-card__footer">
-                    <div className="action-card__assignee-chip" title={`Assignee: ${act.assignedTo || 'Unassigned'}`}>
+                    <div
+                      className="action-card__assignee-chip"
+                      title={`Assignee: ${act.assignedTo || 'Unassigned'}`}
+                    >
                       <span className="action-card__assignee-avatar" aria-hidden="true">
                         {(act.assignedTo || 'U')[0].toUpperCase()}
                       </span>
@@ -333,11 +444,25 @@ export function ActionTracker({ actions, onStatusChange }: ActionTrackerProps) {
                     </div>
 
                     <div className="action-card__sla" title="Incident Action SLA Target">
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <svg
+                        width="10"
+                        height="10"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
                         <circle cx="12" cy="12" r="10" />
                         <polyline points="12 6 12 12 16 14" />
                       </svg>
-                      <span>{act.eta ? `${Math.max(1, Math.round((act.eta - act.timestamp) / 60000))}m SLA` : '15m SLA'}</span>
+                      <span>
+                        {act.eta
+                          ? `${Math.max(1, Math.round((act.eta - act.timestamp) / 60000))}m SLA`
+                          : '15m SLA'}
+                      </span>
                     </div>
                   </div>
                 </div>

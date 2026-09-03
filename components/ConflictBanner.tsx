@@ -28,39 +28,36 @@ export function ConflictBanner({
           flex-direction: column;
           justify-content: center;
           padding: 0 var(--space-4);
-          background: linear-gradient(90deg, rgba(232, 84, 84, 0.15) 0%, rgba(232, 84, 84, 0.06) 50%, rgba(232, 84, 84, 0.12) 100%);
-          border-left: 3px solid var(--color-conflict);
-          border-top: 1px solid var(--color-conflict-border);
-          border-bottom: 1px solid var(--color-conflict-border);
+          background: var(--bg-glass);
+          background-image: linear-gradient(90deg, rgba(232, 84, 84, 0.10) 0%, rgba(232, 84, 84, 0.04) 50%, rgba(232, 84, 84, 0.08) 100%);
+          border: 1px solid rgba(232, 84, 84, 0.18);
+          border-left: 4px solid var(--color-conflict);
+          border-radius: var(--radius-md);
+          margin: 4px var(--space-3) 2px var(--space-3);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
           overflow: hidden;
-          box-shadow: 0 2px 12px rgba(232, 84, 84, 0.12);
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2), 0 0 1px rgba(232, 84, 84, 0.25);
           transition: height var(--duration-normal) var(--ease-arrive),
                       padding var(--duration-normal) var(--ease-arrive),
+                      margin var(--duration-normal) var(--ease-arrive),
                       opacity var(--duration-normal) var(--ease-arrive);
         }
 
         .conflict-banner--active {
-          height: 52px;
+          min-height: 48px;
           opacity: 1;
-          animation: conflict-banner-glow 2.4s ease-in-out infinite alternate;
         }
 
         .conflict-banner--inactive {
           height: 0;
+          min-height: 0;
           padding: 0;
+          margin-top: 0;
+          margin-bottom: 0;
           opacity: 0;
           border-width: 0;
-        }
-
-        @keyframes conflict-banner-glow {
-          0% {
-            background: linear-gradient(90deg, rgba(232, 84, 84, 0.14) 0%, rgba(232, 84, 84, 0.06) 50%, rgba(232, 84, 84, 0.12) 100%);
-            border-left-color: var(--color-conflict);
-          }
-          100% {
-            background: linear-gradient(90deg, rgba(232, 84, 84, 0.22) 0%, rgba(232, 84, 84, 0.10) 50%, rgba(232, 84, 84, 0.18) 100%);
-            border-left-color: #ff6b6b;
-          }
+          pointer-events: none;
         }
 
         .conflict-banner__main {
@@ -79,16 +76,16 @@ export function ConflictBanner({
           display: inline-flex;
           align-items: center;
           gap: 5px;
-          font-family: var(--font-mono);
+          font-family: var(--font-sans);
           font-size: 10px;
-          font-weight: var(--weight-bold);
+          font-weight: var(--weight-semibold);
           color: var(--color-conflict);
-          background: rgba(232, 84, 84, 0.15);
-          border: 1px solid var(--color-conflict-border);
-          border-radius: var(--radius-sm);
-          padding: 2px 7px;
+          background: rgba(232, 84, 84, 0.12);
+          border: 1px solid rgba(232, 84, 84, 0.25);
+          border-radius: var(--radius-full);
+          padding: 1px 8px;
           text-transform: uppercase;
-          letter-spacing: 0.06em;
+          letter-spacing: 0.05em;
           flex-shrink: 0;
         }
 
@@ -110,7 +107,8 @@ export function ConflictBanner({
 
         .conflict-banner__hypo {
           color: var(--text-secondary);
-          font-style: italic;
+          font-family: var(--font-sans);
+          font-style: normal;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -119,10 +117,11 @@ export function ConflictBanner({
         .conflict-banner__vs {
           color: var(--color-conflict);
           font-weight: var(--weight-bold);
-          font-family: var(--font-mono);
+          font-family: var(--font-sans);
           font-size: 10px;
-          background: rgba(232, 84, 84, 0.12);
-          padding: 1px 5px;
+          background: rgba(232, 84, 84, 0.10);
+          border: 1px solid rgba(232, 84, 84, 0.2);
+          padding: 1px 6px;
           border-radius: var(--radius-sm);
           flex-shrink: 0;
           letter-spacing: 0.04em;
@@ -131,7 +130,7 @@ export function ConflictBanner({
         .conflict-banner__metric {
           display: flex;
           align-items: center;
-          gap: 4px;
+          gap: 5px;
           font-family: var(--font-mono);
           font-size: 10px;
           color: var(--color-hypothesis);
@@ -142,9 +141,12 @@ export function ConflictBanner({
         }
 
         .conflict-banner__metric-label {
+          font-family: var(--font-sans);
+          font-weight: var(--weight-medium);
+          font-size: 10px;
           color: var(--text-muted);
           text-transform: uppercase;
-          letter-spacing: 0.04em;
+          letter-spacing: 0.05em;
         }
       `}</style>
       <div
@@ -159,7 +161,17 @@ export function ConflictBanner({
           <>
             <div className="conflict-banner__main">
               <span className="conflict-banner__badge">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <svg
+                  width="11"
+                  height="11"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
                   <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                   <line x1="12" y1="9" x2="12" y2="13" />
                   <line x1="12" y1="17" x2="12.01" y2="17" />
