@@ -23,117 +23,87 @@ export function IncidentStats({
     <>
       <style>{`
         .incident-stats {
-          width: 100%;
-          height: 100%;
-          background: transparent;
-          border: none;
-          display: flex;
-          align-items: center;
-          justify-content: flex-end;
-          gap: 5px;
-          padding: 0 var(--space-2);
-          font-family: var(--font-mono);
-          user-select: none;
-          flex-wrap: nowrap;
-        }
-
-        .stat-chip {
           display: inline-flex;
           align-items: center;
-          gap: 4px;
-          padding: 3px 6px;
-          border-radius: var(--radius-sm);
-          font-size: 0.6875rem;
-          font-weight: var(--weight-medium);
-          background: var(--bg-surface);
-          border: 1px solid var(--border-subtle);
-          white-space: nowrap;
-          line-height: 1.2;
-          flex-shrink: 0;
-        }
-
-        .stat-chip__bullet {
-          font-size: 0.625rem;
-          line-height: 1;
-        }
-
-        .stat-chip--fact {
-          color: var(--color-fact);
-          border-color: rgba(59, 212, 162, 0.2);
-        }
-        .stat-chip--hypothesis {
-          color: var(--color-hypothesis);
-          border-color: rgba(232, 168, 56, 0.2);
-        }
-        .stat-chip--decision {
-          color: var(--color-decision);
-          border-color: rgba(123, 140, 255, 0.2);
-        }
-        .stat-chip--action {
-          color: var(--color-action);
-          border-color: rgba(232, 125, 62, 0.2);
-        }
-        .stat-chip--conflict {
-          color: var(--color-conflict);
-          border-color: rgba(232, 84, 84, 0.3);
-          background: rgba(232, 84, 84, 0.08);
-        }
-        .stat-chip--conflict-pulse {
-          animation: conflict-chip-pulse 1.5s ease-in-out infinite;
-        }
-
-        @keyframes conflict-chip-pulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(232, 84, 84, 0.4); }
-          50% { box-shadow: 0 0 0 3px rgba(232, 84, 84, 0.2); }
-        }
-
-        .stat-chip__label {
+          gap: 5px;
+          padding: 0 var(--space-2);
+          font-family: var(--font-sans);
+          font-size: var(--text-xs);
           color: var(--text-secondary);
-          font-size: 0.625rem;
+          user-select: none;
+          white-space: nowrap;
         }
 
-        .stat-chip__val {
+        .incident-stats__item {
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+        }
+
+        .incident-stats__num {
+          font-family: var(--font-mono);
           font-weight: var(--weight-bold);
           color: var(--text-primary);
+          font-size: 11px;
+        }
+
+        .incident-stats__label {
+          font-family: var(--font-sans);
+          font-size: 11px;
+          color: var(--text-secondary);
+        }
+
+        .incident-stats__dot {
+          color: var(--text-muted);
+          font-size: 10px;
+          opacity: 0.6;
+        }
+
+        .incident-stats__item--conflict-active {
+          color: var(--color-conflict);
+        }
+
+        .incident-stats__item--conflict-active .incident-stats__num,
+        .incident-stats__item--conflict-active .incident-stats__label {
+          color: var(--color-conflict);
+          font-weight: var(--weight-semibold);
         }
       `}</style>
-      <div className="incident-stats" aria-label="Incident summary telemetry counts">
-        {/* Facts */}
-        <span className="stat-chip stat-chip--fact" title={`${factCount} confirmed facts`}>
-          <span className="stat-chip__bullet" aria-hidden="true">●</span>
-          <span className="stat-chip__val">{factCount}</span>
-          <span className="stat-chip__label">Facts</span>
+      <div className="incident-stats" role="status" aria-label="Incident summary counts">
+        <span className="incident-stats__item" title={`${factCount} confirmed facts`}>
+          <span className="incident-stats__num">{factCount}</span>
+          <span className="incident-stats__label">facts</span>
         </span>
 
-        {/* Hypotheses */}
-        <span className="stat-chip stat-chip--hypothesis" title={`${hypothesisCount} active hypotheses`}>
-          <span className="stat-chip__bullet" aria-hidden="true">?</span>
-          <span className="stat-chip__val">{hypothesisCount}</span>
-          <span className="stat-chip__label">Hypo</span>
+        <span className="incident-stats__dot" aria-hidden="true">·</span>
+
+        <span className="incident-stats__item" title={`${hypothesisCount} active hypotheses`}>
+          <span className="incident-stats__num">{hypothesisCount}</span>
+          <span className="incident-stats__label">hypo</span>
         </span>
 
-        {/* Decisions */}
-        <span className="stat-chip stat-chip--decision" title={`${decisionCount} directives issued`}>
-          <span className="stat-chip__bullet" aria-hidden="true">◆</span>
-          <span className="stat-chip__val">{decisionCount}</span>
-          <span className="stat-chip__label">Dec</span>
+        <span className="incident-stats__dot" aria-hidden="true">·</span>
+
+        <span className="incident-stats__item" title={`${decisionCount} directives issued`}>
+          <span className="incident-stats__num">{decisionCount}</span>
+          <span className="incident-stats__label">dec</span>
         </span>
 
-        {/* Actions */}
-        <span className="stat-chip stat-chip--action" title={`${actionCompletedCount} of ${actionTotalCount} actions complete`}>
-          <span className="stat-chip__bullet" aria-hidden="true">■</span>
-          <span className="stat-chip__val">{actionCompletedCount}/{actionTotalCount}</span>
-          <span className="stat-chip__label">Act</span>
+        <span className="incident-stats__dot" aria-hidden="true">·</span>
+
+        <span className="incident-stats__item" title={`${actionCompletedCount} of ${actionTotalCount} actions complete`}>
+          <span className="incident-stats__num">{actionCompletedCount}/{actionTotalCount}</span>
+          <span className="incident-stats__label">act</span>
         </span>
 
-        {/* Conflicts */}
+        <span className="incident-stats__dot" aria-hidden="true">·</span>
+
         <span
-          className={`stat-chip stat-chip--conflict ${conflictCount > 0 ? 'stat-chip--conflict-pulse' : ''}`}
+          className={`incident-stats__item ${conflictCount > 0 ? 'incident-stats__item--conflict-active' : ''}`}
           title={`${conflictCount} active contradictions`}
         >
-          <span className="stat-chip__bullet" aria-hidden="true">⚠</span>
-          <span className="stat-chip__val">{conflictCount}</span>
-          <span className="stat-chip__label">Conf</span>
+          <span className="incident-stats__num">{conflictCount}</span>
+          <span className="incident-stats__label">conf</span>
         </span>
       </div>
     </>

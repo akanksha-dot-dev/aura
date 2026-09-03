@@ -80,27 +80,29 @@ export function AgoraAnalyticsOverlay({
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          padding: 3px 8px;
-          background: var(--bg-surface);
-          border: 1px solid var(--border-subtle);
-          border-radius: var(--radius-sm);
-          font-family: var(--font-mono);
-          font-size: 0.6875rem;
+          padding: 3px 9px;
+          background: var(--bg-glass);
+          border: 1px solid var(--border-glass);
+          border-radius: var(--radius-full);
+          font-family: var(--font-sans);
+          font-size: 11px;
           color: var(--text-secondary);
           cursor: pointer;
           white-space: nowrap;
-          transition: background-color var(--duration-fast), border-color var(--duration-fast), color var(--duration-fast);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          transition: all var(--duration-fast) var(--ease-standard);
         }
 
         .agora-telemetry-pill:hover {
-          background: var(--bg-surface-hover);
-          border-color: var(--border-emphasis);
+          background: var(--bg-glass-hover);
+          border-color: var(--border-glass-emphasis);
           color: var(--text-primary);
         }
 
         .agora-telemetry-pill--active {
           border-color: var(--color-aura);
-          background: var(--color-aura-dim);
+          background: var(--bg-glass-hover);
           color: var(--text-primary);
         }
 
@@ -112,6 +114,7 @@ export function AgoraAnalyticsOverlay({
         }
 
         .agora-telemetry-pill__metric {
+          font-family: var(--font-mono);
           font-variant-numeric: tabular-nums;
           font-weight: var(--weight-medium);
         }
@@ -119,7 +122,7 @@ export function AgoraAnalyticsOverlay({
         .agora-telemetry-pill__divider {
           width: 1px;
           height: 10px;
-          background: var(--border-subtle);
+          background: var(--border-glass);
         }
 
         .agora-telemetry-pill__arrow {
@@ -133,30 +136,32 @@ export function AgoraAnalyticsOverlay({
           position: absolute;
           bottom: calc(100% + 12px);
           right: 0;
-          width: 250px;
-          background: rgba(26, 25, 42, 0.96);
-          border: 1px solid var(--border-emphasis);
-          border-radius: var(--radius-md);
+          width: 260px;
+          background: var(--bg-glass-panel);
+          border: 1px solid var(--border-glass-emphasis);
+          border-radius: var(--radius-lg);
           padding: var(--space-3);
           z-index: 500;
-          font-family: var(--font-mono);
+          font-family: var(--font-sans);
           font-size: var(--text-xs);
-          box-shadow: 0 12px 36px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08);
+          box-shadow: var(--shadow-modal), 0 0 32px rgba(0, 0, 0, 0.6);
           backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
         }
 
         .agora-telemetry-popover__header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          border-bottom: 1px solid var(--border-subtle);
+          border-bottom: 1px solid var(--border-glass);
           padding-bottom: var(--space-1h);
           margin-bottom: var(--space-2);
         }
 
         .agora-telemetry-popover__title {
-          font-size: 0.6875rem;
-          font-weight: var(--weight-bold);
+          font-family: var(--font-sans);
+          font-size: 11px;
+          font-weight: var(--weight-semibold);
           color: var(--color-aura);
           letter-spacing: 0.06em;
           text-transform: uppercase;
@@ -187,14 +192,16 @@ export function AgoraAnalyticsOverlay({
           display: flex;
           align-items: baseline;
           justify-content: space-between;
-          font-size: 0.6875rem;
+          font-size: 11px;
         }
 
         .agora-telemetry-popover__label {
+          font-family: var(--font-sans);
           color: var(--text-muted);
         }
 
         .agora-telemetry-popover__value {
+          font-family: var(--font-mono);
           font-weight: var(--weight-semibold);
           color: var(--text-primary);
           font-variant-numeric: tabular-nums;
@@ -202,13 +209,14 @@ export function AgoraAnalyticsOverlay({
 
         .agora-telemetry-popover__divider {
           height: 1px;
-          background: var(--border-subtle);
+          background: var(--border-glass);
           margin: var(--space-1h) 0 var(--space-2) 0;
         }
 
         .agora-telemetry-popover__pipeline-title {
-          font-size: 0.625rem;
-          font-weight: var(--weight-bold);
+          font-family: var(--font-sans);
+          font-size: 10px;
+          font-weight: var(--weight-semibold);
           color: var(--text-secondary);
           letter-spacing: 0.06em;
           text-transform: uppercase;
@@ -230,20 +238,28 @@ export function AgoraAnalyticsOverlay({
           display: flex;
           align-items: center;
           justify-content: space-between;
-          font-size: 0.625rem;
+          font-size: 10px;
+        }
+
+        .agora-telemetry-popover__pipeline-meta .agora-telemetry-popover__label {
+          font-family: var(--font-sans);
+        }
+
+        .agora-telemetry-popover__pipeline-meta .agora-telemetry-popover__value {
+          font-family: var(--font-mono);
         }
 
         .agora-telemetry-popover__pipeline-track {
           height: 4px;
-          background: var(--bg-surface);
-          border-radius: var(--radius-sm);
+          background: var(--bg-glass-raised);
+          border-radius: var(--radius-full);
           overflow: hidden;
           width: 100%;
         }
 
         .agora-telemetry-popover__pipeline-bar {
           height: 100%;
-          border-radius: var(--radius-sm);
+          border-radius: var(--radius-full);
           transition: width var(--duration-fast) var(--ease-standard);
         }
       `}</style>

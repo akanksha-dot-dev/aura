@@ -74,9 +74,9 @@ export function NarrativeBar({
         }
 
         .narrative-bar__label {
-          font-family: var(--font-mono);
-          font-size: 0.625rem;
-          font-weight: var(--weight-bold);
+          font-family: var(--font-sans);
+          font-size: 10px;
+          font-weight: var(--weight-medium);
           color: var(--text-muted);
           letter-spacing: 0.08em;
           text-transform: uppercase;
@@ -84,8 +84,8 @@ export function NarrativeBar({
         }
 
         .narrative-bar__val {
-          font-family: var(--font-mono);
-          font-size: 0.625rem;
+          font-family: var(--font-sans);
+          font-size: 10px;
           color: var(--color-aura);
           font-weight: var(--weight-semibold);
           white-space: nowrap;

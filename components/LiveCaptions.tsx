@@ -41,7 +41,7 @@ export function LiveCaptions({
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
-          font-family: var(--font-mono);
+          font-family: var(--font-sans);
           font-size: var(--text-sm);
         }
 
@@ -53,22 +53,23 @@ export function LiveCaptions({
         }
 
         .live-captions__speaker {
-          font-family: var(--font-mono);
-          font-size: 0.6875rem;
-          font-weight: var(--weight-bold);
+          font-family: var(--font-sans);
+          font-size: 10px;
+          font-weight: var(--weight-semibold);
           color: var(--color-aura);
           background: var(--color-aura-dim);
           border: 1px solid rgba(212, 168, 83, 0.25);
-          padding: 2px 6px;
-          border-radius: var(--radius-sm);
-          letter-spacing: 0.04em;
+          padding: 1px 7px;
+          border-radius: var(--radius-full);
+          letter-spacing: 0.03em;
           flex-shrink: 0;
         }
 
         .live-captions__text {
+          font-family: var(--font-sans);
+          font-size: var(--text-sm);
           color: var(--text-primary);
-          letter-spacing: 0.02em;
-          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+          letter-spacing: 0.01em;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -78,8 +79,8 @@ export function LiveCaptions({
 
         .live-captions__cursor {
           display: inline-block;
-          width: 6px;
-          height: 13px;
+          width: 5px;
+          height: 12px;
           background: var(--color-aura);
           margin-left: 3px;
           vertical-align: middle;
@@ -93,6 +94,8 @@ export function LiveCaptions({
         }
 
         .live-captions__standby {
+          font-family: var(--font-sans);
+          font-size: var(--text-xs);
           color: var(--text-muted);
           font-style: normal;
           overflow: hidden;
@@ -106,10 +109,10 @@ export function LiveCaptions({
           align-items: center;
           gap: 6px;
           padding: 3px 8px;
-          background: var(--bg-surface);
-          border: 1px solid var(--border-default);
-          border-radius: var(--radius-sm);
-          font-family: var(--font-mono);
+          background: var(--bg-glass);
+          border: 1px solid var(--border-glass);
+          border-radius: var(--radius-md);
+          font-family: var(--font-sans);
           font-size: var(--text-xs);
           font-weight: var(--weight-medium);
           color: var(--text-secondary);
@@ -117,14 +120,15 @@ export function LiveCaptions({
           flex-shrink: 0;
           margin-left: var(--space-3);
           z-index: 5;
-          transition: background var(--duration-fast) var(--ease-standard),
-                      color var(--duration-fast) var(--ease-standard);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          transition: all var(--duration-fast) var(--ease-standard);
         }
 
         .live-captions__drawer-btn:hover {
-          background: var(--bg-surface-hover);
+          background: var(--bg-glass-hover);
           color: var(--text-primary);
-          border-color: var(--border-emphasis);
+          border-color: var(--border-glass-emphasis);
         }
       `}</style>
       <div
