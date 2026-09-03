@@ -1,9 +1,22 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useSyncExternalStore } from 'react';
 import { Severity, IncidentStatus, OODAPhase } from '@/lib/types';
 import { OODAIndicator } from './OODAIndicator';
 import { CostCounter } from './CostCounter';
+
+const subscribeTheme = (callback: () => void) => {
+  if (typeof window === 'undefined') return () => {};
+  window.addEventListener('storage', callback);
+  return () => window.removeEventListener('storage', callback);
+};
+
+const getThemeSnapshot = (): 'dark' | 'light' => {
+  if (typeof window === 'undefined') return 'dark';
+  return (localStorage.getItem('aura-theme') as 'dark' | 'light') || 'dark';
+};
+
+const getServerThemeSnapshot = (): 'dark' | 'light' => 'dark';
 
 export interface StatusBarProps {
   incidentTitle: string;
@@ -48,20 +61,21 @@ export function StatusBar({
   onToggleCostPause,
 }: StatusBarProps) {
   const [activeElapsed, setActiveElapsed] = useState<number>(0);
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('aura-theme') as 'dark' | 'light') || 'dark';
-    }
-    return 'dark';
-  });
+  const theme = useSyncExternalStore(subscribeTheme, getThemeSnapshot, getServerThemeSnapshot);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('aura-theme', theme);
   }, [theme]);
 
   const toggleTheme = () => {
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+    const next = theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try {
+      localStorage.setItem('aura-theme', next);
+      window.dispatchEvent(new Event('storage'));
+    } catch {
+      // ignore
+    }
   };
 
   useEffect(() => {
@@ -345,7 +359,11 @@ export function StatusBar({
             title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
             aria-label={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
           >
-            {theme === 'dark' ? (
+            {theme === 'light' ? (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            ) : (
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="5" />
                 <line x1="12" y1="1" x2="12" y2="3" />
@@ -356,10 +374,6 @@ export function StatusBar({
                 <line x1="21" y1="12" x2="23" y2="12" />
                 <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
                 <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-              </svg>
-            ) : (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
               </svg>
             )}
           </button>

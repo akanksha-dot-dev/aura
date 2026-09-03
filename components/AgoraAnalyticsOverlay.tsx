@@ -74,6 +74,7 @@ export function AgoraAnalyticsOverlay({
           display: inline-flex;
           align-items: center;
           user-select: none;
+          flex-shrink: 0;
         }
 
         .agora-telemetry-pill {

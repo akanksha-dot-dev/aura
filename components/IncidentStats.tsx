@@ -32,6 +32,7 @@ export function IncidentStats({
           color: var(--text-secondary);
           user-select: none;
           white-space: nowrap;
+          flex-shrink: 0;
         }
 
         .incident-stats__item {
@@ -75,28 +76,28 @@ export function IncidentStats({
           <span className="incident-stats__label">facts</span>
         </span>
 
-        <span className="incident-stats__dot" aria-hidden="true">·</span>
+        <span className="incident-stats__dot" aria-hidden="true">&middot;</span>
 
         <span className="incident-stats__item" title={`${hypothesisCount} active hypotheses`}>
           <span className="incident-stats__num">{hypothesisCount}</span>
           <span className="incident-stats__label">hypo</span>
         </span>
 
-        <span className="incident-stats__dot" aria-hidden="true">·</span>
+        <span className="incident-stats__dot" aria-hidden="true">&middot;</span>
 
         <span className="incident-stats__item" title={`${decisionCount} directives issued`}>
           <span className="incident-stats__num">{decisionCount}</span>
           <span className="incident-stats__label">dec</span>
         </span>
 
-        <span className="incident-stats__dot" aria-hidden="true">·</span>
+        <span className="incident-stats__dot" aria-hidden="true">&middot;</span>
 
         <span className="incident-stats__item" title={`${actionCompletedCount} of ${actionTotalCount} actions complete`}>
           <span className="incident-stats__num">{actionCompletedCount}/{actionTotalCount}</span>
           <span className="incident-stats__label">act</span>
         </span>
 
-        <span className="incident-stats__dot" aria-hidden="true">·</span>
+        <span className="incident-stats__dot" aria-hidden="true">&middot;</span>
 
         <span
           className={`incident-stats__item ${conflictCount > 0 ? 'incident-stats__item--conflict-active' : ''}`}

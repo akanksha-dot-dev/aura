@@ -1,7 +1,6 @@
 'use client';
-
 import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAgoraRTC } from '@/hooks/useAgoraRTC';
 import { useAgoraRTM } from '@/hooks/useAgoraRTM';
 import { useIncidentState } from '@/hooks/useIncidentState';
@@ -26,6 +25,7 @@ import {
 } from '@/lib/audioCues';
 
 function DashboardContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const uid = searchParams.get('uid') || 'operator_1';
   const name = searchParams.get('name') || 'Operator';
@@ -35,6 +35,13 @@ function DashboardContent() {
   const speedParam = Math.max(0.1, Number(searchParams.get('speed')) || 1);
   const initialCostRate = Math.max(1, Number(searchParams.get('costRate')) || 150);
   const [costRate, setCostRate] = useState<number>(initialCostRate);
+
+  // If directly accessing / without a persona or mock replay flag, redirect to mission lobby
+  useEffect(() => {
+    if (!searchParams.get('uid') && !searchParams.get('persona') && !isMockReplay) {
+      router.replace('/lobby');
+    }
+  }, [searchParams, isMockReplay, router]);
 
   // View tabs & Modal states
   const [mainViewTab, setMainViewTab] = useState<'timeline' | 'topology'>('timeline');

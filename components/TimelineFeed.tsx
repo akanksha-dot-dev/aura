@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { EvidenceItem, getDisplayConfidence } from '@/lib/types';
 import { TimelineCard } from './TimelineCard';
 
@@ -10,6 +11,7 @@ export interface TimelineFeedProps {
 }
 
 export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
+  const router = useRouter();
   const feedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -77,6 +79,32 @@ export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
           line-height: var(--leading-relaxed);
           margin: 0;
         }
+
+        .timeline-feed__start-replay-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          margin-top: var(--space-2);
+          padding: 8px 18px;
+          background: var(--bg-glass-raised);
+          border: 1px solid var(--border-glass-emphasis);
+          border-radius: var(--radius-full);
+          font-family: var(--font-sans);
+          font-size: var(--text-xs);
+          font-weight: var(--weight-medium);
+          color: var(--color-aura);
+          cursor: pointer;
+          backdrop-filter: blur(8px);
+          transition: all var(--duration-fast) var(--ease-standard);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .timeline-feed__start-replay-btn:hover {
+          background: var(--bg-glass-hover);
+          border-color: var(--color-aura);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 14px rgba(212, 168, 83, 0.25);
+        }
       `}</style>
       <div className="timeline-feed" ref={feedRef} role="feed" aria-label="Incident timeline feed">
         {evidenceItems.length === 0 ? (
@@ -92,6 +120,19 @@ export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
             <p className="timeline-feed__empty-sub">
               AURA is listening. Speak into the bridge to begin epistemic classification and action extraction.
             </p>
+            <button
+              type="button"
+              className="timeline-feed__start-replay-btn"
+              onClick={() => {
+                router.push('/?persona=sarah_chen&channel=incident-sev1-checkout&__AURA_REPLAY_MOCK_STREAM=true&speed=1.5');
+              }}
+              title="Start demo incident replay simulation"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
+                <polygon points="5 3 19 12 5 21 5 3" />
+              </svg>
+              <span>Launch Demo Simulation</span>
+            </button>
           </div>
         ) : (
           evidenceItems.map((item, idx) => {
