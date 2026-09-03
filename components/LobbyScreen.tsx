@@ -122,59 +122,6 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
           </ul>
         </section>
 
-        {/* Dynamic Financial Loss Rate Configuration */}
-        <section className="lobby-config-section" aria-label="Incident financial parameters">
-          <div className="lobby-section-header">
-            <span className="lobby-section-title">
-              Financial Burn Rate Telemetry:
-            </span>
-            <span className="lobby-section-meta">
-              ${new Intl.NumberFormat('en-US').format(currentEffectiveRate * 60)}/min • ${new Intl.NumberFormat('en-US').format(currentEffectiveRate * 3600)}/hr
-            </span>
-          </div>
-
-          <div className="lobby-cost-presets">
-            {COST_PRESETS.map((p) => (
-              <button
-                key={p.rate}
-                type="button"
-                className={`lobby-cost-chip ${selectedRate === p.rate ? 'lobby-cost-chip--active' : ''}`}
-                onClick={() => {
-                  setSelectedRate(p.rate);
-                  setCustomRateInput(p.rate.toString());
-                }}
-              >
-                <span className="lobby-cost-chip-label">{p.label}</span>
-                <span className="lobby-cost-chip-rate">${p.rate}/s</span>
-              </button>
-            ))}
-          </div>
-
-          <div className="lobby-custom-cost">
-            <span className="lobby-custom-cost-label">Custom Loss Rate:</span>
-            <div className="lobby-custom-cost-input-wrapper">
-              <span className="lobby-custom-cost-prefix">$</span>
-              <input
-                type="number"
-                min="1"
-                max="100000"
-                value={customRateInput}
-                onChange={(e) => {
-                  setCustomRateInput(e.target.value);
-                  const val = Number(e.target.value);
-                  if (val > 0) setSelectedRate(val);
-                }}
-                className="lobby-custom-cost-input"
-                placeholder="150"
-                aria-label="Custom loss rate in dollars per second"
-              />
-              <span className="lobby-custom-cost-suffix">
-                / sec
-              </span>
-            </div>
-          </div>
-        </section>
-
         {/* Join as section */}
         <section className="lobby-join-section" aria-label="Participant selection">
           <div className="lobby-section-title">
@@ -195,7 +142,7 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
                   style={{
                     backgroundColor: persona.avatarColor,
                     color: 'var(--text-inverse)',
-                    boxShadow: `0 0 12px color-mix(in srgb, ${persona.avatarColor} 35%, transparent)`,
+                    boxShadow: `0 0 16px color-mix(in srgb, ${persona.avatarColor} 45%, transparent)`,
                   }}
                   aria-hidden="true"
                 >
@@ -215,58 +162,117 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
                   </span>
                 </div>
                 <div className="lobby-persona-cta">
-                  <span>{isConnecting ? 'CONNECTING' : 'ENTER BRIDGE'}</span>
+                  <span>{isConnecting ? 'CONNECTING...' : 'ENTER BRIDGE'}</span>
                   <span aria-hidden="true" className="lobby-persona-arrow">→</span>
                 </div>
               </button>
             ))}
           </div>
-
-          {/* Custom Responder Option */}
-          <form onSubmit={handleJoinCustom} className="lobby-custom-responder-card">
-            <div className="lobby-custom-responder-header">
-              <span>Or Enter Bridge With Custom Responder Callsign</span>
-            </div>
-            <div className="lobby-custom-responder-fields">
-              <input
-                type="text"
-                placeholder="Your Name (e.g. Alex)"
-                value={customName}
-                onChange={(e) => setCustomName(e.target.value)}
-                className="lobby-custom-input"
-                aria-label="Custom responder name"
-              />
-              <input
-                type="text"
-                placeholder="Role (e.g. SecOps Lead)"
-                value={customRole}
-                onChange={(e) => setCustomRole(e.target.value)}
-                className="lobby-custom-input"
-                aria-label="Custom responder role"
-              />
-              <button
-                type="submit"
-                disabled={!customName.trim() || isConnecting}
-                className="lobby-custom-join-btn"
-              >
-                <span>{isConnecting ? 'CONNECTING...' : 'LAUNCH BRIDGE'}</span>
-                <span aria-hidden="true">→</span>
-              </button>
-            </div>
-          </form>
         </section>
 
-        {/* Info Box */}
-        <div className="lobby-info-box" role="note">
-          <span className="lobby-info-icon" aria-hidden="true">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="16" x2="12" y2="12" />
-              <line x1="12" y1="8" x2="12.01" y2="8" />
-            </svg>
-          </span>
-          <div className="lobby-info-text">
-            <span><strong>Zero-Friction Audio Bridge:</strong> AURA AI activates automatically upon participant entry. Speak naturally across voice channels to test real-time epistemic classification and action extraction.</span>
+        {/* Bottom 2-Column Section: Financial Telemetry & Custom Responder */}
+        <div className="lobby-bottom-grid">
+          {/* Dynamic Financial Loss Rate Configuration */}
+          <section className="lobby-config-section" aria-label="Incident financial parameters">
+            <div className="lobby-section-header">
+              <span className="lobby-section-title">
+                Financial Burn Rate Telemetry:
+              </span>
+              <span className="lobby-section-meta">
+                ${new Intl.NumberFormat('en-US').format(currentEffectiveRate * 60)}/min • ${new Intl.NumberFormat('en-US').format(currentEffectiveRate * 3600)}/hr
+              </span>
+            </div>
+
+            <div className="lobby-cost-presets">
+              {COST_PRESETS.map((p) => (
+                <button
+                  key={p.rate}
+                  type="button"
+                  className={`lobby-cost-chip ${selectedRate === p.rate ? 'lobby-cost-chip--active' : ''}`}
+                  onClick={() => {
+                    setSelectedRate(p.rate);
+                    setCustomRateInput(p.rate.toString());
+                  }}
+                >
+                  <span className="lobby-cost-chip-label">{p.label}</span>
+                  <span className="lobby-cost-chip-rate">${p.rate}/s</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="lobby-custom-cost">
+              <span className="lobby-custom-cost-label">Custom Loss Rate:</span>
+              <div className="lobby-custom-cost-input-wrapper">
+                <span className="lobby-custom-cost-prefix">$</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="100000"
+                  value={customRateInput}
+                  onChange={(e) => {
+                    setCustomRateInput(e.target.value);
+                    const val = Number(e.target.value);
+                    if (val > 0) setSelectedRate(val);
+                  }}
+                  className="lobby-custom-cost-input"
+                  placeholder="150"
+                  aria-label="Custom loss rate in dollars per second"
+                />
+                <span className="lobby-custom-cost-suffix">
+                  / sec
+                </span>
+              </div>
+            </div>
+          </section>
+
+          {/* Right Column: Custom Responder Form + Info Note */}
+          <div className="lobby-bottom-right">
+            {/* Custom Responder Option */}
+            <form onSubmit={handleJoinCustom} className="lobby-custom-responder-card">
+              <div className="lobby-custom-responder-header">
+                <span>Or Enter Bridge With Custom Responder Callsign</span>
+              </div>
+              <div className="lobby-custom-responder-fields">
+                <input
+                  type="text"
+                  placeholder="Your Name (e.g. Alex)"
+                  value={customName}
+                  onChange={(e) => setCustomName(e.target.value)}
+                  className="lobby-custom-input"
+                  aria-label="Custom responder name"
+                />
+                <input
+                  type="text"
+                  placeholder="Role (e.g. SecOps Lead)"
+                  value={customRole}
+                  onChange={(e) => setCustomRole(e.target.value)}
+                  className="lobby-custom-input"
+                  aria-label="Custom responder role"
+                />
+                <button
+                  type="submit"
+                  disabled={!customName.trim() || isConnecting}
+                  className="lobby-custom-join-btn"
+                >
+                  <span>{isConnecting ? 'CONNECTING...' : 'LAUNCH BRIDGE'}</span>
+                  <span aria-hidden="true">→</span>
+                </button>
+              </div>
+            </form>
+
+            {/* Info Box */}
+            <div className="lobby-info-box" role="note">
+              <span className="lobby-info-icon" aria-hidden="true">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="16" x2="12" y2="12" />
+                  <line x1="12" y1="8" x2="12.01" y2="8" />
+                </svg>
+              </span>
+              <div className="lobby-info-text">
+                <span><strong>Zero-Friction Audio Bridge:</strong> AURA AI activates automatically upon participant entry. Speak naturally across voice channels to test real-time epistemic classification and action extraction.</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
