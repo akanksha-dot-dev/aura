@@ -1574,6 +1574,227 @@ input, textarea, select {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
+   Lobby Incident Financial Parameters & Custom Call Sign
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.lobby-config-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+
+.lobby-cost-presets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: var(--space-2);
+}
+
+.lobby-cost-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-surface-raised);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard),
+              border-color var(--duration-fast) var(--ease-standard),
+              color var(--duration-fast) var(--ease-standard);
+}
+
+.lobby-cost-chip:hover {
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
+  border-color: var(--border-emphasis);
+}
+
+.lobby-cost-chip--active {
+  background: var(--color-aura-dim);
+  border-color: var(--color-aura);
+  color: var(--color-aura);
+}
+
+.lobby-cost-chip-label {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+}
+
+.lobby-cost-chip-rate {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.lobby-cost-chip--active .lobby-cost-chip-rate {
+  color: var(--color-aura);
+}
+
+.lobby-custom-cost {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.lobby-custom-cost-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.lobby-custom-cost-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  flex: 1;
+}
+
+.lobby-custom-cost-prefix,
+.lobby-custom-cost-suffix {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.lobby-custom-cost-input {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  width: 60px;
+  outline: none;
+}
+
+.lobby-custom-responder-card {
+  background: var(--bg-surface);
+  border: 1px dashed var(--border-emphasis);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.lobby-custom-responder-header {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.lobby-custom-responder-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: var(--space-2);
+}
+
+@media (max-width: 640px) {
+  .lobby-custom-responder-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+.lobby-custom-input {
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color var(--duration-fast) var(--ease-standard);
+}
+
+.lobby-custom-input:focus {
+  border-color: var(--color-aura);
+}
+
+.lobby-custom-join-btn {
+  background: var(--color-aura);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1h);
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+
+.lobby-custom-join-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.lobby-custom-join-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Print Media Styles — Clean Executive SRE Incident Brief
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .command-center,
+  .status-bar,
+  .speaker-panel,
+  .action-tracker,
+  .incident-stats,
+  .narrative-bar,
+  .live-captions-container,
+  .agora-overlay-container,
+  .postmortem-media-grid,
+  .postmortem-header-close {
+    display: none !important;
+  }
+  .postmortem-overlay {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+  }
+  .postmortem-modal {
+    max-width: 100% !important;
+    max-height: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .postmortem-title,
+  .postmortem-section__title,
+  .postmortem-exec-summary,
+  .postmortem-metrics-grid {
+    color: #000000 !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
    Motion Accessibility — Hallmark Gate 27 Fallback
    ═══════════════════════════════════════════════════════════════════════ */
 

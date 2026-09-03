@@ -28,6 +28,8 @@ function DashboardContent() {
   const channel = searchParams.get('channel') || 'incident-war-room';
   const isMockReplay = Boolean(searchParams.get('__AURA_REPLAY_MOCK_STREAM'));
   const speedParam = Math.max(0.1, Number(searchParams.get('speed')) || 1);
+  const initialCostRate = Math.max(1, Number(searchParams.get('costRate')) || 150);
+  const [costRate, setCostRate] = useState<number>(initialCostRate);
 
   // Postmortem Modal state (auto-opens 2s after resolution per Star 7)
   const [isPostmortemOpen, setIsPostmortemOpen] = useState(false);
@@ -362,6 +364,8 @@ function DashboardContent() {
         icName={icDisplayName}
         connectionQuality={connectionQuality}
         onClaimIC={() => claimIC(uid)}
+        costRate={costRate}
+        onRateChange={setCostRate}
       />
 
       {/* 2. Speaker Panel */}
@@ -446,6 +450,7 @@ function DashboardContent() {
         onClose={() => setIsPostmortemOpen(false)}
         incident={state}
         evidenceChainEdges={topologyEdges}
+        costRate={costRate}
       />
 
       {/* 10. Transcript Drawer (WI-502) */}

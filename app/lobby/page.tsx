@@ -20,7 +20,7 @@ function LobbyContent() {
   const channel = searchParams.get('channel') || 'incident-sev1-checkout';
   const [isConnecting, setIsConnecting] = useState(false);
 
-  const handleJoin = (persona: PersonaConfig) => {
+  const handleJoin = (persona: PersonaConfig, options?: { costRate?: number }) => {
     setIsConnecting(true);
     const params = new URLSearchParams({
       uid: persona.uid,
@@ -28,6 +28,9 @@ function LobbyContent() {
       role: persona.role,
       channel,
     });
+    if (options?.costRate) {
+      params.set('costRate', options.costRate.toString());
+    }
     const targetUrl = `/?${params.toString()}`;
 
     // Graceful native View Transition API with fallback

@@ -12,10 +12,11 @@ export interface PostmortemModalProps {
   evidenceChainEdges?: TopologyEdge[];
   recordingUrl?: string;
   transcriptUrl?: string;
+  costRate?: number;
 }
 
-function formatDuration(startMs: number, endMs?: number): string {
-  const totalSec = Math.max(0, Math.floor(((endMs || Date.now()) - startMs) / 1000));
+function formatDuration(startMs: number, endMs: number): string {
+  const totalSec = Math.max(0, Math.floor((endMs - startMs) / 1000));
   const m = Math.floor(totalSec / 60);
   const s = totalSec % 60;
   return `${m}m ${s.toString().padStart(2, '0')}s`;
@@ -42,9 +43,11 @@ export function PostmortemModal({
   isOpen,
   onClose,
   incident,
-  recordingUrl,
-  transcriptUrl,
+  costRate = 150,
 }: PostmortemModalProps) {
+  // Capture snapshot timestamp on mount to keep render calculations pure
+  const [snapshotTimestamp] = React.useState<number>(() => Date.now());
+
   // Close on Escape key
   useEffect(() => {
     if (!isOpen) return;
@@ -57,10 +60,12 @@ export function PostmortemModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
+  const effectiveEndMs = incident.resolvedAt ?? snapshotTimestamp;
+
   // Derived summaries
   const duration = useMemo(() => {
-    return formatDuration(incident.openedAt, incident.resolvedAt);
-  }, [incident.openedAt, incident.resolvedAt]);
+    return formatDuration(incident.openedAt, effectiveEndMs);
+  }, [incident.openedAt, effectiveEndMs]);
 
   const confirmedHypothesis = useMemo(() => {
     return incident.evidenceItems.find(
@@ -107,8 +112,91 @@ export function PostmortemModal({
     [actionItems]
   );
 
-  const costTotal = incident.costAccrued || 130680;
+  const durationSeconds = useMemo(() => {
+    return Math.max(1, Math.floor((effectiveEndMs - incident.openedAt) / 1000));
+  }, [incident.openedAt, effectiveEndMs]);
+
+  const costTotal = incident.costAccrued || Math.round(durationSeconds * (costRate * 0.5));
   const costSavings = Math.round(costTotal * 0.52);
+
+  const handleDownloadMarkdown = () => {
+    const md = `# SRE Incident Postmortem: ${incident.title}
+**Incident ID:** ${incident.incidentId}
+**Severity:** ${incident.severity}
+**Status:** ${incident.status.toUpperCase()}
+**Incident Commander:** ${icName}
+**Duration:** ${duration} (${durationSeconds}s)
+**Financial Loss Rate:** $${costRate}/sec ($${(costRate * 3600).toLocaleString()}/hr)
+**Total Financial Impact:** $${costTotal.toLocaleString()}
+**Estimated Downtime Cost Saved:** ~$${costSavings.toLocaleString()}
+
+---
+
+## 1. Executive Summary
+During this incident, error rates spiked across services. AURA voice telemetry monitoring and epistemic contradiction detection prevented prolonged dead-ends, leading to rapid root cause isolation and mitigation.
+
+## 2. Root Cause Analysis
+${confirmedHypothesis ? `**Confirmed Root Cause:** ${confirmedHypothesis.content}\n**Proposed by:** ${incident.participants[confirmedHypothesis.speakerUid]?.displayName || confirmedHypothesis.speakerUid}` : '**Root cause investigation concluded.**'}
+
+### Refuted Hypotheses (Dead-Ends Eliminated)
+${disprovenHypotheses.length > 0 ? disprovenHypotheses.map(h => `- ~~${h.content}~~ (Refuted via telemetry verification)`).join('\n') : '- No dead-ends recorded.'}
+
+## 3. Incident Timeline
+| Time | Classification | Details | Speaker |
+|---|---|---|---|
+${incident.evidenceItems.map(item => `| ${formatClockTime(item.timestamp)} | ${item.category.toUpperCase()} | ${item.content.replace(/\|/g, '-')} | ${incident.participants[item.speakerUid]?.displayName || item.speakerUid} |`).join('\n')}
+
+## 4. Remediation & Action Item Audit
+${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act.content}** — Owner: ${act.assignedTo || 'Unassigned'}`).join('\n')}
+
+---
+*Report generated automatically by AURA AI Incident Commander on ${new Date().toISOString()}.*
+`;
+    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `SRE-Postmortem-${incident.incidentId}.md`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadJSON = () => {
+    const payload = {
+      metadata: {
+        incidentId: incident.incidentId,
+        title: incident.title,
+        severity: incident.severity,
+        status: incident.status,
+        incidentCommander: icName,
+        openedAt: new Date(incident.openedAt).toISOString(),
+        resolvedAt: incident.resolvedAt ? new Date(incident.resolvedAt).toISOString() : null,
+        durationSeconds,
+        costRatePerSecond: costRate,
+        financialImpactUsd: costTotal,
+        costSavingsUsd: costSavings,
+        exportedAt: new Date().toISOString(),
+      },
+      participants: incident.participants,
+      timeline: incident.evidenceItems,
+      actions: actionItems,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `incident-${incident.incidentId}-trace.json`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
 
   // Simplified left-to-right evidence chain stages
   const chainNodes = useMemo(() => {
@@ -396,52 +484,58 @@ export function PostmortemModal({
                 </div>
               </section>
 
-              {/* Day 6 Artifact Placeholders */}
+              {/* Export SRE Postmortem Artifacts */}
               <section className="postmortem-section">
                 <h3 className="postmortem-subtitle">
-                  Compliance Artifacts & Recordings
+                  Export SRE Postmortem Artifacts
                 </h3>
                 <div className="postmortem-media-grid">
-                  <a
-                    href={recordingUrl || '#recording-placeholder'}
-                    className={`postmortem-media-btn ${
-                      !recordingUrl ? 'postmortem-media-btn--disabled' : ''
-                    }`}
-                    onClick={(e) => {
-                      if (!recordingUrl) {
-                        e.preventDefault();
-                        alert('Incident room audio recording will be finalized post-session.');
-                      }
-                    }}
+                  <button
+                    type="button"
+                    className="postmortem-media-btn"
+                    onClick={handleDownloadMarkdown}
+                    title="Download GitHub-formatted Markdown report"
                   >
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1h)' }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                        <polygon points="5 3 19 12 5 21 5 3" />
-                      </svg>
-                      Play Compliance Recording
-                    </span>
-                  </a>
-                  <a
-                    href={transcriptUrl || '#transcript-placeholder'}
-                    className={`postmortem-media-btn ${
-                      !transcriptUrl ? 'postmortem-media-btn--disabled' : ''
-                    }`}
-                    onClick={(e) => {
-                      if (!transcriptUrl) {
-                        e.preventDefault();
-                        alert('STT cross-talk transcript archived.');
-                      }
-                    }}
-                  >
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1h)' }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                         <polyline points="7 10 12 15 17 10" />
                         <line x1="12" y1="15" x2="12" y2="3" />
                       </svg>
-                      Download .VTT Cross-Talk Transcript
+                      Download Postmortem (.md)
                     </span>
-                  </a>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="postmortem-media-btn"
+                    onClick={handlePrint}
+                    title="Print or Save Executive Brief as PDF"
+                  >
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1h)' }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <polyline points="6 9 6 2 18 2 18 9" />
+                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                        <rect x="6" y="14" width="12" height="8" />
+                      </svg>
+                      Print / Save as PDF
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="postmortem-media-btn"
+                    onClick={handleDownloadJSON}
+                    title="Export JSON event telemetry trace"
+                  >
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1h)' }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <polyline points="16 18 22 12 16 6" />
+                        <polyline points="8 6 2 12 8 18" />
+                      </svg>
+                      Export Trace (.json)
+                    </span>
+                  </button>
                 </div>
               </section>
             </div>

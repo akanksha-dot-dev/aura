@@ -15,6 +15,8 @@ export interface StatusBarProps {
   icName: string | null;
   connectionQuality: 'excellent' | 'good' | 'poor';
   onClaimIC?: () => void;
+  costRate?: number;
+  onRateChange?: (newRate: number) => void;
 }
 
 function formatTimer(totalSeconds: number): string {
@@ -38,6 +40,8 @@ export function StatusBar({
   icName,
   connectionQuality,
   onClaimIC,
+  costRate,
+  onRateChange,
 }: StatusBarProps) {
   const [activeElapsed, setActiveElapsed] = useState<number>(0);
 
@@ -209,6 +213,8 @@ export function StatusBar({
             incidentStatus={status}
             openedAt={openedAt}
             resolvedAt={resolvedAt}
+            baseRate={costRate}
+            onRateChange={onRateChange}
           />
 
           <div

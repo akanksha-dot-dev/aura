@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { IncidentStatus } from '@/lib/types';
 
 /**
@@ -14,36 +14,59 @@ import { IncidentStatus } from '@/lib/types';
 export function useCostCounter(
   status: IncidentStatus,
   openedAt: number,
-  resolvedAt?: number
+  resolvedAt?: number,
+  baseRate: number = 150
 ): number {
   const [activeCost, setActiveCost] = useState<number>(0);
+  const rateRef = React.useRef(baseRate);
+  const baseCostAccumulatedRef = React.useRef(0);
+  const lastRateChangeTimeRef = React.useRef(openedAt);
 
-  useEffect(() => {
+  // Sync if openedAt changes (e.g. replay restart)
+  React.useEffect(() => {
+    lastRateChangeTimeRef.current = openedAt;
+    baseCostAccumulatedRef.current = 0;
+  }, [openedAt]);
+
+  // When baseRate changes dynamically, accumulate previous segment
+  React.useEffect(() => {
+    if (baseRate !== rateRef.current) {
+      const now = Date.now();
+      const elapsed = Math.max(0, (now - lastRateChangeTimeRef.current) / 1000);
+      baseCostAccumulatedRef.current += elapsed * rateRef.current;
+      lastRateChangeTimeRef.current = now;
+      rateRef.current = baseRate;
+    }
+  }, [baseRate]);
+
+  React.useEffect(() => {
     if (status === 'resolved') {
       return;
     }
 
-    const ratePerSecond: Record<string, number> = {
-      investigating: 150,
-      identified: 75,
-      monitoring: 25,
+    const multiplier: Record<string, number> = {
+      investigating: 1,
+      identified: 0.5,
+      monitoring: 0.2,
     };
-    const rate = ratePerSecond[status] ?? 150;
+    const mult = multiplier[status] ?? 1;
 
     const tick = () => {
-      const elapsed = Math.max(0, (Date.now() - openedAt) / 1000);
-      setActiveCost(Math.round(elapsed * rate));
+      const now = Date.now();
+      const elapsedSinceChange = Math.max(0, (now - lastRateChangeTimeRef.current) / 1000);
+      const currentSegment = elapsedSinceChange * (baseRate * mult);
+      setActiveCost(Math.round(baseCostAccumulatedRef.current + currentSegment));
     };
 
     tick();
     const interval = setInterval(tick, 100);
 
     return () => clearInterval(interval);
-  }, [status, openedAt]);
+  }, [status, openedAt, baseRate]);
 
   if (status === 'resolved' && resolvedAt !== undefined) {
     const elapsed = Math.max(0, (resolvedAt - openedAt) / 1000);
-    return Math.round(elapsed * 75);
+    return Math.round(elapsed * (baseRate * 0.5));
   }
 
   return activeCost;
