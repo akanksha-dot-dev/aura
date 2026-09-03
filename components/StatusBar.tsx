@@ -77,6 +77,12 @@ export function StatusBar({
     poor: 'var(--color-conflict)',
   }[connectionQuality];
 
+  const activeDots = {
+    excellent: 3,
+    good: 2,
+    poor: 1,
+  }[connectionQuality] ?? 2;
+
   return (
     <>
       <style>{`
@@ -86,9 +92,10 @@ export function StatusBar({
           align-items: center;
           justify-content: space-between;
           padding: 0 var(--space-4);
-          background: var(--bg-surface);
+          background: var(--bg-surface-raised);
           border-bottom: 1px solid var(--border-default);
-          height: 48px;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+          height: 52px;
           z-index: var(--z-sticky);
           user-select: none;
         }
@@ -104,19 +111,38 @@ export function StatusBar({
           display: inline-flex;
           align-items: center;
           gap: var(--space-1h);
-          padding: 2px 8px;
+          padding: 3px 10px;
           border-radius: var(--radius-md);
           font-family: var(--font-mono);
-          font-size: var(--text-sm);
+          font-size: 0.8125rem;
           font-weight: var(--weight-bold);
+          letter-spacing: 0.06em;
           white-space: nowrap;
           flex-shrink: 0;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
         }
 
-        .status-bar__severity--sev0 { background: var(--color-sev0); color: var(--text-inverse); }
-        .status-bar__severity--sev1 { background: var(--color-sev1); color: var(--text-inverse); }
+        .status-bar__severity--sev0 {
+          background: var(--color-sev0);
+          color: var(--text-inverse);
+          animation: sev-pulse 1.8s ease-in-out infinite;
+        }
+        .status-bar__severity--sev1 {
+          background: var(--color-sev1);
+          color: var(--text-inverse);
+          animation: sev-pulse 2s ease-in-out infinite;
+        }
         .status-bar__severity--sev2 { background: var(--color-sev2); color: var(--text-inverse); }
         .status-bar__severity--sev3 { background: var(--color-sev3); color: var(--text-primary); }
+
+        @keyframes sev-pulse {
+          0%, 100% {
+            box-shadow: 0 0 0 0px color-mix(in srgb, currentColor 40%, transparent);
+          }
+          50% {
+            box-shadow: 0 0 8px 2px color-mix(in srgb, currentColor 30%, transparent);
+          }
+        }
 
         .status-bar__title {
           font-size: var(--text-md);
@@ -137,17 +163,22 @@ export function StatusBar({
         .status-bar__right {
           display: flex;
           align-items: center;
-          gap: var(--space-4);
+          gap: var(--space-3);
           flex-shrink: 0;
         }
 
         .status-bar__timer {
           display: inline-flex;
           align-items: center;
-          gap: var(--space-1);
+          gap: 6px;
+          padding: 3px 8px;
+          background: var(--bg-surface);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-sm);
           font-family: var(--font-mono);
           font-size: var(--text-sm);
-          color: var(--text-secondary);
+          font-weight: var(--weight-medium);
+          color: var(--text-primary);
           font-variant-numeric: tabular-nums;
           white-space: nowrap;
         }
@@ -164,7 +195,7 @@ export function StatusBar({
         }
 
         .status-bar__ic--locked {
-          background: var(--bg-surface-raised);
+          background: var(--bg-surface);
           border: 1px solid var(--border-emphasis);
           color: var(--color-aura);
           font-weight: var(--weight-medium);
@@ -184,11 +215,27 @@ export function StatusBar({
           color: var(--text-inverse);
         }
 
-        .status-bar__conn {
-          width: 8px;
-          height: 8px;
-          border-radius: var(--radius-full);
+        .status-bar__conn-meter {
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+          padding: 3px 6px;
+          background: var(--bg-surface);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-sm);
           flex-shrink: 0;
+        }
+
+        .status-bar__conn-dot {
+          width: 5px;
+          height: 5px;
+          border-radius: 50%;
+          background: var(--border-subtle);
+          transition: background-color 0.3s ease;
+        }
+
+        .status-bar__conn-dot--active {
+          box-shadow: 0 0 4px currentColor;
         }
       `}</style>
       <header className="status-bar" role="banner">
@@ -256,11 +303,23 @@ export function StatusBar({
           )}
 
           <div
-            className="status-bar__conn"
-            style={{ backgroundColor: connectionColor }}
+            className="status-bar__conn-meter"
             title={`Connection quality: ${connectionQuality}`}
             aria-label={`Connection quality: ${connectionQuality}`}
-          />
+          >
+            <span
+              className={`status-bar__conn-dot ${activeDots >= 1 ? 'status-bar__conn-dot--active' : ''}`}
+              style={activeDots >= 1 ? { backgroundColor: connectionColor, color: connectionColor } : undefined}
+            />
+            <span
+              className={`status-bar__conn-dot ${activeDots >= 2 ? 'status-bar__conn-dot--active' : ''}`}
+              style={activeDots >= 2 ? { backgroundColor: connectionColor, color: connectionColor } : undefined}
+            />
+            <span
+              className={`status-bar__conn-dot ${activeDots >= 3 ? 'status-bar__conn-dot--active' : ''}`}
+              style={activeDots >= 3 ? { backgroundColor: connectionColor, color: connectionColor } : undefined}
+            />
+          </div>
         </div>
       </header>
     </>
