@@ -117,7 +117,7 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
                 aria-label="Custom loss rate in dollars per second"
               />
               <span className="lobby-custom-cost-suffix">
-                / sec (~${((Number(customRateInput) || selectedRate) * 3600).toLocaleString()}/hr)
+                / sec (~${new Intl.NumberFormat('en-US').format((Number(customRateInput) || selectedRate) * 3600)}/hr)
               </span>
             </div>
           </div>
