@@ -40,48 +40,82 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
     onJoin(customPersona, { costRate: rate });
   };
 
+  const currentEffectiveRate = Math.max(1, Number(customRateInput) || selectedRate);
+
   return (
     <div className="lobby-container">
       <div className="lobby-content">
-        {/* Header */}
+        {/* Header with Visual Badge & Golden Glow Title */}
         <header className="lobby-header">
+          <div className="lobby-badge" aria-label="System operational status">
+            <span className="lobby-badge-dot" aria-hidden="true" />
+            <span className="lobby-badge-text">MISSION CONTROL • SEV-1 VOICE INCIDENT COMMAND</span>
+          </div>
+
           <h1 className="lobby-title">
             AURA
           </h1>
           <p className="lobby-subtitle">
-            Incident Command Center
+            Autonomous Voice-Directed Incident Commander
+          </p>
+          <p className="lobby-tagline">
+            Real-time multi-speaker acoustic intelligence • Live conflict detection • Continuous postmortem synthesis
           </p>
         </header>
 
-        {/* Scenario Card */}
+        {/* Connecting Banner when connecting */}
+        {isConnecting && (
+          <div className="lobby-connecting-banner" role="status" aria-live="polite">
+            <div className="lobby-connecting-spinner" aria-hidden="true" />
+            <div className="lobby-connecting-text">
+              <span className="lobby-connecting-title">ESTABLISHING AUDIO BRIDGE & TELEMETRY</span>
+              <span className="lobby-connecting-desc">Connecting to Agora Real-Time Voice Channel...</span>
+            </div>
+          </div>
+        )}
+
+        {/* Active Scenario Card */}
         <section className="lobby-scenario-card" aria-labelledby="active-scenario-title">
           <div className="lobby-scenario-header">
-            <span className="lobby-scenario-tag">
-              Active Scenario
-            </span>
-            <span className="badge badge-conflict">SEV-1 OUTAGE</span>
+            <div className="lobby-scenario-badge-group">
+              <span className="lobby-scenario-tag">INCIDENT #492</span>
+              <span className="badge badge-conflict">SEV-1 OUTAGE</span>
+            </div>
+            <div className="lobby-scenario-live-badge">
+              <span className="lobby-scenario-pulse-dot" aria-hidden="true" />
+              <span>SIMULATION READY</span>
+            </div>
           </div>
           <h2 id="active-scenario-title" className="lobby-scenario-title">
             Payment Service Checkout Outage
           </h2>
           <ul className="lobby-scenario-list">
             <li className="lobby-scenario-item">
-              <span style={{ color: 'var(--color-conflict)' }}>•</span> Error rates spiked to 42% on payment services.
+              <span className="lobby-scenario-icon" style={{ color: 'var(--color-conflict)' }} aria-hidden="true">■</span>
+              <span><strong>Impact:</strong> Error rates spiked to 42% on payment services. Checkout page is frozen for customers.</span>
             </li>
             <li className="lobby-scenario-item">
-              <span style={{ color: 'var(--color-conflict)' }}>•</span> Checkout page is frozen for customers.
+              <span className="lobby-scenario-icon" style={{ color: 'var(--color-hypothesis)' }} aria-hidden="true">■</span>
+              <span><strong>Suspected Cause:</strong> PR #492 deployed 15 minutes ago to core checkout routing.</span>
             </li>
             <li className="lobby-scenario-item">
-              <span style={{ color: 'var(--color-hypothesis)' }}>•</span> Suspected: PR #492 deployed 15 minutes ago.
+              <span className="lobby-scenario-icon" style={{ color: 'var(--color-fact)' }} aria-hidden="true">■</span>
+              <span><strong>AURA Objective:</strong> Coordinate multi-responder audio, triage contradictions, track mitigation actions.</span>
             </li>
           </ul>
         </section>
 
         {/* Dynamic Financial Loss Rate Configuration */}
         <section className="lobby-config-section" aria-label="Incident financial parameters">
-          <div className="lobby-section-title">
-            Incident Financial Burn Rate:
+          <div className="lobby-section-header">
+            <span className="lobby-section-title">
+              Financial Burn Rate Telemetry:
+            </span>
+            <span className="lobby-section-meta">
+              ${new Intl.NumberFormat('en-US').format(currentEffectiveRate * 60)}/min • ${new Intl.NumberFormat('en-US').format(currentEffectiveRate * 3600)}/hr
+            </span>
           </div>
+
           <div className="lobby-cost-presets">
             {COST_PRESETS.map((p) => (
               <button
@@ -98,8 +132,9 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
               </button>
             ))}
           </div>
+
           <div className="lobby-custom-cost">
-            <span className="lobby-custom-cost-label">Custom Rate:</span>
+            <span className="lobby-custom-cost-label">Custom Loss Rate:</span>
             <div className="lobby-custom-cost-input-wrapper">
               <span className="lobby-custom-cost-prefix">$</span>
               <input
@@ -117,16 +152,16 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
                 aria-label="Custom loss rate in dollars per second"
               />
               <span className="lobby-custom-cost-suffix">
-                / sec (~${new Intl.NumberFormat('en-US').format((Number(customRateInput) || selectedRate) * 3600)}/hr)
+                / sec
               </span>
             </div>
           </div>
         </section>
 
         {/* Join as section */}
-        <section className="lobby-persona-list" aria-label="Participant selection">
+        <section className="lobby-join-section" aria-label="Participant selection">
           <div className="lobby-section-title">
-            Join War Room As:
+            Select Responder Callsign to Enter Bridge:
           </div>
 
           <div className="lobby-persona-list">
@@ -143,22 +178,28 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
                   style={{
                     backgroundColor: persona.avatarColor,
                     color: 'var(--text-inverse)',
+                    boxShadow: `0 0 12px color-mix(in srgb, ${persona.avatarColor} 35%, transparent)`,
                   }}
                   aria-hidden="true"
                 >
                   {persona.displayName[0]}
                 </div>
                 <div className="lobby-persona-info">
-                  <span className="lobby-persona-name">
-                    {persona.displayName}
-                  </span>
+                  <div className="lobby-persona-name-row">
+                    <span className="lobby-persona-name">
+                      {persona.displayName}
+                    </span>
+                    <span className="lobby-persona-uid">
+                      {persona.uid}
+                    </span>
+                  </div>
                   <span className="lobby-persona-role">
                     {persona.role}
                   </span>
                 </div>
                 <div className="lobby-persona-cta">
-                  <span>ENTER</span>
-                  <span aria-hidden="true">→</span>
+                  <span>{isConnecting ? 'CONNECTING' : 'ENTER BRIDGE'}</span>
+                  <span aria-hidden="true" className="lobby-persona-arrow">→</span>
                 </div>
               </button>
             ))}
@@ -167,7 +208,7 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
           {/* Custom Responder Option */}
           <form onSubmit={handleJoinCustom} className="lobby-custom-responder-card">
             <div className="lobby-custom-responder-header">
-              Or Join With Custom Responder Callsign
+              <span>Or Enter Bridge With Custom Responder Callsign</span>
             </div>
             <div className="lobby-custom-responder-fields">
               <input
@@ -191,7 +232,7 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
                 disabled={!customName.trim() || isConnecting}
                 className="lobby-custom-join-btn"
               >
-                <span>LAUNCH</span>
+                <span>{isConnecting ? 'CONNECTING...' : 'LAUNCH BRIDGE'}</span>
                 <span aria-hidden="true">→</span>
               </button>
             </div>
@@ -200,17 +241,18 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
 
         {/* Info Box */}
         <div className="lobby-info-box" role="note">
-          <span className="lobby-info-icon">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <span className="lobby-info-icon" aria-hidden="true">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" />
               <line x1="12" y1="16" x2="12" y2="12" />
               <line x1="12" y1="8" x2="12.01" y2="8" />
             </svg>
           </span>
-          <span>AURA will join automatically after the first participant connects. Speak naturally.</span>
+          <div className="lobby-info-text">
+            <span><strong>Zero-Friction Audio Bridge:</strong> AURA AI activates automatically upon participant entry. Speak naturally across voice channels to test real-time epistemic classification and action extraction.</span>
+          </div>
         </div>
       </div>
     </div>
   );
 }
-
