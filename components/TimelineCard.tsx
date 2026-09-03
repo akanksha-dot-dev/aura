@@ -9,6 +9,7 @@ import { VoiceBadge } from './VoiceBadge';
 export interface TimelineCardProps {
   item: EvidenceItem;
   displayConfidence: number;
+  defaultExpanded?: boolean;
 }
 
 const PERSONA_COLORS: Record<string, string> = {
@@ -50,7 +51,12 @@ function formatTime(timestamp: number): string {
   return `${hours}:${minutes}:${seconds}`;
 }
 
-export function TimelineCard({ item, displayConfidence }: TimelineCardProps) {
+export function TimelineCard({
+  item,
+  displayConfidence,
+  defaultExpanded = true,
+}: TimelineCardProps) {
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const isHypothesis = item.category === 'hypothesis';
   const isDisproven = isHypothesis && item.status === 'disproven';
   const isConfirmed = isHypothesis && item.status === 'confirmed';
@@ -82,11 +88,6 @@ export function TimelineCard({ item, displayConfidence }: TimelineCardProps) {
   const typeClass = isConfirmed
     ? 'timeline-card--fact timeline-card--confirmed'
     : `timeline-card--${item.category}`;
-
-  // Scaled percentage of 85 (CONFIDENCE_CAP)
-  const confidencePercent = isConfirmed
-    ? 100
-    : Math.min(100, Math.max(0, Math.round((displayConfidence / 85) * 100)));
 
   const badgeSymbol = {
     fact: '●',
@@ -137,106 +138,126 @@ export function TimelineCard({ item, displayConfidence }: TimelineCardProps) {
           </div>
         </div>
 
-        <span className="timeline-card__time">
-          {formatTime(item.timestamp)}
-        </span>
-      </div>
-
-      <p
-        className={`timeline-card__content ${
-          isDisproven ? 'timeline-card__content--disproven' : ''
-        }`}
-      >
-        {item.content}
-      </p>
-
-      {/* Disproven Badge entrance animated with Motion springs.disprove */}
-      <AnimatePresence>
-        {isDisproven && (
-          <motion.div
-            className="timeline-card__disproven-badge"
-            initial={{ opacity: 0, scale: 0.6, y: -4 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{
-              type: 'spring',
-              stiffness: springs.disprove.stiffness,
-              damping: springs.disprove.damping,
-              mass: springs.disprove.mass,
-            }}
-          >
-            ✕ [DISPROVEN]
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className="timeline-card__confidence-wrap">
-        <div className="timeline-card__confidence-header">
-          <span className="timeline-card__confidence-title">Confidence</span>
-          <span className="timeline-card__confidence-label">
-            {isConfirmed
-              ? '✓ Confirmed (100%)'
-              : isDisproven
-              ? 'Disproven (0%)'
-              : `${displayConfidence}%`}
+        <div className="timeline-card__header-right">
+          {displayConfidence != null && (
+            <span
+              className={`timeline-card__confidence-pill ${
+                isConfirmed
+                  ? 'timeline-card__confidence-pill--confirmed'
+                  : isDisproven
+                  ? 'timeline-card__confidence-pill--disproven'
+                  : ''
+              }`}
+              title={`Confidence: ${isConfirmed ? '100% (Confirmed)' : isDisproven ? '0% (Disproven)' : `${displayConfidence}%`}`}
+            >
+              {isConfirmed ? '100%' : isDisproven ? '0%' : `${displayConfidence}%`}
+            </span>
+          )}
+          <span className="timeline-card__time">
+            {formatTime(item.timestamp)}
           </span>
-        </div>
-        <div className="timeline-card__confidence-track">
-          <div
-            className="timeline-card__confidence-fill"
-            style={{
-              width: `${isDisproven ? 0 : confidencePercent}%`,
-              backgroundColor: isConfirmed
-                ? 'var(--color-fact)'
-                : isDisproven
-                ? 'var(--color-conflict)'
-                : item.category === 'fact'
-                ? 'var(--color-fact)'
-                : item.category === 'hypothesis'
-                ? 'var(--color-hypothesis)'
-                : item.category === 'decision'
-                ? 'var(--color-decision)'
-                : item.category === 'action'
-                ? 'var(--color-action)'
-                : 'var(--color-conflict)',
+          <button
+            type="button"
+            className="timeline-card__toggle-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsExpanded((prev) => !prev);
             }}
-          />
+            aria-label={isExpanded ? 'Collapse card details' : 'Expand card details'}
+            aria-expanded={isExpanded}
+          >
+            <svg
+              className={`timeline-card__chevron ${isExpanded ? 'timeline-card__chevron--expanded' : ''}`}
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
         </div>
       </div>
 
-      {(item.relatedTo.length > 0 ||
-        item.assignedTo ||
-        item.decidingMetric) && (
-        <div className="timeline-card__footer">
-          {item.assignedTo && (
-            <span className="meta-chip meta-chip--assignee">
-              <svg className="meta-chip__icon" width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0-2.21-3.58-4-6-4s-6 1.79-6 4v1h12v-1zm-10.8-1c.7-1.02 2.6-2 4.8-2s4.1.98 4.8 2H3.2z"/>
-              </svg>
-              <span>{item.assignedTo}</span>
-              {item.actionStatus && (
-                <span className={`meta-chip__status meta-chip__status--${item.actionStatus}`}>
-                  {item.actionStatus}
+      {!isExpanded ? (
+        <p
+          className={`timeline-card__content timeline-card__content--collapsed ${
+            isDisproven ? 'timeline-card__content--disproven' : ''
+          }`}
+          onClick={() => setIsExpanded(true)}
+          title="Click to expand details"
+        >
+          {item.content.length > 90 ? `${item.content.slice(0, 90)}…` : item.content}
+        </p>
+      ) : (
+        <div className="timeline-card__expanded-body">
+          <p
+            className={`timeline-card__content ${
+              isDisproven ? 'timeline-card__content--disproven' : ''
+            }`}
+          >
+            {item.content}
+          </p>
+
+          {/* Disproven Badge entrance animated with Motion springs.disprove */}
+          <AnimatePresence>
+            {isDisproven && (
+              <motion.div
+                className="timeline-card__disproven-badge"
+                initial={{ opacity: 0, scale: 0.6, y: -4 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{
+                  type: 'spring',
+                  stiffness: springs.disprove.stiffness,
+                  damping: springs.disprove.damping,
+                  mass: springs.disprove.mass,
+                }}
+              >
+                ✕ [DISPROVEN]
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {(item.relatedTo.length > 0 ||
+            item.assignedTo ||
+            item.decidingMetric) && (
+            <div className="timeline-card__footer">
+              {item.assignedTo && (
+                <span className="meta-chip meta-chip--assignee">
+                  <svg className="meta-chip__icon" width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0-2.21-3.58-4-6-4s-6 1.79-6 4v1h12v-1zm-10.8-1c.7-1.02 2.6-2 4.8-2s4.1.98 4.8 2H3.2z"/>
+                  </svg>
+                  <span>{item.assignedTo}</span>
+                  {item.actionStatus && (
+                    <span className={`meta-chip__status meta-chip__status--${item.actionStatus}`}>
+                      {item.actionStatus}
+                    </span>
+                  )}
                 </span>
               )}
-            </span>
-          )}
-          {item.decidingMetric && (
-            <span className="meta-chip meta-chip--metric" title={`Deciding Metric: ${item.decidingMetric}`}>
-              <svg className="meta-chip__icon" width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5v-3zM2.5 2a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zm6.5.5A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zM1 10.5A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zm7.5 1a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5z"/>
-              </svg>
-              <span>{item.decidingMetric}</span>
-            </span>
-          )}
-          {item.relatedTo.length > 0 && (
-            <span className="meta-chip meta-chip--related">
-              <svg className="meta-chip__icon" width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1.002 1.002 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4.018 4.018 0 0 1-.128-1.287z"/>
-                <path d="M6.586 4.672A3 3 0 0 0 7.414 9.5l.775-.776a2 2 0 0 1-.896-3.346L9.12 3.55a2 2 0 1 1 2.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 0 0-4.243-4.243L6.586 4.672z"/>
-              </svg>
-              <span>{item.relatedTo.join(', ')}</span>
-            </span>
+              {item.decidingMetric && (
+                <span className="meta-chip meta-chip--metric" title={`Deciding Metric: ${item.decidingMetric}`}>
+                  <svg className="meta-chip__icon" width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5v-3zM2.5 2a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zm6.5.5A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zM1 10.5A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zm7.5 1a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5z"/>
+                  </svg>
+                  <span>{item.decidingMetric}</span>
+                </span>
+              )}
+              {item.relatedTo.length > 0 && (
+                <span className="meta-chip meta-chip--related">
+                  <svg className="meta-chip__icon" width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1.002 1.002 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4.018 4.018 0 0 1-.128-1.287z"/>
+                    <path d="M6.586 4.672A3 3 0 0 0 7.414 9.5l.775-.776a2 2 0 0 1-.896-3.346L9.12 3.55a2 2 0 1 1 2.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 0 0-4.243-4.243L6.586 4.672z"/>
+                  </svg>
+                  <span>{item.relatedTo.join(', ')}</span>
+                </span>
+              )}
+            </div>
           )}
         </div>
       )}

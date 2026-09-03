@@ -65,13 +65,17 @@ export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
             <div>Waiting for incident telemetry and responder speech...</div>
           </div>
         ) : (
-          evidenceItems.map((item) => (
-            <TimelineCard
-              key={item.id}
-              item={item}
-              displayConfidence={getDisplayConfidence(item)}
-            />
-          ))
+          evidenceItems.map((item, idx) => {
+            const isRecent = idx >= evidenceItems.length - 3;
+            return (
+              <TimelineCard
+                key={item.id}
+                item={item}
+                displayConfidence={getDisplayConfidence(item)}
+                defaultExpanded={isRecent}
+              />
+            );
+          })
         )}
       </div>
     </>

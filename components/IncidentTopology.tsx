@@ -306,7 +306,7 @@ export function IncidentTopology({
             markerHeight="6"
             orient="auto-start-reverse"
           >
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(255, 255, 255, 0.25)" />
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(255, 255, 255, 0.2)" />
           </marker>
           <marker
             id="topo-arrowhead-conflict"
@@ -317,7 +317,7 @@ export function IncidentTopology({
             markerHeight="6"
             orient="auto-start-reverse"
           >
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--color-conflict)" />
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(232, 84, 84, 0.6)" />
           </marker>
         </defs>
 
@@ -426,9 +426,9 @@ export function IncidentTopology({
                     y="-9"
                     width={(Math.min(node.content.length, 22) * 6.4 + 16)}
                     height="17"
-                    rx="3"
-                    fill="rgba(19, 18, 25, 0.92)"
-                    stroke={isHovered ? colors.stroke : "rgba(255, 255, 255, 0.1)"}
+                    rx="6"
+                    fill="var(--bg-glass-panel)"
+                    stroke={isHovered ? colors.stroke : "var(--border-glass)"}
                     strokeWidth={isHovered ? "1" : "0.5"}
                   />
                   <text
