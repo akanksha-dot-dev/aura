@@ -501,14 +501,27 @@ function DashboardContent() {
             }}
           />
         </div>
-        <div className="mission-deck__stats">
-          <IncidentStats
-            factCount={factCount}
-            hypothesisCount={hypothesisCount}
-            decisionCount={decisionCount}
-            actionCompletedCount={actionCompletedCount}
-            actionTotalCount={actions.length}
-            conflictCount={conflictCount}
+        <div className="mission-deck__right">
+          <div className="mission-deck__stats">
+            <IncidentStats
+              factCount={factCount}
+              hypothesisCount={hypothesisCount}
+              decisionCount={decisionCount}
+              actionCompletedCount={actionCompletedCount}
+              actionTotalCount={actions.length}
+              conflictCount={conflictCount}
+            />
+          </div>
+          <AgoraAnalyticsOverlay
+            mos={networkStats.mos}
+            jitter={networkStats.jitter}
+            rtt={networkStats.rtt}
+            packetLoss={networkStats.packetLoss}
+            sttLatencyMs={pipelineLatency.stt}
+            llmLatencyMs={pipelineLatency.llm}
+            ttsLatencyMs={pipelineLatency.tts}
+            isCollapsed={isAnalyticsCollapsed}
+            onToggle={() => setIsAnalyticsCollapsed((prev) => !prev)}
           />
         </div>
       </footer>
@@ -527,19 +540,6 @@ function DashboardContent() {
         isOpen={isTranscriptDrawerOpen}
         onClose={() => setIsTranscriptDrawerOpen(false)}
         entries={effectiveTranscripts}
-      />
-
-      {/* 11. Agora Analytics Overlay (WI-506) */}
-      <AgoraAnalyticsOverlay
-        mos={networkStats.mos}
-        jitter={networkStats.jitter}
-        rtt={networkStats.rtt}
-        packetLoss={networkStats.packetLoss}
-        sttLatencyMs={pipelineLatency.stt}
-        llmLatencyMs={pipelineLatency.llm}
-        ttsLatencyMs={pipelineLatency.tts}
-        isCollapsed={isAnalyticsCollapsed}
-        onToggle={() => setIsAnalyticsCollapsed((prev) => !prev)}
       />
     </div>
   );

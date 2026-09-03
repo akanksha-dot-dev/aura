@@ -51,81 +51,86 @@ export function AgoraAnalyticsOverlay({
   const llmMeta = getLatencyMeta(llmLatencyMs, 1200, 500, 1000);
   const ttsMeta = getLatencyMeta(ttsLatencyMs, 600, 200, 500);
 
-  if (isCollapsed) {
-    return (
-      <button
-        type="button"
-        className="agora-analytics-btn"
-        onClick={onToggle}
-        title="Open Agora Telemetry & Pipeline Analytics"
-        aria-label="Open Agora Telemetry Analytics"
-      >
-        <span className="agora-analytics-btn__icon">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M18 20V10" />
-            <path d="M12 20V4" />
-            <path d="M6 20v-6" />
-          </svg>
-        </span>
-        <style>{`
-          .agora-analytics-btn {
-            position: fixed;
-            bottom: 12px;
-            right: 12px;
-            width: 32px;
-            height: 32px;
-            border-radius: var(--radius-lg);
-            background: var(--bg-surface);
-            border: 1px solid var(--border-default);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            z-index: 50;
-            color: var(--text-secondary);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-            transition: background-color var(--duration-fast), border-color var(--duration-fast), color var(--duration-fast), box-shadow var(--duration-fast);
-          }
-          .agora-analytics-btn:hover {
-            background: var(--bg-surface-hover);
-            border-color: var(--color-aura);
-            color: var(--color-aura);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-          }
-          .agora-analytics-btn__icon {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          }
-        `}</style>
-      </button>
-    );
-  }
-
   return (
-    <aside
-      className="agora-analytics-panel"
-      role="region"
-      aria-label="Agora RTC Telemetry and AI Pipeline Latency"
-    >
+    <div className="agora-telemetry-container">
       <style>{`
-        .agora-analytics-panel {
-          position: fixed;
-          bottom: 12px;
-          right: 12px;
-          width: 220px;
-          background: var(--bg-surface);
-          border: 1px solid var(--border-default);
-          border-radius: var(--radius-lg);
-          padding: var(--space-2h);
-          z-index: 50;
-          font-family: var(--font-mono);
-          font-size: var(--text-xs);
-          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+        .agora-telemetry-container {
+          position: relative;
+          display: inline-flex;
+          align-items: center;
           user-select: none;
         }
 
-        .agora-analytics-panel__header {
+        .agora-telemetry-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 3px 8px;
+          background: var(--bg-surface);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-sm);
+          font-family: var(--font-mono);
+          font-size: 0.6875rem;
+          color: var(--text-secondary);
+          cursor: pointer;
+          white-space: nowrap;
+          transition: background-color var(--duration-fast), border-color var(--duration-fast), color var(--duration-fast);
+        }
+
+        .agora-telemetry-pill:hover {
+          background: var(--bg-surface-hover);
+          border-color: var(--border-emphasis);
+          color: var(--text-primary);
+        }
+
+        .agora-telemetry-pill--active {
+          border-color: var(--color-aura);
+          background: var(--color-aura-dim);
+          color: var(--text-primary);
+        }
+
+        .agora-telemetry-pill__signal {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          line-height: 1;
+        }
+
+        .agora-telemetry-pill__metric {
+          font-variant-numeric: tabular-nums;
+          font-weight: var(--weight-medium);
+        }
+
+        .agora-telemetry-pill__divider {
+          width: 1px;
+          height: 10px;
+          background: var(--border-subtle);
+        }
+
+        .agora-telemetry-pill__arrow {
+          font-size: 0.5625rem;
+          color: var(--text-muted);
+          margin-left: 1px;
+          transition: transform var(--duration-fast);
+        }
+
+        .agora-telemetry-popover {
+          position: absolute;
+          bottom: calc(100% + 8px);
+          right: 0;
+          width: 230px;
+          background: var(--bg-surface-raised);
+          border: 1px solid var(--border-emphasis);
+          border-radius: var(--radius-md);
+          padding: var(--space-3);
+          z-index: var(--z-dropdown);
+          font-family: var(--font-mono);
+          font-size: var(--text-xs);
+          box-shadow: var(--shadow-panel);
+          backdrop-filter: blur(8px);
+        }
+
+        .agora-telemetry-popover__header {
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -134,192 +139,237 @@ export function AgoraAnalyticsOverlay({
           margin-bottom: var(--space-2);
         }
 
-        .agora-analytics-panel__title {
+        .agora-telemetry-popover__title {
           font-size: 0.6875rem;
           font-weight: var(--weight-bold);
           color: var(--color-aura);
-          letter-spacing: 0.08em;
+          letter-spacing: 0.06em;
           text-transform: uppercase;
         }
 
-        .agora-analytics-panel__close-btn {
+        .agora-telemetry-popover__close-btn {
           background: transparent;
           border: none;
           color: var(--text-muted);
           font-size: var(--text-xs);
           cursor: pointer;
-          padding: 0 2px;
+          padding: 0 4px;
           line-height: 1;
         }
 
-        .agora-analytics-panel__close-btn:hover {
+        .agora-telemetry-popover__close-btn:hover {
           color: var(--text-primary);
         }
 
-        .agora-analytics-panel__grid {
+        .agora-telemetry-popover__grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: var(--space-1);
-          margin-bottom: var(--space-2h);
+          gap: var(--space-1h);
+          margin-bottom: var(--space-2);
         }
 
-        .agora-analytics-panel__stat {
+        .agora-telemetry-popover__stat {
           display: flex;
           align-items: baseline;
           justify-content: space-between;
           font-size: 0.6875rem;
         }
 
-        .agora-analytics-panel__label {
+        .agora-telemetry-popover__label {
           color: var(--text-muted);
         }
 
-        .agora-analytics-panel__value {
+        .agora-telemetry-popover__value {
           font-weight: var(--weight-semibold);
           color: var(--text-primary);
+          font-variant-numeric: tabular-nums;
         }
 
-        .agora-analytics-panel__divider {
+        .agora-telemetry-popover__divider {
           height: 1px;
           background: var(--border-subtle);
           margin: var(--space-1h) 0 var(--space-2) 0;
         }
 
-        .agora-analytics-panel__pipeline-title {
-          font-size: 0.6875rem;
-          font-weight: var(--weight-semibold);
+        .agora-telemetry-popover__pipeline-title {
+          font-size: 0.625rem;
+          font-weight: var(--weight-bold);
           color: var(--text-secondary);
           letter-spacing: 0.06em;
           text-transform: uppercase;
           margin-bottom: var(--space-1h);
         }
 
-        .agora-analytics-panel__pipeline-row {
+        .agora-telemetry-popover__pipeline-row {
           display: flex;
           flex-direction: column;
           gap: 2px;
           margin-bottom: var(--space-1h);
         }
 
-        .agora-analytics-panel__pipeline-row:last-child {
+        .agora-telemetry-popover__pipeline-row:last-child {
           margin-bottom: 0;
         }
 
-        .agora-analytics-panel__pipeline-meta {
+        .agora-telemetry-popover__pipeline-meta {
           display: flex;
           align-items: center;
           justify-content: space-between;
           font-size: 0.625rem;
         }
 
-        .agora-analytics-panel__pipeline-track {
+        .agora-telemetry-popover__pipeline-track {
           height: 4px;
-          background: var(--bg-surface-raised);
+          background: var(--bg-surface);
           border-radius: var(--radius-sm);
           overflow: hidden;
           width: 100%;
         }
 
-        .agora-analytics-panel__pipeline-bar {
+        .agora-telemetry-popover__pipeline-bar {
           height: 100%;
           border-radius: var(--radius-sm);
           transition: width var(--duration-fast) var(--ease-standard);
         }
       `}</style>
 
-      {/* Header */}
-      <div className="agora-analytics-panel__header">
-        <span className="agora-analytics-panel__title">Agora Quality</span>
-        <button
-          type="button"
-          className="agora-analytics-panel__close-btn"
-          onClick={onToggle}
-          title="Collapse analytics overlay"
-          aria-label="Collapse analytics"
+      {/* Inline Telemetry Pill */}
+      <button
+        type="button"
+        className={`agora-telemetry-pill ${!isCollapsed ? 'agora-telemetry-pill--active' : ''}`}
+        onClick={onToggle}
+        title="Agora RTC Telemetry (Click to expand AI Pipeline Latency)"
+        aria-expanded={!isCollapsed}
+        aria-label="Agora RTC Telemetry"
+      >
+        <span className="agora-telemetry-pill__signal" style={{ color: getMosColor(mos) }}>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M2 20h.01" />
+            <path d="M7 20v-4" />
+            <path d="M12 20v-8" />
+            <path d="M17 20V4" />
+          </svg>
+        </span>
+        <span className="agora-telemetry-pill__metric" style={{ color: getMosColor(mos) }}>
+          MOS {mos.toFixed(1)}
+        </span>
+        <span className="agora-telemetry-pill__divider" />
+        <span className="agora-telemetry-pill__metric">
+          {rtt}ms
+        </span>
+        <span className="agora-telemetry-pill__divider" />
+        <span
+          className="agora-telemetry-pill__metric"
+          style={packetLoss > 0 ? { color: 'var(--color-conflict)' } : undefined}
         >
-          ▾
-        </button>
-      </div>
+          {packetLoss.toFixed(0)}% loss
+        </span>
+        <span className="agora-telemetry-pill__arrow" aria-hidden="true">
+          {!isCollapsed ? '▾' : '▲'}
+        </span>
+      </button>
 
-      {/* Quality Metrics */}
-      <div className="agora-analytics-panel__grid">
-        <div className="agora-analytics-panel__stat">
-          <span className="agora-analytics-panel__label">MOS:</span>
-          <span
-            className="agora-analytics-panel__value"
-            style={{ color: getMosColor(mos) }}
-          >
-            {mos.toFixed(1)}
-          </span>
-        </div>
-        <div className="agora-analytics-panel__stat">
-          <span className="agora-analytics-panel__label">Jitter:</span>
-          <span className="agora-analytics-panel__value">{jitter}ms</span>
-        </div>
-        <div className="agora-analytics-panel__stat">
-          <span className="agora-analytics-panel__label">RTT:</span>
-          <span className="agora-analytics-panel__value">{rtt}ms</span>
-        </div>
-        <div className="agora-analytics-panel__stat">
-          <span className="agora-analytics-panel__label">Loss:</span>
-          <span className="agora-analytics-panel__value">
-            {packetLoss.toFixed(1)}%
-          </span>
-        </div>
-      </div>
+      {/* Anchored Detail Popover */}
+      {!isCollapsed && (
+        <aside
+          className="agora-telemetry-popover"
+          role="region"
+          aria-label="Agora RTC Telemetry and AI Pipeline Latency"
+        >
+          <div className="agora-telemetry-popover__header">
+            <span className="agora-telemetry-popover__title">Agora Voice Diagnostics</span>
+            <button
+              type="button"
+              className="agora-telemetry-popover__close-btn"
+              onClick={onToggle}
+              title="Close diagnostics popover"
+              aria-label="Close diagnostics"
+            >
+              ✕
+            </button>
+          </div>
 
-      <div className="agora-analytics-panel__divider" />
+          {/* Quality Metrics */}
+          <div className="agora-telemetry-popover__grid">
+            <div className="agora-telemetry-popover__stat">
+              <span className="agora-telemetry-popover__label">MOS:</span>
+              <span
+                className="agora-telemetry-popover__value"
+                style={{ color: getMosColor(mos) }}
+              >
+                {mos.toFixed(1)}
+              </span>
+            </div>
+            <div className="agora-telemetry-popover__stat">
+              <span className="agora-telemetry-popover__label">Jitter:</span>
+              <span className="agora-telemetry-popover__value">{jitter}ms</span>
+            </div>
+            <div className="agora-telemetry-popover__stat">
+              <span className="agora-telemetry-popover__label">RTT:</span>
+              <span className="agora-telemetry-popover__value">{rtt}ms</span>
+            </div>
+            <div className="agora-telemetry-popover__stat">
+              <span className="agora-telemetry-popover__label">Loss:</span>
+              <span className="agora-telemetry-popover__value">
+                {packetLoss.toFixed(1)}%
+              </span>
+            </div>
+          </div>
 
-      {/* AI Pipeline Latency */}
-      <div className="agora-analytics-panel__pipeline-title">AI Pipeline</div>
+          <div className="agora-telemetry-popover__divider" />
 
-      <div className="agora-analytics-panel__pipeline-row">
-        <div className="agora-analytics-panel__pipeline-meta">
-          <span className="agora-analytics-panel__label">STT (Speech)</span>
-          <span className="agora-analytics-panel__value">{sttMeta.label}</span>
-        </div>
-        <div className="agora-analytics-panel__pipeline-track">
-          <div
-            className="agora-analytics-panel__pipeline-bar"
-            style={{
-              width: `${sttMeta.percent}%`,
-              background: sttMeta.color,
-            }}
-          />
-        </div>
-      </div>
+          {/* AI Pipeline Latency */}
+          <div className="agora-telemetry-popover__pipeline-title">AI Pipeline Latency</div>
 
-      <div className="agora-analytics-panel__pipeline-row">
-        <div className="agora-analytics-panel__pipeline-meta">
-          <span className="agora-analytics-panel__label">LLM (Reasoning)</span>
-          <span className="agora-analytics-panel__value">{llmMeta.label}</span>
-        </div>
-        <div className="agora-analytics-panel__pipeline-track">
-          <div
-            className="agora-analytics-panel__pipeline-bar"
-            style={{
-              width: `${llmMeta.percent}%`,
-              background: llmMeta.color,
-            }}
-          />
-        </div>
-      </div>
+          <div className="agora-telemetry-popover__pipeline-row">
+            <div className="agora-telemetry-popover__pipeline-meta">
+              <span className="agora-telemetry-popover__label">STT (Speech)</span>
+              <span className="agora-telemetry-popover__value">{sttMeta.label}</span>
+            </div>
+            <div className="agora-telemetry-popover__pipeline-track">
+              <div
+                className="agora-telemetry-popover__pipeline-bar"
+                style={{
+                  width: `${sttMeta.percent}%`,
+                  background: sttMeta.color,
+                }}
+              />
+            </div>
+          </div>
 
-      <div className="agora-analytics-panel__pipeline-row">
-        <div className="agora-analytics-panel__pipeline-meta">
-          <span className="agora-analytics-panel__label">TTS (Voice)</span>
-          <span className="agora-analytics-panel__value">{ttsMeta.label}</span>
-        </div>
-        <div className="agora-analytics-panel__pipeline-track">
-          <div
-            className="agora-analytics-panel__pipeline-bar"
-            style={{
-              width: `${ttsMeta.percent}%`,
-              background: ttsMeta.color,
-            }}
-          />
-        </div>
-      </div>
-    </aside>
+          <div className="agora-telemetry-popover__pipeline-row">
+            <div className="agora-telemetry-popover__pipeline-meta">
+              <span className="agora-telemetry-popover__label">LLM (Reasoning)</span>
+              <span className="agora-telemetry-popover__value">{llmMeta.label}</span>
+            </div>
+            <div className="agora-telemetry-popover__pipeline-track">
+              <div
+                className="agora-telemetry-popover__pipeline-bar"
+                style={{
+                  width: `${llmMeta.percent}%`,
+                  background: llmMeta.color,
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="agora-telemetry-popover__pipeline-row">
+            <div className="agora-telemetry-popover__pipeline-meta">
+              <span className="agora-telemetry-popover__label">TTS (MiniMax)</span>
+              <span className="agora-telemetry-popover__value">{ttsMeta.label}</span>
+            </div>
+            <div className="agora-telemetry-popover__pipeline-track">
+              <div
+                className="agora-telemetry-popover__pipeline-bar"
+                style={{
+                  width: `${ttsMeta.percent}%`,
+                  background: ttsMeta.color,
+                }}
+              />
+            </div>
+          </div>
+        </aside>
+      )}
+    </div>
   );
 }

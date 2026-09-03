@@ -761,33 +761,48 @@ input, textarea, select {
   grid-template-rows: 52px 0px 1fr 68px;
 }
 
-/* ─── Mission Deck / Bottom Dock (WI-705) ─── */
+/* ─── Mission Deck / Bottom Dock (WI-705 & WI-706) ─── */
 .mission-deck {
   grid-area: dock;
   height: 68px;
   background: var(--bg-surface-raised);
   border-top: 1px solid var(--border-default);
   box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.45);
-  display: grid;
-  grid-template-columns: 240px 1fr 340px;
+  display: flex;
   align-items: center;
-  overflow: hidden;
+  justify-content: space-between;
+  overflow: visible;
   z-index: var(--z-sticky);
 }
 
 .mission-deck__tension {
+  width: 240px;
   height: 100%;
+  flex-shrink: 0;
   overflow: hidden;
 }
 
 .mission-deck__captions {
+  flex: 1;
   height: 100%;
+  min-width: 0;
   overflow: hidden;
+}
+
+.mission-deck__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 100%;
+  padding-right: var(--space-3);
+  flex-shrink: 0;
+  position: relative;
 }
 
 .mission-deck__stats {
   height: 100%;
-  overflow: hidden;
+  display: flex;
+  align-items: center;
 }
 
 /* ─── Incident Topology Graph (Star 3 & 5) ─── */
