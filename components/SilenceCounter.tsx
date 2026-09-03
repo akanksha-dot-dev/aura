@@ -27,15 +27,22 @@ export function SilenceCounter({
     return () => clearInterval(interval);
   }, [agentLastSpokeAt, agentIsSpeaking]);
 
-  let displayText: string;
+  let icon: string;
+  let text: string;
+  let isTimer = false;
   if (agentIsSpeaking) {
-    displayText = '🔊 Speaking';
+    icon = '🔊';
+    text = 'Speaking';
   } else if (silentSec < 60) {
-    displayText = `⏸ ${silentSec}s`;
+    icon = '⏸';
+    text = `${silentSec}s`;
+    isTimer = true;
   } else {
     const min = Math.floor(silentSec / 60);
     const sec = silentSec % 60;
-    displayText = `⏸ ${min}m ${sec}s`;
+    icon = '⏸';
+    text = `${min}m ${sec}s`;
+    isTimer = true;
   }
 
   const statusClass = agentIsSpeaking
@@ -50,14 +57,17 @@ export function SilenceCounter({
     <>
       <style>{`
         .silence-counter {
-          font-family: var(--font-mono);
+          font-family: var(--font-sans);
           font-size: var(--text-xs);
-          font-variant-numeric: tabular-nums;
           display: inline-flex;
           align-items: center;
           gap: var(--space-1);
           white-space: nowrap;
           transition: color var(--duration-normal) var(--ease-standard);
+        }
+        .silence-counter__val {
+          font-family: var(--font-mono);
+          font-variant-numeric: tabular-nums;
         }
         .silence-counter--speaking {
           color: var(--color-fact);
@@ -77,10 +87,11 @@ export function SilenceCounter({
       `}</style>
       <span
         className={`silence-counter ${statusClass}`}
-        title={`AURA activity status: ${displayText}`}
-        aria-label={`AURA activity status: ${displayText}`}
+        title={`AURA activity status: ${icon} ${text}`}
+        aria-label={`AURA activity status: ${icon} ${text}`}
       >
-        {displayText}
+        <span aria-hidden="true">{icon}</span>
+        <span className={isTimer ? 'silence-counter__val' : undefined}>{text}</span>
       </span>
     </>
   );

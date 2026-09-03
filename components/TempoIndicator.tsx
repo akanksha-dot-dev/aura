@@ -17,7 +17,7 @@ export function TempoIndicator({ level }: TempoIndicatorProps) {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          font-family: var(--font-mono);
+          font-family: var(--font-sans);
           font-size: var(--text-xs);
           color: var(--text-muted);
           width: 100%;
@@ -26,6 +26,7 @@ export function TempoIndicator({ level }: TempoIndicatorProps) {
           display: inline-flex;
           align-items: center;
           gap: 2px;
+          font-family: var(--font-mono);
           letter-spacing: 0.1em;
           user-select: none;
         }
@@ -40,7 +41,7 @@ export function TempoIndicator({ level }: TempoIndicatorProps) {
         className="tempo-indicator"
         aria-label={`Incident tempo: ${clamped} of 5`}
       >
-        <span>TEMPO:</span>
+        <span>Incident Tempo</span>
         <span className="tempo-indicator__dots" aria-hidden="true">
           {dots.map((d) => (
             <span

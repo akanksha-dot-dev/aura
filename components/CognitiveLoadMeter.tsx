@@ -29,9 +29,14 @@ export function CognitiveLoadMeter({ score }: CognitiveLoadMeterProps) {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          font-family: var(--font-mono);
+          font-family: var(--font-sans);
           font-size: var(--text-xs);
           color: var(--text-muted);
+        }
+        .cognitive-load-meter__value {
+          font-family: var(--font-mono);
+          font-variant-numeric: tabular-nums;
+          font-weight: var(--weight-medium);
         }
         .cognitive-load-meter__track {
           width: 100%;
@@ -52,8 +57,8 @@ export function CognitiveLoadMeter({ score }: CognitiveLoadMeterProps) {
         aria-label={`Cognitive load: ${clamped}%`}
       >
         <div className="cognitive-load-meter__header">
-          <span>LOAD:</span>
-          <span style={{ fontVariantNumeric: 'tabular-nums', color: fillColor }}>
+          <span>Cognitive Load</span>
+          <span className="cognitive-load-meter__value" style={{ color: fillColor }}>
             {clamped}%
           </span>
         </div>

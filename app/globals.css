@@ -903,7 +903,7 @@ input, textarea, select {
   width: 100vw;
   height: 100vh;
   display: grid;
-  grid-template-columns: 250px 1fr 290px;
+  grid-template-columns: var(--speaker-col-width, 250px) 1fr 290px;
   grid-template-rows: 52px auto 1fr 68px;
   grid-template-areas:
     "status    status    status"
@@ -916,6 +916,11 @@ input, textarea, select {
   color: var(--text-primary);
   overflow: hidden;
   z-index: 1;
+  transition: grid-template-columns var(--transition-panel);
+}
+
+.command-center.speakers-collapsed {
+  --speaker-col-width: var(--panel-collapsed-width, 48px);
 }
 
 .command-center:not(.has-conflict) {
@@ -932,10 +937,11 @@ input, textarea, select {
   border-top: 1px solid var(--border-glass-emphasis);
   box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.45);
   display: grid;
-  grid-template-columns: 250px 1fr auto;
+  grid-template-columns: var(--speaker-col-width, 250px) 1fr auto;
   align-items: center;
   overflow: visible;
   z-index: var(--z-sticky);
+  transition: grid-template-columns var(--transition-panel);
 }
 
 .mission-deck__tension {

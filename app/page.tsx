@@ -43,6 +43,7 @@ function DashboardContent() {
   const [transcriptHistory, setTranscriptHistory] = useState<TranscriptEntry[]>([]);
   const [isAnalyticsCollapsed, setIsAnalyticsCollapsed] = useState(true);
   const [isCostPaused, setIsCostPaused] = useState(false);
+  const [isSpeakerCollapsed, setIsSpeakerCollapsed] = useState(false);
 
   // Global Mission-Control Keyboard Shortcuts (T: Tab, J: Drawer, P: Postmortem, K: Pause Cost, Esc: Close)
   useEffect(() => {
@@ -425,7 +426,7 @@ function DashboardContent() {
     <div
       className={`command-center ${activeConflict ? 'has-conflict' : ''} ${
         state.status === 'resolved' ? 'command-center--resolved' : ''
-      }`}
+      } ${isSpeakerCollapsed ? 'speakers-collapsed' : ''}`}
     >
       {/* 1. Status Bar */}
       <StatusBar
@@ -455,6 +456,8 @@ function DashboardContent() {
         agentIsSpeaking={(volumeLevels['aura_agent'] ?? 0) > 20}
         cognitiveLoadScore={state.cognitiveLoadScore}
         tempoLevel={tempoLevel}
+        isCollapsed={isSpeakerCollapsed}
+        onToggleCollapse={() => setIsSpeakerCollapsed((prev) => !prev)}
       />
 
       {/* 3. Conflict Banner (Conditional) */}
