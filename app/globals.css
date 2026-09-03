@@ -1550,8 +1550,8 @@ input, textarea, select {
     grid-template-rows: 52px 0px 1fr 68px;
   }
 
-  .mission-deck {
-    grid-template-columns: 210px 1fr 300px;
+  .mission-deck__tension {
+    width: 210px;
   }
 
   .status-bar {
@@ -1569,8 +1569,8 @@ input, textarea, select {
     grid-template-columns: 195px 1fr 210px;
   }
 
-  .mission-deck {
-    grid-template-columns: 180px 1fr 260px;
+  .mission-deck__tension {
+    width: 195px;
   }
 }
 
