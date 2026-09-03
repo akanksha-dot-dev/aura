@@ -260,15 +260,30 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
 
       // 3. Create and publish local microphone audio track if not already active
       if (!localTrackRef.current) {
-        const audioTrack = await AgoraRTC.createMicrophoneAudioTrack({
-          AEC: true, // Acoustic Echo Cancellation
-          ANS: true, // Noise Suppression
-          AGC: true, // Auto Gain Control
-        });
+        try {
+          const audioTrack = await AgoraRTC.createMicrophoneAudioTrack({
+            AEC: true, // Acoustic Echo Cancellation
+            ANS: true, // Noise Suppression
+            AGC: true, // Auto Gain Control
+          });
 
-        localTrackRef.current = audioTrack;
-        setLocalAudioTrack(audioTrack);
-        await client.publish([audioTrack]);
+          localTrackRef.current = audioTrack;
+          setLocalAudioTrack(audioTrack);
+          await client.publish([audioTrack]);
+        } catch (micErr) {
+          const micMsg = micErr instanceof Error ? micErr.message : String(micErr);
+          if (
+            micMsg.includes('PERMISSION_DENIED') ||
+            micMsg.includes('NotAllowedError') ||
+            micMsg.includes('Permission dismissed')
+          ) {
+            console.warn('[useAgoraRTC] Microphone permission dismissed/denied. Connected in listen-only mode.');
+            setError('Microphone permission dismissed. Connected in listen-only mode.');
+          } else {
+            console.warn('[useAgoraRTC] Could not initialize microphone track:', micErr);
+            setError('Microphone unavailable. Connected in listen-only mode.');
+          }
+        }
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to join voice channel';
