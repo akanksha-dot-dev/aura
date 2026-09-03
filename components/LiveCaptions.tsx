@@ -19,10 +19,12 @@ export function LiveCaptions({
     <>
       <style>{`
         .live-captions {
-          grid-area: captions;
-          height: 40px;
-          background: var(--bg-surface);
-          border-top: 1px solid var(--border-subtle);
+          height: 100%;
+          width: 100%;
+          background: transparent;
+          border: none;
+          border-left: 1px solid var(--border-subtle);
+          border-right: 1px solid var(--border-subtle);
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -40,28 +42,53 @@ export function LiveCaptions({
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
+          font-family: var(--font-mono);
           font-size: var(--text-sm);
         }
 
         .live-captions__icon {
-          font-size: var(--text-xs);
+          display: flex;
+          align-items: center;
           color: var(--color-aura);
           flex-shrink: 0;
         }
 
         .live-captions__speaker {
-          font-family: var(--font-sans);
-          font-weight: var(--weight-semibold);
+          font-family: var(--font-mono);
+          font-size: 0.6875rem;
+          font-weight: var(--weight-bold);
           color: var(--color-aura);
+          background: var(--color-aura-dim);
+          border: 1px solid rgba(212, 168, 83, 0.25);
+          padding: 2px 6px;
+          border-radius: var(--radius-sm);
+          letter-spacing: 0.04em;
           flex-shrink: 0;
         }
 
         .live-captions__text {
-          color: var(--text-secondary);
-          font-style: normal;
+          color: var(--text-primary);
+          letter-spacing: 0.02em;
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
+        }
+
+        .live-captions__cursor {
+          display: inline-block;
+          width: 6px;
+          height: 13px;
+          background: var(--color-aura);
+          margin-left: 3px;
+          vertical-align: middle;
+          animation: cursor-blink 1s steps(2, start) infinite;
+          flex-shrink: 0;
+        }
+
+        @keyframes cursor-blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
         }
 
         .live-captions__standby {
@@ -72,13 +99,14 @@ export function LiveCaptions({
         .live-captions__drawer-btn {
           display: inline-flex;
           align-items: center;
-          gap: var(--space-1);
-          padding: 2px 8px;
-          background: var(--bg-surface-raised);
+          gap: 6px;
+          padding: 3px 8px;
+          background: var(--bg-surface);
           border: 1px solid var(--border-default);
-          border-radius: var(--radius-md);
+          border-radius: var(--radius-sm);
           font-family: var(--font-mono);
           font-size: var(--text-xs);
+          font-weight: var(--weight-medium);
           color: var(--text-secondary);
           cursor: pointer;
           flex-shrink: 0;
@@ -89,6 +117,7 @@ export function LiveCaptions({
         .live-captions__drawer-btn:hover {
           background: var(--bg-surface-hover);
           color: var(--text-primary);
+          border-color: var(--border-emphasis);
         }
       `}</style>
       <div
@@ -109,16 +138,17 @@ export function LiveCaptions({
             <>
               {currentSpeakerName && (
                 <span className="live-captions__speaker">
-                  {currentSpeakerName}:
+                  {currentSpeakerName}
                 </span>
               )}
               <span className="live-captions__text">
                 &ldquo;{currentTranscript}&rdquo;
               </span>
+              <span className="live-captions__cursor" aria-hidden="true" />
             </>
           ) : (
             <span className="live-captions__standby">
-              Listening to voice channel...
+              Awaiting voice activity on tactical bridge...
             </span>
           )}
         </div>
@@ -129,8 +159,7 @@ export function LiveCaptions({
           onClick={onToggleTranscriptDrawer}
           title="Toggle Full Transcript Drawer (Press J)"
         >
-          <span>▼</span>
-          <span>Full</span>
+          <span>Log</span>
           <kbd className="keyboard-hint-badge">J</kbd>
         </button>
       </div>

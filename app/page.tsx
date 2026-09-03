@@ -483,31 +483,35 @@ function DashboardContent() {
         onStatusChange={updateActionStatus}
       />
 
-      {/* 6. Narrative Bar */}
-      <NarrativeBar
-        tensionHistory={tensionHistory}
-        oodaPhase={state.currentOODAPhase}
-        inflectionPoints={inflectionPoints}
-      />
-
-      {/* 7. Incident Stats */}
-      <IncidentStats
-        factCount={factCount}
-        hypothesisCount={hypothesisCount}
-        decisionCount={decisionCount}
-        actionCompletedCount={actionCompletedCount}
-        actionTotalCount={actions.length}
-        conflictCount={conflictCount}
-      />
-
-      {/* 8. Live Captions */}
-      <LiveCaptions
-        currentSpeakerName={captionSpeakerName}
-        currentTranscript={currentTranscript}
-        onToggleTranscriptDrawer={() => {
-          setIsTranscriptDrawerOpen((prev) => !prev);
-        }}
-      />
+      {/* 6-8. Unified Mission Deck (Bottom Dock: Tension Sparkline, Live Captions, Incident Stats) */}
+      <footer className="mission-deck" role="region" aria-label="Incident Mission Deck">
+        <div className="mission-deck__tension">
+          <NarrativeBar
+            tensionHistory={tensionHistory}
+            oodaPhase={state.currentOODAPhase}
+            inflectionPoints={inflectionPoints}
+          />
+        </div>
+        <div className="mission-deck__captions">
+          <LiveCaptions
+            currentSpeakerName={captionSpeakerName}
+            currentTranscript={currentTranscript}
+            onToggleTranscriptDrawer={() => {
+              setIsTranscriptDrawerOpen((prev) => !prev);
+            }}
+          />
+        </div>
+        <div className="mission-deck__stats">
+          <IncidentStats
+            factCount={factCount}
+            hypothesisCount={hypothesisCount}
+            decisionCount={decisionCount}
+            actionCompletedCount={actionCompletedCount}
+            actionTotalCount={actions.length}
+            conflictCount={conflictCount}
+          />
+        </div>
+      </footer>
 
       {/* 9. SRE Postmortem Report Modal (Star 7) */}
       <PostmortemModal

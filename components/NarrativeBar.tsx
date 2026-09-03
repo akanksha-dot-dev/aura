@@ -13,8 +13,8 @@ export function NarrativeBar({
   tensionHistory,
   inflectionPoints,
 }: NarrativeBarProps) {
-  const width = 600;
-  const height = 44;
+  const width = 300;
+  const height = 36;
 
   const minTime =
     tensionHistory.length > 0 ? tensionHistory[0].timestamp : 0;
@@ -33,8 +33,8 @@ export function NarrativeBar({
           const x = ((p.timestamp - minTime) / timeSpan) * width;
           const y =
             height -
-            (Math.min(100, Math.max(0, p.value)) / 100) * (height - 10) -
-            5;
+            (Math.min(100, Math.max(0, p.value)) / 100) * (height - 8) -
+            4;
           return [x, y] as [number, number];
         })
       : [
@@ -52,41 +52,48 @@ export function NarrativeBar({
     <>
       <style>{`
         .narrative-bar {
-          grid-area: narrative;
-          height: 64px;
-          background: var(--bg-surface);
-          border-top: 1px solid var(--border-subtle);
+          height: 100%;
+          width: 100%;
+          background: transparent;
+          border: none;
           display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 0 var(--space-4);
-          gap: var(--space-4);
+          flex-direction: column;
+          justify-content: center;
+          padding: var(--space-2) var(--space-3);
+          gap: 2px;
           user-select: none;
           overflow: hidden;
         }
 
-        .narrative-bar__left {
+        .narrative-bar__header {
           display: flex;
           align-items: center;
-          gap: var(--space-3);
-          flex: 1;
-          min-width: 0;
+          justify-content: space-between;
+          width: 100%;
+          line-height: 1;
         }
 
         .narrative-bar__label {
           font-family: var(--font-mono);
-          font-size: var(--text-xs);
-          font-weight: var(--weight-semibold);
-          color: var(--text-secondary);
+          font-size: 0.625rem;
+          font-weight: var(--weight-bold);
+          color: var(--text-muted);
           letter-spacing: 0.08em;
           text-transform: uppercase;
           white-space: nowrap;
         }
 
+        .narrative-bar__val {
+          font-family: var(--font-mono);
+          font-size: 0.625rem;
+          color: var(--color-aura);
+          font-weight: var(--weight-semibold);
+          white-space: nowrap;
+        }
+
         .narrative-bar__svg-wrap {
-          flex: 1;
-          height: 44px;
-          max-width: 600px;
+          width: 100%;
+          height: 36px;
           display: flex;
           align-items: center;
         }
@@ -96,105 +103,47 @@ export function NarrativeBar({
           height: 100%;
           overflow: visible;
         }
-
-        .narrative-bar__markers {
-          display: flex;
-          align-items: center;
-          gap: var(--space-3);
-          flex-shrink: 0;
-          overflow-x: auto;
-        }
-
-        .narrative-marker {
-          display: inline-flex;
-          align-items: center;
-          gap: var(--space-1);
-          font-family: var(--font-mono);
-          font-size: var(--text-xs);
-          color: var(--text-muted);
-          white-space: nowrap;
-        }
-
-        .narrative-marker__icon--conflict {
-          color: var(--color-conflict);
-        }
-
-        .narrative-marker__icon--decision {
-          color: var(--color-decision);
-        }
-
-        .narrative-marker__icon--resolved {
-          color: var(--color-fact);
-        }
-
-        .narrative-marker__icon--default {
-          color: var(--color-aura);
-        }
       `}</style>
-      <footer className="narrative-bar" aria-label="Incident cognitive tension narrative">
-        <div className="narrative-bar__left">
-          <span className="narrative-bar__label">Tension</span>
-
-          <div className="narrative-bar__svg-wrap">
-            <svg
-              className="narrative-bar__svg"
-              viewBox={`0 0 ${width} ${height}`}
-              preserveAspectRatio="none"
-              aria-hidden="true"
-            >
-              <defs>
-                <linearGradient id="narrative-grad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--color-aura)" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="var(--color-aura)" stopOpacity="0.0" />
-                </linearGradient>
-              </defs>
-
-              <path d={areaPath} fill="url(#narrative-grad)" />
-              <path
-                d={linePath}
-                fill="none"
-                stroke="var(--color-aura)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
+      <div className="narrative-bar" aria-label="Incident cognitive tension narrative">
+        <div className="narrative-bar__header">
+          <span className="narrative-bar__label">Tension Index</span>
+          {inflectionPoints.length > 0 ? (
+            <span className="narrative-bar__val">
+              {inflectionPoints[inflectionPoints.length - 1].label}
+            </span>
+          ) : (
+            <span className="narrative-bar__val" style={{ color: 'var(--text-disabled)' }}>
+              Nominal
+            </span>
+          )}
         </div>
 
-        <div className="narrative-bar__markers">
-          {inflectionPoints.map((pt, idx) => {
-            const isConflict = pt.label.toLowerCase().includes('conflict');
-            const isDecision = pt.label.toLowerCase().includes('decid');
-            const isResolved = pt.label.toLowerCase().includes('resolv');
+        <div className="narrative-bar__svg-wrap">
+          <svg
+            className="narrative-bar__svg"
+            viewBox={`0 0 ${width} ${height}`}
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <defs>
+              <linearGradient id="narrative-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--color-aura)" stopOpacity="0.25" />
+                <stop offset="100%" stopColor="var(--color-aura)" stopOpacity="0.0" />
+              </linearGradient>
+            </defs>
 
-            const iconClass = isConflict
-              ? 'narrative-marker__icon--conflict'
-              : isDecision
-              ? 'narrative-marker__icon--decision'
-              : isResolved
-              ? 'narrative-marker__icon--resolved'
-              : 'narrative-marker__icon--default';
-
-            const symbol = isConflict
-              ? '◆'
-              : isDecision
-              ? '▲'
-              : isResolved
-              ? '✓'
-              : '●';
-
-            return (
-              <div key={idx} className="narrative-marker">
-                <span className={iconClass} aria-hidden="true">
-                  {symbol}
-                </span>
-                <span>{pt.label}</span>
-              </div>
-            );
-          })}
+            <path d={areaPath} fill="url(#narrative-grad)" />
+            <path
+              d={linePath}
+              fill="none"
+              stroke="var(--color-aura)"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
         </div>
-      </footer>
+      </div>
     </>
   );
 }
