@@ -916,6 +916,35 @@ input, textarea, select {
   --speaker-col-width: var(--panel-collapsed-width, 48px);
 }
 
+.command-center.speakers-collapsed .mission-deck {
+  grid-template-columns: var(--panel-collapsed-width, 48px) minmax(0, 1fr) auto;
+}
+
+.command-center.speakers-collapsed .mission-deck__tension {
+  min-width: var(--panel-collapsed-width, 48px);
+  width: var(--panel-collapsed-width, 48px);
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.command-center.speakers-collapsed .mission-deck__tension .narrative-bar {
+  padding: 0 4px;
+  justify-content: center;
+  min-width: 0;
+}
+
+.command-center.speakers-collapsed .mission-deck__tension .narrative-bar__label,
+.command-center.speakers-collapsed .mission-deck__tension .narrative-bar__score,
+.command-center.speakers-collapsed .mission-deck__tension .narrative-bar__trend {
+  display: none !important;
+}
+
+.command-center.speakers-collapsed .mission-deck__tension svg {
+  max-width: 36px;
+}
+
 .command-center:not(.has-conflict) {
   grid-template-rows: 52px 0px 1fr 68px;
 }
@@ -2168,10 +2197,126 @@ input, textarea, select {
   align-items: center;
 }
 
+/* ─── Scenario Action Launch CTA ─── */
+.lobby-scenario-actions {
+  display: flex;
+  align-items: center;
+  margin-top: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-glass);
+}
+
+.lobby-scenario-launch-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  background: color-mix(in srgb, var(--color-aura) 18%, var(--bg-glass-raised));
+  border: 1px solid var(--color-aura);
+  border-radius: var(--radius-lg);
+  color: var(--color-aura);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(212, 168, 83, 0.25);
+  transition: all var(--duration-fast) var(--ease-standard);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.lobby-scenario-launch-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-aura) 30%, var(--bg-glass-hover));
+  box-shadow: 0 6px 28px rgba(212, 168, 83, 0.4);
+  transform: translateY(-1px);
+}
+
+.lobby-scenario-launch-icon {
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.lobby-scenario-launch-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(212, 168, 83, 0.2);
+  border: 1px solid rgba(212, 168, 83, 0.4);
+  color: var(--color-aura);
+  letter-spacing: 0.06em;
+}
+
 .lobby-join-section {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+}
+
+.lobby-join-controls-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.lobby-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass-emphasis);
+  border-radius: var(--radius-full);
+  padding: 3px;
+  gap: 3px;
+  box-shadow: var(--shadow-glass);
+}
+
+.lobby-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: var(--radius-full);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+  white-space: nowrap;
+}
+
+.lobby-mode-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-glass-hover);
+}
+
+.lobby-mode-btn--active {
+  background: var(--bg-glass-raised);
+  color: var(--color-aura);
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  border-color: rgba(212, 168, 83, 0.35);
+}
+
+.lobby-mode-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-aura);
+  box-shadow: 0 0 6px var(--color-aura);
+}
+
+.lobby-mode-icon {
+  font-size: 11px;
 }
 
 .lobby-section-title {

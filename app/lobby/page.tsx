@@ -20,7 +20,7 @@ function LobbyContent() {
   const channel = searchParams.get('channel') || 'incident-sev1-checkout';
   const [isConnecting, setIsConnecting] = useState(false);
 
-  const handleJoin = (persona: PersonaConfig, options?: { costRate?: number }) => {
+  const handleJoin = (persona: PersonaConfig, options?: { costRate?: number; simulateReplay?: boolean }) => {
     setIsConnecting(true);
     const params = new URLSearchParams({
       uid: persona.uid,
@@ -30,6 +30,10 @@ function LobbyContent() {
     });
     if (options?.costRate) {
       params.set('costRate', options.costRate.toString());
+    }
+    if (options?.simulateReplay) {
+      params.set('__AURA_REPLAY_MOCK_STREAM', 'true');
+      params.set('speed', '1.5');
     }
     const targetUrl = `/?${params.toString()}`;
 

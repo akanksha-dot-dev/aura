@@ -305,10 +305,17 @@ export function ActionTracker({
           font-family: var(--font-sans);
           font-size: 10px;
           color: var(--text-secondary);
-          max-width: 155px;
+          max-width: 145px;
+          min-width: 0;
           white-space: nowrap;
           overflow: hidden;
+        }
+
+        .action-card__assignee-name {
+          overflow: hidden;
           text-overflow: ellipsis;
+          white-space: nowrap;
+          min-width: 0;
         }
 
         .action-card__assignee-avatar {
@@ -438,7 +445,7 @@ export function ActionTracker({
                       <span className="action-card__assignee-avatar" aria-hidden="true">
                         {(act.assignedTo || 'U')[0].toUpperCase()}
                       </span>
-                      <span>
+                      <span className="action-card__assignee-name">
                         {act.assignedTo ? `@${act.assignedTo}` : 'Unassigned'}
                       </span>
                     </div>

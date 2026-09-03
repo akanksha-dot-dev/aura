@@ -4,7 +4,7 @@ import React from 'react';
 import { PERSONAS, PersonaConfig } from '@/lib/constants';
 
 export interface LobbyScreenProps {
-  onJoin: (persona: PersonaConfig, options?: { costRate?: number }) => void;
+  onJoin: (persona: PersonaConfig, options?: { costRate?: number; simulateReplay?: boolean }) => void;
   isConnecting?: boolean;
 }
 
@@ -13,6 +13,7 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
   const [customRateInput, setCustomRateInput] = React.useState<string>('150');
   const [customName, setCustomName] = React.useState<string>('');
   const [customRole, setCustomRole] = React.useState<string>('');
+  const [demoMode, setDemoMode] = React.useState<'simulation' | 'live'>('simulation');
 
   const COST_PRESETS = [
     { label: 'Standard SaaS', rate: 25 },
@@ -21,9 +22,10 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
     { label: 'Fintech / Cloud', rate: 500 },
   ];
 
-  const handleJoinPersona = (persona: PersonaConfig) => {
+  const handleJoinPersona = (persona: PersonaConfig, overrideOptions?: { simulateReplay?: boolean }) => {
     const rate = Math.max(1, Number(customRateInput) || selectedRate);
-    onJoin(persona, { costRate: rate });
+    const shouldSimulate = overrideOptions?.simulateReplay ?? (demoMode === 'simulation');
+    onJoin(persona, { costRate: rate, simulateReplay: shouldSimulate });
   };
 
   const handleJoinCustom = (e: React.FormEvent) => {
@@ -37,7 +39,7 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
       avatarColor: 'var(--color-aura)',
     };
     const rate = Math.max(1, Number(customRateInput) || selectedRate);
-    onJoin(customPersona, { costRate: rate });
+    onJoin(customPersona, { costRate: rate, simulateReplay: demoMode === 'simulation' });
   };
 
   const currentEffectiveRate = Math.max(1, Number(customRateInput) || selectedRate);
@@ -120,12 +122,55 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
               <span><strong>AURA Objective:</strong> Coordinate multi-responder audio, triage contradictions, track mitigation actions.</span>
             </li>
           </ul>
+
+          <div className="lobby-scenario-actions">
+            <button
+              type="button"
+              disabled={isConnecting}
+              onClick={() => handleJoinPersona(PERSONAS[0], { simulateReplay: true })}
+              className="lobby-scenario-launch-btn"
+            >
+              <span className="lobby-scenario-launch-icon" aria-hidden="true">▶</span>
+              <span className="lobby-scenario-launch-title">
+                {isConnecting ? 'INITIALIZING SIMULATION...' : 'LAUNCH 5-MIN INCIDENT SIMULATION (RECOMMENDED FOR JUDGES)'}
+              </span>
+              <span className="lobby-scenario-launch-badge">12 EVENTS · SEV-1</span>
+            </button>
+          </div>
         </section>
 
         {/* Join as section */}
         <section className="lobby-join-section" aria-label="Participant selection">
-          <div className="lobby-section-title">
-            Select Responder Callsign to Enter Bridge:
+          <div className="lobby-join-controls-header">
+            <div className="lobby-section-title">
+              Select Responder Callsign to Enter Bridge:
+            </div>
+
+            {/* Simulation Mode vs Live Voice Channel Segmented Control */}
+            <div className="lobby-mode-toggle" role="radiogroup" aria-label="Incident Bridge Operational Mode">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={demoMode === 'simulation'}
+                className={`lobby-mode-btn ${demoMode === 'simulation' ? 'lobby-mode-btn--active' : ''}`}
+                onClick={() => setDemoMode('simulation')}
+                title="Streams realistic 12-event multi-responder incident timeline with voice transcripts and postmortem"
+              >
+                <span className="lobby-mode-dot" aria-hidden="true" />
+                <span>⚡ Interactive Simulation Mode</span>
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={demoMode === 'live'}
+                className={`lobby-mode-btn ${demoMode === 'live' ? 'lobby-mode-btn--active' : ''}`}
+                onClick={() => setDemoMode('live')}
+                title="Connects to Agora RTC channel for live microphone streaming"
+              >
+                <span className="lobby-mode-icon" aria-hidden="true">🎙</span>
+                <span>Live Voice Bridge (Microphone)</span>
+              </button>
+            </div>
           </div>
 
           <div className="lobby-persona-list">

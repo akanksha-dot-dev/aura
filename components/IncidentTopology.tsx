@@ -175,25 +175,37 @@ export function IncidentTopology({
 
     if (!simulationRef.current) {
       const sim = forceSimulation<SimulationNode>(newSimNodes)
-        .force('charge', forceManyBody<SimulationNode>().strength(-380))
+        .force('charge', forceManyBody<SimulationNode>().strength(-240))
         .force(
           'link',
           forceLink<SimulationNode, SimulationLink>(newSimLinks)
             .id((d) => d.id)
-            .distance(130)
-            .strength(0.4)
+            .distance(120)
+            .strength(0.45)
         )
         .force('center', forceCenter<SimulationNode>(width / 2, height / 2))
         .force(
           'collision',
-          forceCollide<SimulationNode>().radius((d) => Math.max(56, getNodeRadius(d.confidence, d.status) + 36))
+          forceCollide<SimulationNode>().radius((d) => Math.max(54, getNodeRadius(d.confidence, d.status) + 32))
         )
-        .force('x', forceX<SimulationNode>(width / 2).strength(0.04))
-        .force('y', forceY<SimulationNode>(height / 2).strength(0.04))
+        .force('x', forceX<SimulationNode>(width / 2).strength(0.06))
+        .force('y', forceY<SimulationNode>(height / 2).strength(0.08))
         .alphaDecay(0.025);
 
       let rafId: number;
       sim.on('tick', () => {
+        // Enforce safe boundary clamping so nodes never clip the canvas borders
+        for (const node of sim.nodes()) {
+          const r = getNodeRadius(node.confidence, node.status);
+          const padX = Math.max(80, r + 45);
+          const padY = Math.max(50, r + 40);
+          if (typeof node.x === 'number') {
+            node.x = Math.max(padX, Math.min(width - padX, node.x));
+          }
+          if (typeof node.y === 'number') {
+            node.y = Math.max(padY, Math.min(height - padY, node.y));
+          }
+        }
         cancelAnimationFrame(rafId);
         rafId = requestAnimationFrame(() => {
           setSimNodes([...sim.nodes()]);
@@ -215,21 +227,21 @@ export function IncidentTopology({
         typeof forceLink<SimulationNode, SimulationLink>
       >;
       if (linkForce) {
-        linkForce.links(newSimLinks).distance(130);
+        linkForce.links(newSimLinks).distance(120);
       }
 
       const chargeForce = sim.force('charge') as ReturnType<
         typeof forceManyBody<SimulationNode>
       >;
       if (chargeForce) {
-        chargeForce.strength(-380);
+        chargeForce.strength(-240);
       }
 
       const collideForce = sim.force('collision') as ReturnType<
         typeof forceCollide<SimulationNode>
       >;
       if (collideForce) {
-        collideForce.radius((d) => Math.max(56, getNodeRadius(d.confidence, d.status) + 36));
+        collideForce.radius((d) => Math.max(54, getNodeRadius(d.confidence, d.status) + 32));
       }
 
       const centerForce = sim.force('center') as ReturnType<typeof forceCenter<SimulationNode>>;
@@ -238,10 +250,14 @@ export function IncidentTopology({
       }
 
       const xForce = sim.force('x') as ReturnType<typeof forceX<SimulationNode>>;
-      if (xForce) xForce.x(width / 2);
+      if (xForce) {
+        xForce.x(width / 2).strength(0.06);
+      }
 
       const yForce = sim.force('y') as ReturnType<typeof forceY<SimulationNode>>;
-      if (yForce) yForce.y(height / 2);
+      if (yForce) {
+        yForce.y(height / 2).strength(0.08);
+      }
 
       sim.alpha(0.3).restart();
     }

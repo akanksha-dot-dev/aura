@@ -125,6 +125,7 @@ export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
               className="timeline-feed__start-replay-btn"
               onClick={() => {
                 router.push('/?persona=sarah_chen&channel=incident-sev1-checkout&__AURA_REPLAY_MOCK_STREAM=true&speed=1.5');
+                router.refresh();
               }}
               title="Start demo incident replay simulation"
             >
