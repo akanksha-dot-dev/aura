@@ -589,19 +589,18 @@ export default function DashboardPage() {
       <ViewTransition name="main-view">
         <Suspense
           fallback={
-            <div
-              style={{
-                height: '100vh',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'var(--bg-base)',
-                color: 'var(--color-aura)',
-                fontFamily: 'var(--font-mono)',
-                fontSize: 'var(--text-sm)',
-              }}
-            >
-              INITIALIZING AURA COMMAND BRIDGE...
+            <div className="loading-skeleton" aria-label="Initializing Command Bridge" role="status">
+              <div className="loading-skeleton__status-bar" />
+              <div className="loading-skeleton__body">
+                <div className="loading-skeleton__panel" />
+                <div className="loading-skeleton__main">
+                  <div className="loading-skeleton__card" />
+                  <div className="loading-skeleton__card" />
+                  <div className="loading-skeleton__card" />
+                </div>
+                <div className="loading-skeleton__panel" />
+              </div>
+              <div className="loading-skeleton__dock" />
             </div>
           }
         >

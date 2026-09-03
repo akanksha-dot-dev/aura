@@ -347,7 +347,7 @@ input, textarea, select {
 }
 
 @keyframes card-arrive {
-  from { transform: translateY(12px); opacity: 0; }
+  from { transform: translateY(8px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
 
@@ -376,12 +376,15 @@ input, textarea, select {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-glass);
   animation: card-arrive var(--duration-normal) var(--ease-arrive) both;
-  transition: transform var(--duration-fast), box-shadow var(--duration-fast), background var(--duration-fast), border-color var(--duration-fast);
+  transition: transform var(--duration-fast) var(--ease-standard),
+              box-shadow var(--duration-fast) var(--ease-standard),
+              background var(--duration-fast) var(--ease-standard),
+              border-color var(--duration-fast) var(--ease-standard);
 }
 
 .timeline-card:hover {
   background: var(--bg-glass-hover);
-  transform: scale(var(--hover-scale));
+  transform: scale(var(--hover-scale, 1.015));
   box-shadow: var(--shadow-float);
   border-color: var(--border-glass-emphasis);
 }
@@ -1815,23 +1818,87 @@ input, textarea, select {
   }
 }
 
-/* 4. Mobile viewports (<= 768px): Typography & lobby polish */
+/* 4. Mobile viewports (<= 768px): Stacked single-column layout */
 @media (max-width: 768px) {
   :root {
     --text-3xl: 1.625rem;
     --text-2xl: 1.25rem;
   }
 
+  .command-center {
+    position: relative;
+    inset: auto;
+    width: 100vw;
+    min-height: 100vh;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .speaker-panel {
+    display: none;
+  }
+
   .status-bar {
-    padding: var(--space-2);
+    height: auto;
+    min-height: 52px;
+    flex-wrap: wrap;
+    padding: var(--space-2) var(--space-3);
+    gap: var(--space-2);
+  }
+
+  .status-bar__identity {
+    flex: 1 1 100%;
+    justify-content: space-between;
+  }
+
+  .status-bar__financial {
+    flex: 1 1 100%;
+    justify-content: flex-end;
+    border-top: 1px solid var(--border-glass);
+    padding-top: var(--space-1h);
+  }
+
+  .main-view {
+    min-height: 480px;
+    height: auto;
+    flex: 1;
   }
 
   .main-view__tabs {
     width: 100%;
   }
 
+  .action-tracker {
+    width: 100%;
+    max-height: 420px;
+    height: auto;
+    border-left: none;
+    border-top: 1px solid var(--border-glass-emphasis);
+    overflow-y: auto;
+  }
+
+  .mission-deck {
+    height: 48px;
+    grid-template-columns: 1fr auto;
+    position: sticky;
+    bottom: 0;
+  }
+
+  .mission-deck__tension {
+    display: none;
+  }
+
+  .mission-deck__captions {
+    border-right: none;
+    padding: 0 var(--space-2);
+  }
+
   .transcript-drawer {
-    max-height: 80vh;
+    max-height: 85vh;
+    width: 100vw;
   }
 }
 
@@ -2583,6 +2650,85 @@ input, textarea, select {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Loading Skeleton Grid — Hallmark Polish (WI-808)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.loading-skeleton {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-base);
+  overflow: hidden;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.loading-skeleton__status-bar {
+  height: 52px;
+  background: linear-gradient(90deg, var(--bg-surface) 25%, var(--bg-surface-raised) 50%, var(--bg-surface) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.8s ease-in-out infinite;
+  border-bottom: 1px solid var(--border-glass);
+}
+
+.loading-skeleton__body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: var(--speaker-col-width, 250px) 1fr 300px;
+  gap: 1px;
+  background: var(--border-glass);
+  min-height: 0;
+}
+
+@media (max-width: 768px) {
+  .loading-skeleton__body {
+    grid-template-columns: 1fr;
+  }
+  .loading-skeleton__panel {
+    display: none;
+  }
+}
+
+.loading-skeleton__panel {
+  background: var(--bg-glass-panel);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.loading-skeleton__main {
+  background: var(--bg-base);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.loading-skeleton__card {
+  height: 96px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(90deg, var(--bg-glass) 25%, var(--bg-glass-hover) 50%, var(--bg-glass) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.8s ease-in-out infinite;
+  border: 1px solid var(--border-glass);
+}
+
+.loading-skeleton__dock {
+  height: 68px;
+  background: linear-gradient(90deg, var(--bg-surface) 25%, var(--bg-surface-raised) 50%, var(--bg-surface) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.8s ease-in-out infinite;
+  border-top: 1px solid var(--border-glass-emphasis);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════

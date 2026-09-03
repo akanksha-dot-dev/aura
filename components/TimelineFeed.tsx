@@ -37,32 +37,61 @@ export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
           align-items: center;
           justify-content: center;
           height: 100%;
-          min-height: 200px;
+          min-height: 280px;
           color: var(--text-muted);
           font-family: var(--font-sans);
-          font-size: var(--text-sm);
           text-align: center;
-          gap: var(--space-2);
+          gap: var(--space-3);
+          padding: var(--space-8);
         }
 
         .timeline-feed__empty-icon {
-          font-size: var(--text-2xl);
-          color: var(--border-emphasis);
+          width: 48px;
+          height: 48px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: var(--radius-full);
+          background: var(--color-aura-dim);
+          border: 1px solid rgba(212, 168, 83, 0.25);
+          color: var(--color-aura);
+          animation: empty-pulse 2.5s ease-in-out infinite;
+        }
+
+        @keyframes empty-pulse {
+          0%, 100% { opacity: 0.4; transform: scale(1); box-shadow: 0 0 0 0 rgba(212, 168, 83, 0.2); }
+          50% { opacity: 0.9; transform: scale(1.05); box-shadow: 0 0 16px 4px rgba(212, 168, 83, 0.2); }
+        }
+
+        .timeline-feed__empty-title {
+          font-size: var(--text-md);
+          font-weight: var(--weight-medium);
+          color: var(--text-secondary);
+          margin: 0;
+        }
+
+        .timeline-feed__empty-sub {
+          font-size: var(--text-xs);
+          color: var(--text-muted);
+          max-width: 320px;
+          line-height: var(--leading-relaxed);
+          margin: 0;
         }
       `}</style>
       <div className="timeline-feed" ref={feedRef} role="feed" aria-label="Incident timeline feed">
         {evidenceItems.length === 0 ? (
           <div className="timeline-feed__empty">
             <div className="timeline-feed__empty-icon" aria-hidden="true">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-                <line x1="16" y1="13" x2="8" y2="13" />
-                <line x1="16" y1="17" x2="8" y2="17" />
-                <polyline points="10 9 9 9 8 9" />
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                <line x1="12" y1="19" x2="12" y2="22" />
               </svg>
             </div>
-            <div>Waiting for incident telemetry and responder speech...</div>
+            <p className="timeline-feed__empty-title">Awaiting incident telemetry</p>
+            <p className="timeline-feed__empty-sub">
+              AURA is listening. Speak into the bridge to begin epistemic classification and action extraction.
+            </p>
           </div>
         ) : (
           evidenceItems.map((item, idx) => {
