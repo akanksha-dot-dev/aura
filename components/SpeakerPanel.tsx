@@ -81,7 +81,7 @@ export function SpeakerPanel({
       <style>{`
         .speaker-panel {
           grid-area: speakers;
-          width: 220px;
+          width: 100%;
           height: 100%;
           background: var(--bg-surface);
           border-right: 1px solid var(--border-default);
@@ -98,15 +98,21 @@ export function SpeakerPanel({
           flex-direction: column;
           gap: var(--space-3);
           overflow-y: auto;
+          min-height: 0;
         }
 
         .speaker-panel__title {
           font-family: var(--font-mono);
-          font-size: var(--text-xs);
-          font-weight: var(--weight-semibold);
-          color: var(--text-secondary);
-          letter-spacing: 0.08em;
+          font-size: 0.6875rem;
+          font-weight: var(--weight-bold);
+          color: var(--text-muted);
+          letter-spacing: 0.1em;
           text-transform: uppercase;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding-bottom: var(--space-1);
+          border-bottom: 1px solid var(--border-subtle);
         }
 
         .speaker-panel__roster {
@@ -126,13 +132,16 @@ export function SpeakerPanel({
         .speaker-row {
           display: flex;
           flex-direction: column;
-          gap: var(--space-1);
+          gap: var(--space-1h);
           padding: var(--space-2);
           background: var(--bg-surface-raised);
           border-radius: var(--radius-sm);
+          border: 1px solid var(--border-subtle);
           border-left: 3px solid transparent;
+          box-shadow: var(--shadow-card);
           transition: border-color var(--duration-fast) var(--ease-standard),
-                      background var(--duration-fast) var(--ease-standard);
+                      background var(--duration-fast) var(--ease-standard),
+                      box-shadow var(--duration-fast) var(--ease-standard);
         }
 
         .speaker-row--speaking {
@@ -141,8 +150,10 @@ export function SpeakerPanel({
         }
 
         .speaker-row--aura {
+          border: 1px solid rgba(212, 168, 83, 0.2);
           border-left: 3px solid var(--color-aura);
-          background: rgba(212, 168, 83, 0.04);
+          background: rgba(212, 168, 83, 0.05);
+          box-shadow: 0 0 10px rgba(212, 168, 83, 0.08);
         }
 
         .speaker-row__header {
@@ -156,36 +167,86 @@ export function SpeakerPanel({
         .speaker-row__meta {
           display: flex;
           align-items: center;
-          gap: var(--space-1h);
+          gap: var(--space-2);
           min-width: 0;
-          overflow: hidden;
+          flex: 1;
         }
 
-        .speaker-row__indicator {
-          font-size: var(--text-xs);
-          line-height: 1;
+        .speaker-row__avatar-wrap {
+          position: relative;
+          border-radius: 50%;
+          flex-shrink: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: box-shadow 0.2s ease;
         }
 
-        .speaker-row__indicator--speaking {
-          color: var(--color-fact);
+        .speaker-row__avatar-wrap--speaking {
+          animation: speaker-ring-pulse 1.5s ease-in-out infinite;
         }
 
-        .speaker-row__indicator--silent {
-          color: var(--text-muted);
+        @keyframes speaker-ring-pulse {
+          0%, 100% {
+            box-shadow: 0 0 0 0px var(--ring-color, var(--color-fact));
+          }
+          50% {
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring-color, var(--color-fact)) 60%, transparent),
+                        0 0 8px 1px color-mix(in srgb, var(--ring-color, var(--color-fact)) 30%, transparent);
+          }
+        }
+
+        .speaker-row__info {
+          display: flex;
+          flex-direction: column;
+          gap: 1px;
+          min-width: 0;
+          flex: 1;
+        }
+
+        .speaker-row__name-row {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          min-width: 0;
         }
 
         .speaker-row__name {
           font-size: var(--text-xs);
-          font-weight: var(--weight-medium);
+          font-weight: var(--weight-semibold);
           color: var(--text-primary);
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
         }
 
-        .speaker-row__ic-badge {
-          font-size: var(--text-xs);
+        .speaker-row__role-tag {
+          font-family: var(--font-mono);
+          font-size: 0.5625rem;
+          color: var(--text-muted);
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .speaker-row__role-tag--aura {
           color: var(--color-aura);
+        }
+
+        .speaker-row__ic-badge {
+          display: inline-flex;
+          align-items: center;
+          padding: 1px 4px;
+          background: var(--color-aura-dim);
+          border: 1px solid rgba(212, 168, 83, 0.3);
+          border-radius: 2px;
+          color: var(--color-aura);
+          font-family: var(--font-mono);
+          font-size: 0.5625rem;
+          font-weight: var(--weight-bold);
+          flex-shrink: 0;
         }
 
         .speaker-row__heatbar-wrap {
@@ -198,23 +259,24 @@ export function SpeakerPanel({
         .speaker-row__heatbar-track {
           flex: 1;
           height: 4px;
-          background: var(--border-subtle);
-          border-radius: var(--radius-sm);
+          background: var(--bg-surface);
+          border-radius: 99px;
           overflow: hidden;
         }
 
         .speaker-row__heatbar-fill {
           height: 100%;
-          border-radius: var(--radius-sm);
-          transition: width var(--duration-normal) var(--ease-standard);
+          border-radius: 99px;
+          transition: width 0.35s ease, background-color 0.3s ease;
         }
 
         .speaker-row__time {
           font-family: var(--font-mono);
-          font-size: var(--text-xs);
+          font-size: 0.625rem;
           color: var(--text-muted);
           font-variant-numeric: tabular-nums;
           white-space: nowrap;
+          flex-shrink: 0;
         }
 
         .speaker-row__waveform-wrap {
@@ -222,14 +284,17 @@ export function SpeakerPanel({
           align-items: center;
           justify-content: center;
           width: 100%;
-          height: 20px;
-          margin-top: var(--space-1);
+          height: 22px;
+          margin-top: 2px;
+          background: rgba(0, 0, 0, 0.25);
+          border-radius: var(--radius-sm);
+          border: 1px solid rgba(212, 168, 83, 0.15);
         }
 
         .speaker-row__waveform {
           display: block;
           width: 100%;
-          height: 20px;
+          height: 22px;
         }
 
         .speaker-panel__bottom {
@@ -238,11 +303,17 @@ export function SpeakerPanel({
           gap: var(--space-3);
           padding-top: var(--space-3);
           border-top: 1px solid var(--border-subtle);
+          flex-shrink: 0;
         }
       `}</style>
       <aside className="speaker-panel" aria-label="Responder roster and operational metrics">
         <div className="speaker-panel__top">
-          <div className="speaker-panel__title">Responders</div>
+          <div className="speaker-panel__title">
+            <span>Bridge Participants</span>
+            <span style={{ fontSize: '0.625rem', color: 'var(--text-disabled)' }}>
+              {participantList.length + 1}
+            </span>
+          </div>
 
           <div className="speaker-panel__roster">
             {participantList.length === 0 ? (
@@ -273,37 +344,37 @@ export function SpeakerPanel({
                   >
                     <div className="speaker-row__header">
                       <div className="speaker-row__meta">
-                        <span
-                          className={`speaker-row__indicator ${
-                            isSpeaking
-                              ? 'speaker-row__indicator--speaking'
-                              : 'speaker-row__indicator--silent'
+                        <div
+                          className={`speaker-row__avatar-wrap ${
+                            isSpeaking ? 'speaker-row__avatar-wrap--speaking' : ''
                           }`}
-                          aria-hidden="true"
+                          style={
+                            {
+                              '--ring-color': getAvatarColor(p.uid),
+                            } as React.CSSProperties
+                          }
                         >
-                          {isSpeaking ? '●' : '○'}
-                        </span>
-                        <VoiceBadge
-                          displayName={p.displayName}
-                          avatarColor={getAvatarColor(p.uid)}
-                          isSpeaking={isSpeaking}
-                        />
-                        <span className="speaker-row__name">
-                          {p.displayName} ({p.role})
-                        </span>
+                          <VoiceBadge
+                            displayName={p.displayName}
+                            avatarColor={getAvatarColor(p.uid)}
+                            isSpeaking={isSpeaking}
+                          />
+                        </div>
+                        <div className="speaker-row__info">
+                          <div className="speaker-row__name-row">
+                            <span className="speaker-row__name">{p.displayName}</span>
+                            {p.isIncidentCommander && (
+                              <span
+                                className="speaker-row__ic-badge"
+                                title="Incident Commander"
+                              >
+                                IC
+                              </span>
+                            )}
+                          </div>
+                          <span className="speaker-row__role-tag">{p.role}</span>
+                        </div>
                       </div>
-                      {p.isIncidentCommander && (
-                        <span
-                          className="speaker-row__ic-badge"
-                          title="Incident Commander"
-                          aria-label="Incident Commander"
-                        >
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                          </svg>
-                        </span>
-                      )}
                     </div>
 
                     <div className="speaker-row__heatbar-wrap">
@@ -329,24 +400,38 @@ export function SpeakerPanel({
             <div className="speaker-row speaker-row--aura">
               <div className="speaker-row__header">
                 <div className="speaker-row__meta">
-                  <span
-                    className={`speaker-row__indicator ${
-                      agentIsSpeaking
-                        ? 'speaker-row__indicator--speaking'
-                        : 'speaker-row__indicator--silent'
+                  <div
+                    className={`speaker-row__avatar-wrap ${
+                      agentIsSpeaking ? 'speaker-row__avatar-wrap--speaking' : ''
                     }`}
-                    aria-hidden="true"
+                    style={
+                      {
+                        '--ring-color': 'var(--color-aura)',
+                      } as React.CSSProperties
+                    }
                   >
-                    {agentIsSpeaking ? '●' : '○'}
-                  </span>
-                  <VoiceBadge
-                    displayName="AURA"
-                    avatarColor="var(--color-aura)"
-                    isSpeaking={agentIsSpeaking}
-                  />
-                  <span className="speaker-row__name" style={{ color: 'var(--color-aura)' }}>
-                    AURA
-                  </span>
+                    <VoiceBadge
+                      displayName="AURA"
+                      avatarColor="var(--color-aura)"
+                      isSpeaking={agentIsSpeaking}
+                    />
+                  </div>
+                  <div className="speaker-row__info">
+                    <div className="speaker-row__name-row">
+                      <span
+                        className="speaker-row__name"
+                        style={{ color: 'var(--color-aura)' }}
+                      >
+                        AURA
+                      </span>
+                      <span className="speaker-row__ic-badge" style={{ borderColor: 'var(--color-aura)' }}>
+                        AI
+                      </span>
+                    </div>
+                    <span className="speaker-row__role-tag speaker-row__role-tag--aura">
+                      AI Incident Commander
+                    </span>
+                  </div>
                 </div>
                 <SilenceCounter
                   agentLastSpokeAt={agentLastSpokeAt}
@@ -359,8 +444,8 @@ export function SpeakerPanel({
                 <canvas
                   ref={waveformCanvasRef}
                   className="speaker-row__waveform"
-                  width={180}
-                  height={20}
+                  width={210}
+                  height={22}
                   aria-label="AURA voice activity waveform"
                 />
               </div>
