@@ -17,6 +17,7 @@ import { LiveCaptions } from '@/components/LiveCaptions';
 import { PostmortemModal } from '@/components/PostmortemModal';
 import { TranscriptDrawer, TranscriptEntry } from '@/components/TranscriptDrawer';
 import { AgoraAnalyticsOverlay } from '@/components/AgoraAnalyticsOverlay';
+import { KeyboardShortcutsModal } from '@/components/KeyboardShortcutsModal';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import {
   playConflictEarcon,
@@ -52,8 +53,9 @@ function DashboardContent() {
   const [isCostPaused, setIsCostPaused] = useState(false);
   const [isSpeakerCollapsed, setIsSpeakerCollapsed] = useState(false);
   const [isActionsCollapsed, setIsActionsCollapsed] = useState(false);
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
 
-  // Global Mission-Control Keyboard Shortcuts (T: Tab, J: Drawer, P: Postmortem, K: Pause Cost, [: Left Sidebar, ]: Right Sidebar, \: Full Focus, Esc: Close)
+  // Global Mission-Control Keyboard Shortcuts (T: Tab, J: Drawer, P: Postmortem, K: Pause Cost, [: Left Sidebar, ]: Right Sidebar, \: Full Focus, ?: Shortcuts, Esc: Close)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -79,10 +81,13 @@ function DashboardContent() {
           setIsActionsCollapsed(next);
           return next;
         });
+      } else if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+        setIsShortcutsOpen((prev) => !prev);
       } else if (e.key === 'Escape') {
         setIsTranscriptDrawerOpen(false);
         setIsPostmortemOpen(false);
         setIsAnalyticsCollapsed(true);
+        setIsShortcutsOpen(false);
       }
     };
 
@@ -567,6 +572,21 @@ function DashboardContent() {
             <span>Log</span>
             <kbd className="keyboard-hint-badge">J</kbd>
           </button>
+          <button
+            type="button"
+            className="mission-deck__log-btn"
+            onClick={() => setIsShortcutsOpen((prev) => !prev)}
+            title="Keyboard Shortcuts Cheat Sheet (Press ?)"
+            aria-label="Toggle Keyboard Shortcuts"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+            <span>Keys</span>
+            <kbd className="keyboard-hint-badge">?</kbd>
+          </button>
           <AgoraAnalyticsOverlay
             mos={networkStats.mos}
             jitter={networkStats.jitter}
@@ -595,6 +615,12 @@ function DashboardContent() {
         isOpen={isTranscriptDrawerOpen}
         onClose={() => setIsTranscriptDrawerOpen(false)}
         entries={effectiveTranscripts}
+      />
+
+      {/* 11. Command-Center Keyboard Shortcuts Cheat Sheet Modal */}
+      <KeyboardShortcutsModal
+        isOpen={isShortcutsOpen}
+        onClose={() => setIsShortcutsOpen(false)}
       />
     </div>
   );

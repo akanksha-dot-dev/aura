@@ -939,9 +939,11 @@ input, textarea, select {
   min-width: 0;
 }
 
+.command-center.speakers-collapsed .mission-deck__tension .narrative-bar__header,
 .command-center.speakers-collapsed .mission-deck__tension .narrative-bar__label,
 .command-center.speakers-collapsed .mission-deck__tension .narrative-bar__score,
-.command-center.speakers-collapsed .mission-deck__tension .narrative-bar__trend {
+.command-center.speakers-collapsed .mission-deck__tension .narrative-bar__trend,
+.command-center.speakers-collapsed .mission-deck__tension .narrative-bar__val {
   display: none !important;
 }
 

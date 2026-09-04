@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { TimelineFeed } from '@/components/TimelineFeed';
 import { EvidenceItem } from '@/lib/types';
 
@@ -73,5 +73,60 @@ describe('TimelineFeed & TimelineCard Components (components/TimelineFeed.tsx)',
     // Verify disproven item indicator
     expect(screen.getByTitle('Disproven Hypothesis')).toBeInTheDocument();
     expect(screen.getByTitle('Confidence: 0% (Disproven)')).toBeInTheDocument();
+  });
+
+  it('filters timeline cards by category when filter pills are clicked', () => {
+    const mockEvidence: EvidenceItem[] = [
+      {
+        id: 'evt-001',
+        category: 'fact',
+        content: 'Database connection maxed out',
+        speakerUid: 'marcus_devops',
+        speakerName: 'Marcus Vance',
+        confidence: 85,
+        timestamp: Date.now() - 30_000,
+        status: 'confirmed',
+        relatedTo: [],
+      },
+      {
+        id: 'evt-002',
+        category: 'hypothesis',
+        content: 'Redis memory leak suspected',
+        speakerUid: 'sarah_oncall',
+        speakerName: 'Sarah Chen',
+        confidence: 70,
+        timestamp: Date.now() - 20_000,
+        status: 'active',
+        relatedTo: [],
+      },
+    ];
+
+    const { getByRole, getByText, queryByText } = render(
+      <TimelineFeed
+        evidenceItems={mockEvidence}
+        incidentOpenedAt={Date.now() - 60_000}
+      />
+    );
+
+    // Filter pills rendered with correct counts
+    expect(getByText('All')).toBeInTheDocument();
+    expect(getByText('Facts')).toBeInTheDocument();
+    expect(getByText('Hypotheses')).toBeInTheDocument();
+
+    // Click 'Hypotheses' filter
+    const hypoButton = getByRole('tab', { name: /Hypotheses/i });
+    fireEvent.click(hypoButton);
+
+    // Only hypothesis is visible, fact is filtered out
+    expect(getByText('Redis memory leak suspected')).toBeInTheDocument();
+    expect(queryByText('Database connection maxed out')).toBeNull();
+
+    // Click 'All' filter
+    const allButton = getByRole('tab', { name: /All/i });
+    fireEvent.click(allButton);
+
+    // Both are visible again
+    expect(getByText('Database connection maxed out')).toBeInTheDocument();
+    expect(getByText('Redis memory leak suspected')).toBeInTheDocument();
   });
 });

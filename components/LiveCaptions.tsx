@@ -93,6 +93,32 @@ export function LiveCaptions({
           50% { opacity: 0; }
         }
 
+        .live-captions__wave {
+          display: inline-flex;
+          align-items: center;
+          gap: 2px;
+          height: 12px;
+          margin-left: 2px;
+          flex-shrink: 0;
+        }
+
+        .live-captions__wave-bar {
+          width: 2px;
+          height: 3px;
+          background: var(--color-aura);
+          border-radius: 1px;
+          animation: wave-bounce 0.8s ease-in-out infinite;
+        }
+
+        .live-captions__wave-bar:nth-child(1) { animation-delay: 0.05s; }
+        .live-captions__wave-bar:nth-child(2) { animation-delay: 0.25s; }
+        .live-captions__wave-bar:nth-child(3) { animation-delay: 0.15s; }
+
+        @keyframes wave-bounce {
+          0%, 100% { height: 3px; opacity: 0.4; }
+          50% { height: 11px; opacity: 1; }
+        }
+
         .live-captions__standby {
           font-family: var(--font-sans);
           font-size: var(--text-xs);
@@ -148,9 +174,16 @@ export function LiveCaptions({
           {hasContent ? (
             <>
               {currentSpeakerName && (
-                <span className="live-captions__speaker">
-                  {currentSpeakerName}
-                </span>
+                <>
+                  <span className="live-captions__speaker">
+                    {currentSpeakerName}
+                  </span>
+                  <span className="live-captions__wave" aria-hidden="true">
+                    <span className="live-captions__wave-bar" />
+                    <span className="live-captions__wave-bar" />
+                    <span className="live-captions__wave-bar" />
+                  </span>
+                </>
               )}
               <span className="live-captions__text">
                 &ldquo;{currentTranscript}&rdquo;

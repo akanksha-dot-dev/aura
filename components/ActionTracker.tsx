@@ -306,9 +306,8 @@ export function ActionTracker({
         }
 
         .action-item--done {
-          opacity: 0.65;
-          background: rgba(14, 16, 21, 0.5);
-          border-color: rgba(59, 212, 162, 0.15);
+          background: rgba(14, 16, 21, 0.7);
+          border-color: rgba(59, 212, 162, 0.25);
         }
 
         .action-item--in_progress {
@@ -390,6 +389,11 @@ export function ActionTracker({
 
         .action-item--done .action-item__title {
           text-decoration: line-through;
+          text-decoration-color: rgba(59, 212, 162, 0.45);
+          color: var(--text-secondary);
+        }
+
+        .action-item--done .action-item__assignee {
           color: var(--text-muted);
         }
 
