@@ -312,6 +312,121 @@ export function IncidentTopology({
 
   return (
     <div ref={containerRef} className="topology-container">
+      <style>{`
+        .topology-container {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          background: var(--bg-base);
+        }
+
+        .topology-legend {
+          position: absolute;
+          top: var(--space-3);
+          right: var(--space-4);
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 4px 10px;
+          background: rgba(14, 16, 21, 0.88);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid var(--border-default);
+          border-radius: var(--radius-full);
+          box-shadow: var(--shadow-inner-glow), 0 4px 12px rgba(0, 0, 0, 0.4);
+          z-index: 10;
+          pointer-events: auto;
+        }
+
+        .topology-legend__item {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          font-family: var(--font-sans);
+          font-size: 11px;
+          font-weight: 500;
+          color: var(--text-secondary);
+          letter-spacing: -0.01em;
+          padding: 2px 6px;
+          border-radius: var(--radius-sm);
+        }
+
+        .topology-legend__dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          display: inline-block;
+          box-shadow: 0 0 6px currentColor;
+        }
+
+        .topology-tooltip {
+          position: absolute;
+          width: 250px;
+          background: rgba(14, 16, 21, 0.96);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border: 1px solid var(--border-emphasis);
+          border-radius: var(--radius-md);
+          box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), var(--shadow-inner-glow);
+          padding: var(--space-3);
+          z-index: 50;
+          pointer-events: none;
+          font-family: var(--font-sans);
+          display: flex;
+          flex-direction: column;
+          gap: var(--space-2);
+          animation: tooltip-fade 0.15s ease-out;
+        }
+
+        .topology-tooltip-header {
+          display: flex;
+          align-items: center;
+          gap: var(--space-2);
+        }
+
+        .topology-tooltip-badge {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          font-weight: 700;
+          padding: 2px 6px;
+          border-radius: var(--radius-sm);
+          border: 1px solid;
+          letter-spacing: 0.04em;
+        }
+
+        .topology-tooltip-confidence {
+          font-family: var(--font-mono);
+          font-size: 10px;
+          color: var(--text-muted);
+          margin-left: auto;
+        }
+
+        .topology-tooltip-status {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          padding: 2px 6px;
+          border-radius: var(--radius-sm);
+          background: var(--color-conflict-dim);
+          color: var(--color-conflict);
+        }
+
+        .topology-tooltip-content {
+          font-size: 12px;
+          line-height: 1.4;
+          color: var(--text-primary);
+          margin: 0;
+        }
+
+        .topology-tooltip-meta {
+          display: flex;
+          align-items: center;
+          gap: var(--space-1);
+          font-size: 10px;
+          color: var(--text-muted);
+        }
+      `}</style>
+
       {/* Top-Right Category Legend */}
       <div className="topology-legend" aria-label="Topology graph legend">
         <span className="topology-legend__item">

@@ -387,13 +387,15 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
 
             /* ─── Scrollable Document Body ─── */
             .sre-body {
-              padding: 1.5rem 1.75rem;
+              padding: 1.5rem 1.75rem 2.5rem 1.75rem;
               overflow-y: auto;
               display: flex;
               flex-direction: column;
               gap: 1.5rem;
               scrollbar-width: thin;
               scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+              mask-image: linear-gradient(to bottom, black calc(100% - 36px), transparent 100%);
+              -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 36px), transparent 100%);
             }
 
             .sre-section {

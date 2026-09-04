@@ -362,6 +362,64 @@ export function ActionTracker({
         .hypothesis-item--active .hypothesis-item__icon {
           color: var(--color-hypothesis);
         }
+
+        /* ─── Empty State Animation ─── */
+        .action-tracker__empty-state {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 12px 14px;
+          background: rgba(20, 23, 30, 0.6);
+          border: 1px dashed rgba(255, 255, 255, 0.08);
+          border-radius: var(--radius-md);
+          box-shadow: var(--shadow-inner-glow);
+        }
+
+        .action-tracker__empty-icon {
+          position: relative;
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          background: rgba(245, 158, 11, 0.1);
+          color: var(--color-aura);
+          flex-shrink: 0;
+        }
+
+        .action-tracker__empty-pulse {
+          position: absolute;
+          inset: -3px;
+          border-radius: 50%;
+          border: 1px solid rgba(245, 158, 11, 0.35);
+          animation: empty-pulse 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+
+        @keyframes empty-pulse {
+          0% { transform: scale(0.95); opacity: 0.8; }
+          50% { transform: scale(1.15); opacity: 0.2; }
+          100% { transform: scale(0.95); opacity: 0.8; }
+        }
+
+        .action-tracker__empty-text {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .action-tracker__empty-headline {
+          font-size: 11px;
+          font-weight: 600;
+          color: var(--text-primary);
+          letter-spacing: -0.01em;
+        }
+
+        .action-tracker__empty-sub {
+          font-size: 10px;
+          line-height: 1.35;
+          color: var(--text-muted);
+        }
       `}</style>
 
       <section
@@ -418,10 +476,28 @@ export function ActionTracker({
 
         <div className="action-tracker__list">
           {actions.length === 0 ? (
-            <div className="action-item" style={{ cursor: 'default' }}>
-              <div className="action-item__body">
-                <span className="action-item__title" style={{ color: 'var(--text-muted)' }}>
-                  Awaiting automated action dispatch from voice bridge...
+            <div className="action-tracker__empty-state">
+              <div className="action-tracker__empty-icon">
+                <span className="action-tracker__empty-pulse" />
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <line x1="12" y1="19" x2="12" y2="22" />
+                </svg>
+              </div>
+              <div className="action-tracker__empty-text">
+                <span className="action-tracker__empty-headline">Listening for Directives</span>
+                <span className="action-tracker__empty-sub">
+                  AURA AI synthesizes verbal tasks into Jira &amp; Slack action items in real time.
                 </span>
               </div>
             </div>
