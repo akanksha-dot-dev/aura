@@ -41,54 +41,54 @@ interface SimulationLink {
 function getNodeColors(category: ClassificationType, status?: string) {
   if (status === 'disproven') {
     return {
-      fill: 'rgba(232, 84, 84, 0.08)',
-      stroke: 'rgba(232, 84, 84, 0.4)',
+      fill: 'rgba(232, 84, 84, 0.1)',
+      stroke: 'rgba(232, 84, 84, 0.45)',
       text: 'var(--color-conflict)',
       badge: 'var(--color-conflict)',
-      glow: 'rgba(232, 84, 84, 0.2)',
+      glow: 'rgba(232, 84, 84, 0.25)',
     };
   }
 
   switch (category) {
     case 'fact':
       return {
-        fill: 'rgba(59, 212, 162, 0.12)',
+        fill: 'rgba(59, 212, 162, 0.1)',
         stroke: 'var(--color-fact)',
         text: 'var(--color-fact)',
         badge: 'var(--color-fact)',
-        glow: 'rgba(59, 212, 162, 0.35)',
+        glow: 'rgba(59, 212, 162, 0.3)',
       };
     case 'hypothesis':
       return {
-        fill: 'rgba(232, 168, 56, 0.12)',
+        fill: 'rgba(232, 168, 56, 0.1)',
         stroke: 'var(--color-hypothesis)',
         text: 'var(--color-hypothesis)',
         badge: 'var(--color-hypothesis)',
-        glow: 'rgba(232, 168, 56, 0.35)',
+        glow: 'rgba(232, 168, 56, 0.3)',
       };
     case 'decision':
       return {
-        fill: 'rgba(123, 140, 255, 0.12)',
+        fill: 'rgba(123, 140, 255, 0.1)',
         stroke: 'var(--color-decision)',
         text: 'var(--color-decision)',
         badge: 'var(--color-decision)',
-        glow: 'rgba(123, 140, 255, 0.35)',
+        glow: 'rgba(123, 140, 255, 0.3)',
       };
     case 'action':
       return {
-        fill: 'rgba(232, 125, 62, 0.12)',
+        fill: 'rgba(232, 125, 62, 0.1)',
         stroke: 'var(--color-action)',
         text: 'var(--color-action)',
         badge: 'var(--color-action)',
-        glow: 'rgba(232, 125, 62, 0.35)',
+        glow: 'rgba(232, 125, 62, 0.3)',
       };
     case 'conflict':
       return {
-        fill: 'rgba(232, 84, 84, 0.12)',
+        fill: 'rgba(232, 84, 84, 0.1)',
         stroke: 'var(--color-conflict)',
         text: 'var(--color-conflict)',
         badge: 'var(--color-conflict)',
-        glow: 'rgba(232, 84, 84, 0.45)',
+        glow: 'rgba(232, 84, 84, 0.4)',
       };
     default:
       return {
@@ -101,11 +101,6 @@ function getNodeColors(category: ClassificationType, status?: string) {
   }
 }
 
-function getNodeRadius(confidence: number, status?: string): number {
-  const base = Math.max(12, Math.min(22, (confidence / 85) * 22));
-  return status === 'disproven' ? base * 0.75 : base;
-}
-
 export function IncidentTopology({
   nodes,
   edges,
@@ -113,7 +108,7 @@ export function IncidentTopology({
   onNodeClick,
 }: IncidentTopologyProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [dimensions, setDimensions] = useState({ width: 600, height: 400 });
+  const [dimensions, setDimensions] = useState({ width: 700, height: 450 });
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 
   // Simulation state for React rendering
@@ -163,9 +158,9 @@ export function IncidentTopology({
         };
       }
 
-      // Position near center with small jitter
+      // Position near center with gentle radial distribution
       const angle = Math.random() * Math.PI * 2;
-      const dist = 30 + Math.random() * 40;
+      const dist = 40 + Math.random() * 60;
       return {
         ...node,
         x: width / 2 + Math.cos(angle) * dist,
@@ -181,18 +176,18 @@ export function IncidentTopology({
 
     if (!simulationRef.current) {
       const sim = forceSimulation<SimulationNode>(newSimNodes)
-        .force('charge', forceManyBody<SimulationNode>().strength(-260))
+        .force('charge', forceManyBody<SimulationNode>().strength(-320))
         .force(
           'link',
           forceLink<SimulationNode, SimulationLink>(newSimLinks)
             .id((d) => d.id)
-            .distance(130)
-            .strength(0.4)
+            .distance(150)
+            .strength(0.35)
         )
         .force('center', forceCenter<SimulationNode>(width / 2, height / 2))
         .force(
           'collision',
-          forceCollide<SimulationNode>().radius((d) => Math.max(50, getNodeRadius(d.confidence, d.status) + 30))
+          forceCollide<SimulationNode>().radius(80)
         )
         .force('x', forceX<SimulationNode>(width / 2).strength(0.06))
         .force('y', forceY<SimulationNode>(height / 2).strength(0.08))
@@ -202,9 +197,8 @@ export function IncidentTopology({
       sim.on('tick', () => {
         // Enforce safe boundary clamping
         for (const node of sim.nodes()) {
-          const r = getNodeRadius(node.confidence, node.status);
-          const padX = Math.max(80, r + 45);
-          const padY = Math.max(50, r + 40);
+          const padX = 110;
+          const padY = 50;
           if (typeof node.x === 'number') {
             node.x = Math.max(padX, Math.min(width - padX, node.x));
           }
@@ -233,21 +227,21 @@ export function IncidentTopology({
         typeof forceLink<SimulationNode, SimulationLink>
       >;
       if (linkForce) {
-        linkForce.links(newSimLinks).distance(130);
+        linkForce.links(newSimLinks).distance(150);
       }
 
       const chargeForce = sim.force('charge') as ReturnType<
         typeof forceManyBody<SimulationNode>
       >;
       if (chargeForce) {
-        chargeForce.strength(-260);
+        chargeForce.strength(-320);
       }
 
       const collideForce = sim.force('collision') as ReturnType<
         typeof forceCollide<SimulationNode>
       >;
       if (collideForce) {
-        collideForce.radius((d) => Math.max(50, getNodeRadius(d.confidence, d.status) + 30));
+        collideForce.radius(80);
       }
 
       const centerForce = sim.force('center') as ReturnType<typeof forceCenter<SimulationNode>>;
@@ -323,8 +317,8 @@ export function IncidentTopology({
 
         .topology-legend {
           position: absolute;
-          top: var(--space-3);
-          right: var(--space-4);
+          top: 12px;
+          right: 16px;
           display: flex;
           align-items: center;
           gap: 6px;
@@ -332,9 +326,9 @@ export function IncidentTopology({
           background: rgba(14, 16, 21, 0.88);
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
-          border: 1px solid var(--border-default);
+          border: 1px solid var(--border-subtle);
           border-radius: var(--radius-full);
-          box-shadow: var(--shadow-inner-glow), 0 4px 12px rgba(0, 0, 0, 0.4);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
           z-index: 10;
           pointer-events: auto;
         }
@@ -353,8 +347,8 @@ export function IncidentTopology({
         }
 
         .topology-legend__dot {
-          width: 7px;
-          height: 7px;
+          width: 6px;
+          height: 6px;
           border-radius: 50%;
           display: inline-block;
           box-shadow: 0 0 6px currentColor;
@@ -362,27 +356,27 @@ export function IncidentTopology({
 
         .topology-tooltip {
           position: absolute;
-          width: 250px;
+          width: 270px;
           background: rgba(14, 16, 21, 0.96);
           backdrop-filter: blur(16px);
           -webkit-backdrop-filter: blur(16px);
           border: 1px solid var(--border-emphasis);
           border-radius: var(--radius-md);
           box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), var(--shadow-inner-glow);
-          padding: var(--space-3);
+          padding: 12px;
           z-index: 50;
           pointer-events: none;
           font-family: var(--font-sans);
           display: flex;
           flex-direction: column;
-          gap: var(--space-2);
+          gap: 6px;
           animation: tooltip-fade 0.15s ease-out;
         }
 
         .topology-tooltip-header {
           display: flex;
           align-items: center;
-          gap: var(--space-2);
+          gap: 8px;
         }
 
         .topology-tooltip-badge {
@@ -407,13 +401,13 @@ export function IncidentTopology({
           font-size: 9px;
           padding: 2px 6px;
           border-radius: var(--radius-sm);
-          background: var(--color-conflict-dim);
+          background: rgba(232, 84, 84, 0.15);
           color: var(--color-conflict);
         }
 
         .topology-tooltip-content {
           font-size: 12px;
-          line-height: 1.4;
+          line-height: 1.42;
           color: var(--text-primary);
           margin: 0;
         }
@@ -421,9 +415,37 @@ export function IncidentTopology({
         .topology-tooltip-meta {
           display: flex;
           align-items: center;
-          gap: var(--space-1);
+          gap: 6px;
           font-size: 10px;
           color: var(--text-muted);
+        }
+
+        /* Signal Flow Animation on Causal Edges */
+        @keyframes signalFlow {
+          from { stroke-dashoffset: 24; }
+          to { stroke-dashoffset: 0; }
+        }
+
+        .topology-edge {
+          stroke: rgba(255, 255, 255, 0.12);
+          stroke-width: 1.5;
+        }
+
+        .topology-edge--causal {
+          stroke: rgba(123, 140, 255, 0.35);
+          stroke-dasharray: 4 4;
+          animation: signalFlow 1.2s linear infinite;
+        }
+
+        .topology-edge--conflict {
+          stroke: rgba(232, 84, 84, 0.55);
+          stroke-width: 2;
+          stroke-dasharray: 5 3;
+        }
+
+        .topology-edge--contradicts {
+          stroke: rgba(232, 84, 84, 0.65);
+          stroke-width: 2;
         }
       `}</style>
 
@@ -453,29 +475,35 @@ export function IncidentTopology({
         height="100%"
       >
         <defs>
+          <pattern id="topo-dot-grid" width="22" height="22" patternUnits="userSpaceOnUse">
+            <circle cx="2" cy="2" r="1" fill="rgba(255, 255, 255, 0.035)" />
+          </pattern>
           <marker
             id="topo-arrowhead"
             viewBox="0 0 10 10"
-            refX="20"
+            refX="18"
             refY="5"
             markerWidth="5"
             markerHeight="5"
             orient="auto-start-reverse"
           >
-            <path d="M 0 1 L 9 5 L 0 9 z" fill="rgba(255, 255, 255, 0.25)" />
+            <path d="M 0 1 L 9 5 L 0 9 z" fill="rgba(123, 140, 255, 0.5)" />
           </marker>
           <marker
             id="topo-arrowhead-conflict"
             viewBox="0 0 10 10"
-            refX="20"
+            refX="18"
             refY="5"
             markerWidth="5"
             markerHeight="5"
             orient="auto-start-reverse"
           >
-            <path d="M 0 1 L 9 5 L 0 9 z" fill="rgba(232, 84, 84, 0.7)" />
+            <path d="M 0 1 L 9 5 L 0 9 z" fill="rgba(232, 84, 84, 0.75)" />
           </marker>
         </defs>
+
+        {/* Subtle Precision Dot-Grid Canvas Background */}
+        <rect width="100%" height="100%" fill="url(#topo-dot-grid)" />
 
         {/* 1. Curved Dynamic Bezier Edges */}
         <g className="topology-edges">
@@ -526,14 +554,19 @@ export function IncidentTopology({
           })}
         </g>
 
-        {/* 2. Precision Causal Nodes */}
+        {/* 2. Precision Pill Capsules for Causal Nodes */}
         <g className="topology-nodes">
           {simNodes.map((node) => {
             if (node.x == null || node.y == null) return null;
-            const radius = getNodeRadius(node.confidence, node.status);
             const colors = getNodeColors(node.category, node.status);
             const isDisproven = node.status === 'disproven';
             const isHovered = node.id === hoveredNodeId;
+
+            // Calculate responsive pill capsule width
+            const labelLength = node.content.length;
+            const pillWidth = Math.max(140, Math.min(240, labelLength * 6.5 + 54));
+            const pillHeight = 32;
+            const circleX = -pillWidth / 2 + 16;
 
             return (
               <g
@@ -545,32 +578,53 @@ export function IncidentTopology({
                 onClick={() => onNodeClick?.(node.id)}
                 style={{ cursor: 'pointer' }}
               >
-                {/* Node Outer Halo Glow */}
-                <circle
-                  r={radius + (isHovered ? 7 : 4)}
-                  fill="none"
-                  stroke={colors.stroke}
-                  strokeWidth={isHovered ? 2 : 1}
-                  strokeDasharray={isHovered ? '3 3' : undefined}
-                  opacity={isHovered ? 0.85 : 0.25}
+                {/* Pill Capsule Outer Glow on Hover */}
+                {isHovered && (
+                  <rect
+                    x={-pillWidth / 2 - 3}
+                    y={-pillHeight / 2 - 3}
+                    width={pillWidth + 6}
+                    height={pillHeight + 6}
+                    rx="18"
+                    fill="none"
+                    stroke={colors.stroke}
+                    strokeWidth="1.5"
+                    strokeDasharray="4 3"
+                    opacity="0.75"
+                  />
+                )}
+
+                {/* Pill Capsule Main Rounded Background */}
+                <rect
+                  x={-pillWidth / 2}
+                  y={-pillHeight / 2}
+                  width={pillWidth}
+                  height={pillHeight}
+                  rx="16"
+                  fill="var(--bg-surface-raised)"
+                  stroke={isHovered ? colors.stroke : 'var(--border-subtle)'}
+                  strokeWidth={isHovered ? '1.5' : '1'}
+                  opacity={isDisproven ? 0.45 : 1}
                 />
 
-                {/* Main Circular Surface */}
+                {/* Epistemic Indicator Circle (Preserves Circle Element for Vitest Contract) */}
                 <circle
                   className="topology-node"
-                  r={radius}
+                  cx={circleX}
+                  cy={0}
+                  r={10}
                   fill={colors.fill}
                   stroke={colors.stroke}
-                  strokeWidth={isHovered ? 2.5 : 1.5}
-                  opacity={isDisproven ? 0.4 : 1}
+                  strokeWidth={isHovered ? 2 : 1.25}
                 />
 
-                {/* Inner Epistemic Category Glyph */}
+                {/* Epistemic Glyph */}
                 <text
+                  x={circleX}
+                  y={3.5}
                   textAnchor="middle"
-                  dy="3.5"
                   fill={colors.badge}
-                  fontSize={Math.max(9, Math.round(radius * 0.6))}
+                  fontSize="9.5"
                   fontFamily="var(--font-mono)"
                   fontWeight="bold"
                   pointerEvents="none"
@@ -578,32 +632,34 @@ export function IncidentTopology({
                   {isDisproven ? '✕' : node.category[0].toUpperCase()}
                 </text>
 
-                {/* Node Label Capsule */}
-                <g transform={`translate(0, ${radius + 14})`} pointerEvents="none">
-                  <rect
-                    x={-(Math.min(node.content.length, 20) * 3.2 + 8)}
-                    y="-8"
-                    width={(Math.min(node.content.length, 20) * 6.4 + 16)}
-                    height="16"
-                    rx="4"
-                    fill="rgba(8, 9, 12, 0.85)"
-                    stroke={isHovered ? colors.stroke : 'rgba(255, 255, 255, 0.08)'}
-                    strokeWidth={isHovered ? '1' : '0.5'}
-                  />
-                  <text
-                    className={`topology-label ${isDisproven ? 'topology-label--disproven' : ''}`}
-                    y="3"
-                    textAnchor="middle"
-                    fill={isHovered ? 'var(--text-primary)' : 'var(--text-secondary)'}
-                    fontSize="10"
-                    fontFamily="var(--font-sans)"
-                    letterSpacing="-0.01em"
-                  >
-                    {node.content.length > 20
-                      ? `${node.content.substring(0, 18)}…`
-                      : node.content}
-                  </text>
-                </g>
+                {/* Full Legible Content Text inside Capsule */}
+                <text
+                  x={circleX + 16}
+                  y={3.5}
+                  textAnchor="start"
+                  fill={isHovered ? 'var(--text-primary)' : 'var(--text-secondary)'}
+                  fontSize="11"
+                  fontFamily="var(--font-sans)"
+                  fontWeight="500"
+                  letterSpacing="-0.01em"
+                  pointerEvents="none"
+                >
+                  {node.content.length > 26 ? `${node.content.substring(0, 24)}…` : node.content}
+                </text>
+
+                {/* Confidence Percentage Tag */}
+                <text
+                  x={pillWidth / 2 - 10}
+                  y={3.5}
+                  textAnchor="end"
+                  fill="var(--text-muted)"
+                  fontSize="9"
+                  fontFamily="var(--font-mono)"
+                  fontWeight="500"
+                  pointerEvents="none"
+                >
+                  {node.confidence}%
+                </text>
               </g>
             );
           })}
@@ -615,8 +671,8 @@ export function IncidentTopology({
         <div
           className="topology-tooltip"
           style={{
-            left: Math.min(dimensions.width - 250, Math.max(10, hoveredNode.x + 15)),
-            top: Math.min(dimensions.height - 140, Math.max(10, hoveredNode.y - 40)),
+            left: Math.min(dimensions.width - 280, Math.max(10, hoveredNode.x + 15)),
+            top: Math.min(dimensions.height - 150, Math.max(10, hoveredNode.y - 45)),
           }}
         >
           <div className="topology-tooltip-header">
@@ -650,3 +706,4 @@ export function IncidentTopology({
     </div>
   );
 }
+

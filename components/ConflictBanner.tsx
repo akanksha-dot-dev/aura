@@ -25,17 +25,16 @@ export function ConflictBanner({
         .conflict-banner {
           grid-area: conflict;
           display: flex;
-          flex-direction: column;
-          padding: var(--space-3) var(--space-4);
-          background: var(--bg-surface-raised);
-          border: 1px solid rgba(232, 84, 84, 0.25);
-          border-left: 3px solid var(--color-conflict);
-          border-radius: var(--radius-md);
-          margin: 6px var(--space-4) 4px var(--space-4);
-          box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(232, 84, 84, 0.15);
+          align-items: center;
+          justify-content: space-between;
+          padding: 8px 16px;
+          background: rgba(22, 12, 15, 0.88);
+          border-bottom: 1px solid rgba(232, 84, 84, 0.25);
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
+          gap: 12px;
           overflow: hidden;
+          z-index: 9;
           transition: all var(--duration-normal) var(--ease-standard);
         }
 
@@ -47,33 +46,29 @@ export function ConflictBanner({
           display: none;
         }
 
-        .conflict-banner__header {
+        /* ─── Left Identity Cluster ─── */
+        .conflict-banner__lead {
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          margin-bottom: var(--space-2);
-        }
-
-        .conflict-banner__title-cluster {
-          display: flex;
-          align-items: center;
-          gap: 8px;
+          gap: 10px;
+          flex-shrink: 0;
         }
 
         .conflict-banner__badge {
           display: inline-flex;
           align-items: center;
-          gap: 5px;
-          font-family: var(--font-sans);
+          gap: 6px;
+          font-family: var(--font-mono);
           font-size: 10px;
           font-weight: 700;
           color: var(--color-conflict);
-          background: var(--color-conflict-dim);
-          border: 1px solid var(--color-conflict-border);
+          background: rgba(232, 84, 84, 0.12);
+          border: 1px solid rgba(232, 84, 84, 0.35);
           border-radius: var(--radius-sm);
-          padding: 2px 7px;
+          padding: 3px 7px;
           text-transform: uppercase;
-          letter-spacing: 0.05em;
+          letter-spacing: 0.06em;
+          white-space: nowrap;
         }
 
         .conflict-banner__dot {
@@ -87,50 +82,51 @@ export function ConflictBanner({
 
         @keyframes pulse-conflict-dot {
           0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.4; transform: scale(0.8); }
+          50% { opacity: 0.35; transform: scale(0.85); }
         }
 
         .conflict-banner__subtitle {
           font-family: var(--font-sans);
-          font-size: 12px;
+          font-size: 11px;
           font-weight: 500;
-          color: var(--text-primary);
+          color: var(--text-muted);
           letter-spacing: var(--tracking-tight);
+          white-space: nowrap;
         }
 
-        /* ─── Side-by-Side Comparison Grid ─── */
+        /* ─── Center Duel Comparison ─── */
         .conflict-banner__comparison {
-          display: grid;
-          grid-template-columns: 1fr auto 1fr;
+          display: flex;
           align-items: center;
-          gap: var(--space-3);
-          padding: 8px 12px;
-          background: var(--bg-surface);
-          border: 1px solid var(--border-default);
-          border-radius: var(--radius-sm);
-          margin-bottom: 6px;
+          gap: 10px;
+          flex: 1;
+          min-width: 0;
+          justify-content: center;
         }
 
         .conflict-banner__claim-card {
           display: flex;
-          flex-direction: column;
-          gap: 2px;
+          align-items: center;
+          gap: 6px;
           min-width: 0;
+          max-width: 320px;
+          background: rgba(255, 255, 255, 0.025);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          border-radius: var(--radius-sm);
+          padding: 4px 8px;
         }
 
         .conflict-banner__speaker-row {
-          display: flex;
-          align-items: center;
-          gap: 6px;
           font-family: var(--font-sans);
-          font-size: 11px;
+          font-size: 10.5px;
           font-weight: 600;
           color: var(--text-secondary);
+          flex-shrink: 0;
         }
 
         .conflict-banner__quote {
           font-family: var(--font-sans);
-          font-size: 12px;
+          font-size: 11.5px;
           color: var(--text-primary);
           line-height: 1.35;
           letter-spacing: var(--tracking-tight);
@@ -144,45 +140,58 @@ export function ConflictBanner({
           align-items: center;
           justify-content: center;
           font-family: var(--font-mono);
-          font-size: 10px;
+          font-size: 9px;
           font-weight: 700;
           color: var(--color-conflict);
           background: rgba(232, 84, 84, 0.12);
-          border: 1px solid rgba(232, 84, 84, 0.25);
-          width: 24px;
-          height: 24px;
+          border: 1px solid rgba(232, 84, 84, 0.3);
+          width: 20px;
+          height: 20px;
           border-radius: 50%;
           user-select: none;
           flex-shrink: 0;
         }
 
-        /* ─── Deciding Telemetry Footer ─── */
+        /* ─── Right Deciding Telemetry ─── */
         .conflict-banner__footer {
           display: flex;
           align-items: center;
-          gap: 8px;
-          font-size: 11px;
-          color: var(--color-hypothesis);
-          padding-top: 4px;
+          gap: 7px;
+          background: rgba(212, 168, 83, 0.06);
+          border: 1px solid rgba(212, 168, 83, 0.2);
+          border-radius: var(--radius-sm);
+          padding: 4px 8px;
+          flex-shrink: 0;
         }
 
         .conflict-banner__metric-tag {
-          font-family: var(--font-sans);
+          font-family: var(--font-mono);
           font-weight: 600;
-          font-size: 10px;
+          font-size: 9.5px;
           text-transform: uppercase;
-          letter-spacing: 0.04em;
-          color: var(--text-muted);
-          flex-shrink: 0;
+          letter-spacing: 0.06em;
+          color: var(--color-aura);
+          white-space: nowrap;
         }
 
         .conflict-banner__metric-val {
           font-family: var(--font-mono);
-          font-size: 11px;
+          font-size: 10.5px;
           color: var(--color-hypothesis);
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
+          max-width: 260px;
+        }
+
+        @media (max-width: 1200px) {
+          .conflict-banner {
+            flex-wrap: wrap;
+            padding: 8px 12px;
+          }
+          .conflict-banner__subtitle {
+            display: none;
+          }
         }
       `}</style>
       <div
@@ -195,26 +204,22 @@ export function ConflictBanner({
       >
         {isActive && (
           <>
-            <div className="conflict-banner__header">
-              <div className="conflict-banner__title-cluster">
-                <span className="conflict-banner__badge">
-                  <span className="conflict-banner__dot" aria-hidden="true" />
-                  ACTIVE CONFLICT
-                </span>
-                <span className="conflict-banner__subtitle">
-                  Contradictory Hypothesis Detected in Bridge Audio
-                </span>
-              </div>
+            <div className="conflict-banner__lead">
+              <span className="conflict-banner__badge">
+                <span className="conflict-banner__dot" aria-hidden="true" />
+                ACTIVE CONFLICT
+              </span>
+              <span className="conflict-banner__subtitle">
+                Contradictory Hypothesis Detected in Bridge Audio
+              </span>
             </div>
 
             <div className="conflict-banner__comparison">
               <div className="conflict-banner__claim-card">
-                <div className="conflict-banner__speaker-row">
-                  <span>{speakerAName}</span>
-                </div>
-                <div className="conflict-banner__quote" title={hypothesisA}>
+                <span className="conflict-banner__speaker-row">{speakerAName}</span>
+                <span className="conflict-banner__quote" title={hypothesisA}>
                   &ldquo;{hypothesisA}&rdquo;
-                </div>
+                </span>
               </div>
 
               <div className="conflict-banner__vs-divider" aria-label="versus">
@@ -222,12 +227,10 @@ export function ConflictBanner({
               </div>
 
               <div className="conflict-banner__claim-card">
-                <div className="conflict-banner__speaker-row">
-                  <span>{speakerBName}</span>
-                </div>
-                <div className="conflict-banner__quote" title={hypothesisB}>
+                <span className="conflict-banner__speaker-row">{speakerBName}</span>
+                <span className="conflict-banner__quote" title={hypothesisB}>
                   &ldquo;{hypothesisB}&rdquo;
-                </div>
+                </span>
               </div>
             </div>
 
@@ -243,3 +246,4 @@ export function ConflictBanner({
     </>
   );
 }
+

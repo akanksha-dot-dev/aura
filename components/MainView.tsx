@@ -49,11 +49,10 @@ export function MainView({
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 0 var(--space-4);
-          height: 44px;
+          padding: 0 16px;
+          height: 40px;
           background: var(--bg-surface);
-          border-bottom: 1px solid var(--border-default);
-          box-shadow: var(--shadow-inner-glow);
+          border-bottom: 1px solid var(--border-subtle);
           flex-shrink: 0;
           z-index: 10;
         }
@@ -63,27 +62,27 @@ export function MainView({
           display: inline-flex;
           align-items: center;
           background: var(--bg-surface-raised);
-          border: 1px solid var(--border-default);
+          border: 1px solid var(--border-subtle);
           border-radius: var(--radius-sm);
           padding: 2px;
           gap: 2px;
         }
 
         .main-view__tab {
-          height: 26px;
+          height: 24px;
           background: transparent;
           border: 1px solid transparent;
           color: var(--text-secondary);
           font-family: var(--font-sans);
-          font-size: var(--text-xs);
+          font-size: 11px;
           font-weight: 500;
           cursor: pointer;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           gap: 6px;
-          padding: 0 10px;
-          border-radius: var(--radius-sm);
+          padding: 0 9px;
+          border-radius: 3px;
           transition: all var(--duration-fast) var(--ease-standard);
           user-select: none;
           position: relative;
@@ -98,8 +97,8 @@ export function MainView({
           background: var(--bg-surface);
           color: var(--color-aura);
           font-weight: 600;
-          border-color: var(--border-default);
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), var(--shadow-inner-glow);
+          border-color: var(--border-subtle);
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
         }
 
         .main-view__tab-icon {
@@ -109,11 +108,11 @@ export function MainView({
 
         .main-view__tab-count {
           font-family: var(--font-mono);
-          font-size: 10px;
-          background: rgba(255, 255, 255, 0.06);
-          padding: 1px 5px;
-          border-radius: 3px;
-          color: var(--text-secondary);
+          font-size: 9.5px;
+          background: rgba(255, 255, 255, 0.04);
+          padding: 1px 4px;
+          border-radius: 2px;
+          color: var(--text-muted);
         }
 
         .main-view__tab--active .main-view__tab-count {
@@ -123,8 +122,8 @@ export function MainView({
 
         .main-view__meta-hint {
           font-family: var(--font-mono);
-          font-size: 10px;
-          letter-spacing: 0.05em;
+          font-size: 9.5px;
+          letter-spacing: 0.06em;
           color: var(--text-muted);
         }
 
