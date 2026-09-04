@@ -167,45 +167,42 @@ export function TimelineCard({
       <style>{`
         .timeline-card {
           position: relative;
-          background: var(--bg-surface);
-          border: 1px solid var(--border-default);
-          box-shadow: var(--shadow-inner-glow);
+          background: transparent;
+          border: 1px solid transparent;
           border-radius: var(--radius-sm);
-          padding: 8px 12px;
-          margin-bottom: 0;
+          padding: 3px 8px 4px 8px;
+          margin-bottom: 1px;
           transition: background-color var(--duration-fast) var(--ease-standard),
-                      border-color var(--duration-fast) var(--ease-standard),
-                      box-shadow var(--duration-fast) var(--ease-standard);
+                      border-color var(--duration-fast) var(--ease-standard);
         }
 
         .timeline-card:hover {
-          background: var(--bg-surface-raised);
-          border-color: var(--border-emphasis);
-          box-shadow: var(--shadow-card-elevated);
+          background: rgba(255, 255, 255, 0.025);
+          border-color: var(--border-hairline);
         }
 
         /* ─── Spine Node Positioned on Vertical Spine ─── */
         .timeline-card__spine-node {
           position: absolute;
-          left: -27px;
-          top: 10px;
-          width: 17px;
-          height: 17px;
+          left: -25px;
+          top: 6px;
+          width: 14px;
+          height: 14px;
           border-radius: 50%;
-          background: var(--bg-base);
-          border: 1px solid var(--border-default);
+          background: var(--bg-canvas);
+          border: 1px solid var(--border-hairline);
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 9px;
+          font-size: 8.5px;
           font-weight: 700;
           z-index: 2;
-          box-shadow: 0 0 0 3px var(--bg-base);
+          box-shadow: 0 0 0 2px var(--bg-canvas);
           transition: transform var(--duration-fast) var(--ease-standard);
         }
 
         .timeline-card:hover .timeline-card__spine-node {
-          transform: scale(1.1);
+          transform: scale(1.15);
         }
 
         .timeline-card__spine-node--fact {
@@ -245,92 +242,65 @@ export function TimelineCard({
         }
 
         .timeline-card__node-dot {
-          width: 5px;
-          height: 5px;
+          width: 4px;
+          height: 4px;
           border-radius: 50%;
           background: currentColor;
         }
 
         .timeline-card__node-diamond {
-          width: 5px;
-          height: 5px;
+          width: 4px;
+          height: 4px;
           transform: rotate(45deg);
           background: currentColor;
         }
 
         .timeline-card__node-square {
-          width: 5px;
-          height: 5px;
+          width: 4px;
+          height: 4px;
           border-radius: 1px;
           background: currentColor;
         }
 
-        /* ─── Header Elements ─── */
+        /* ─── Streamlined Inline Metadata ─── */
         .timeline-card__header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: var(--space-2);
-          margin-bottom: 4px;
+          gap: 6px;
+          margin-bottom: 2px;
+          line-height: 1.2;
         }
 
         .timeline-card__meta-left {
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 5px;
           min-width: 0;
           flex-wrap: wrap;
         }
 
-        .timeline-card__category-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 3px;
-          padding: 1px 6px;
+        .timeline-card__time {
           font-family: var(--font-mono);
-          font-size: 9px;
-          font-weight: 600;
-          letter-spacing: 0.04em;
-          text-transform: uppercase;
-          border-radius: var(--radius-xs);
-          white-space: nowrap;
-          border: 1px solid transparent;
+          font-size: 10px;
+          font-variant-numeric: tabular-nums;
+          color: var(--text-muted);
+          flex-shrink: 0;
         }
 
-        .timeline-card__category-badge--fact {
-          color: var(--color-fact);
-          background: var(--color-fact-dim);
-          border-color: var(--color-fact-border);
-        }
-
-        .timeline-card__category-badge--hypothesis {
-          color: var(--color-hypothesis);
-          background: var(--color-hypothesis-dim);
-          border-color: var(--color-hypothesis-border);
-        }
-
-        .timeline-card__category-badge--decision {
-          color: var(--color-decision);
-          background: var(--color-decision-dim);
-          border-color: var(--color-decision-border);
-        }
-
-        .timeline-card__category-badge--action {
-          color: var(--color-action);
-          background: var(--color-action-dim);
-          border-color: var(--color-action-border);
-        }
-
-        .timeline-card__category-badge--conflict {
-          color: var(--color-conflict);
-          background: var(--color-conflict-dim);
-          border-color: var(--color-conflict-border);
+        .timeline-card__sep {
+          color: var(--text-disabled);
+          font-size: 10px;
+          user-select: none;
+          opacity: 0.5;
+          flex-shrink: 0;
         }
 
         .timeline-card__speaker {
           display: flex;
           align-items: center;
-          gap: 5px;
+          gap: 4px;
+          flex-shrink: 0;
         }
 
         .timeline-card__speaker-name {
@@ -343,27 +313,42 @@ export function TimelineCard({
 
         .timeline-card__speaker-role {
           font-family: var(--font-mono);
-          font-size: 10px;
+          font-size: 9.5px;
           color: var(--text-muted);
-          letter-spacing: 0.02em;
         }
+
+        .timeline-card__category-inline {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          font-weight: 500;
+          letter-spacing: 0.03em;
+          text-transform: uppercase;
+          flex-shrink: 0;
+        }
+
+        .timeline-card__category-inline--fact { color: var(--color-fact); }
+        .timeline-card__category-inline--hypothesis { color: var(--color-hypothesis); }
+        .timeline-card__category-inline--decision { color: var(--color-decision); }
+        .timeline-card__category-inline--action { color: var(--color-action); }
+        .timeline-card__category-inline--conflict { color: var(--color-conflict); }
 
         .timeline-card__header-right {
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 5px;
           flex-shrink: 0;
         }
 
         .timeline-card__confidence-pill {
           font-family: var(--font-mono);
-          font-size: 10px;
+          font-size: 9.5px;
+          font-variant-numeric: tabular-nums;
           font-weight: 500;
-          padding: 1px 5px;
-          border-radius: var(--radius-xs);
-          background: rgba(255, 255, 255, 0.04);
-          border: 1px solid var(--border-subtle);
-          color: var(--text-secondary);
+          padding: 1px 4px;
+          border-radius: var(--radius-sm);
+          background: var(--bg-surface-raised);
+          border: 1px solid var(--border-hairline);
+          color: var(--text-muted);
         }
 
         .timeline-card__confidence-pill--confirmed {
@@ -378,21 +363,17 @@ export function TimelineCard({
           background: var(--color-conflict-dim);
         }
 
-        .timeline-card__time {
-          font-family: var(--font-mono);
-          font-size: 10px;
-          color: var(--text-muted);
-        }
-
         .timeline-card__toggle-btn {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          width: 18px;
-          height: 18px;
+          width: 16px;
+          height: 16px;
           color: var(--text-muted);
-          border-radius: var(--radius-xs);
+          border-radius: var(--radius-sm);
           cursor: pointer;
+          background: transparent;
+          border: none;
           transition: color var(--duration-fast) var(--ease-standard);
         }
 
@@ -411,8 +392,8 @@ export function TimelineCard({
         /* ─── Body Content ─── */
         .timeline-card__content {
           font-family: var(--font-sans);
-          font-size: 12.5px;
-          line-height: 1.4;
+          font-size: 12px;
+          line-height: 1.35;
           letter-spacing: var(--tracking-tight);
           color: var(--text-primary);
           margin: 0;
@@ -433,51 +414,51 @@ export function TimelineCard({
         .timeline-card__disproven-badge {
           display: inline-flex;
           align-items: center;
-          gap: 4px;
-          margin-top: 4px;
+          gap: 3px;
+          margin-top: 3px;
           font-family: var(--font-mono);
-          font-size: 9px;
+          font-size: 8.5px;
           font-weight: 600;
           color: var(--color-conflict);
           background: var(--color-conflict-dim);
           border: 1px solid var(--color-conflict-border);
-          padding: 1px 5px;
-          border-radius: var(--radius-xs);
+          padding: 1px 4px;
+          border-radius: var(--radius-sm);
         }
 
         .timeline-card__footer {
           display: flex;
           align-items: center;
           flex-wrap: wrap;
-          gap: 5px;
-          margin-top: 6px;
-          padding-top: 6px;
-          border-top: 1px solid var(--border-subtle);
+          gap: 4px;
+          margin-top: 4px;
+          padding-top: 4px;
+          border-top: 1px solid var(--border-hairline);
         }
 
         .meta-chip {
           display: inline-flex;
           align-items: center;
-          gap: 4px;
+          gap: 3px;
           font-family: var(--font-sans);
-          font-size: 10px;
-          padding: 1px 6px;
-          border-radius: var(--radius-xs);
+          font-size: 9.5px;
+          padding: 1px 5px;
+          border-radius: var(--radius-sm);
           background: var(--bg-surface-raised);
-          border: 1px solid var(--border-subtle);
+          border: 1px solid var(--border-hairline);
           color: var(--text-secondary);
         }
 
         .meta-chip--assignee {
           color: var(--color-action);
-          border-color: rgba(232, 125, 62, 0.2);
-          background: rgba(232, 125, 62, 0.08);
+          border-color: rgba(249, 115, 22, 0.2);
+          background: rgba(249, 115, 22, 0.08);
         }
 
         .meta-chip--metric {
           color: var(--color-hypothesis);
-          border-color: rgba(232, 168, 56, 0.2);
-          background: rgba(232, 168, 56, 0.08);
+          border-color: rgba(245, 158, 11, 0.2);
+          background: rgba(245, 158, 11, 0.08);
         }
 
         .meta-chip--related {
@@ -500,13 +481,11 @@ export function TimelineCard({
 
       <div className="timeline-card__header">
         <div className="timeline-card__meta-left">
-          <span
-            className={`timeline-card__category-badge timeline-card__category-badge--${
-              isConfirmed ? 'fact' : item.category
-            }`}
-          >
-            <span>{isConfirmed ? 'Confirmed Fact' : item.category}</span>
+          <span className="timeline-card__time">
+            {formatTime(item.timestamp)}
           </span>
+
+          <span className="timeline-card__sep" aria-hidden="true">·</span>
 
           <div className="timeline-card__speaker">
             <VoiceBadge
@@ -515,8 +494,20 @@ export function TimelineCard({
               isSpeaking={false}
             />
             <span className="timeline-card__speaker-name">{speakerInfo.name}</span>
-            <span className="timeline-card__speaker-role">({speakerInfo.role})</span>
+            {speakerInfo.role && (
+              <span className="timeline-card__speaker-role">({speakerInfo.role})</span>
+            )}
           </div>
+
+          <span className="timeline-card__sep" aria-hidden="true">·</span>
+
+          <span
+            className={`timeline-card__category-inline timeline-card__category-inline--${
+              isConfirmed ? 'fact' : item.category
+            }`}
+          >
+            {isConfirmed ? 'Confirmed Fact' : item.category.charAt(0).toUpperCase() + item.category.slice(1)}
+          </span>
         </div>
 
         <div className="timeline-card__header-right">
@@ -534,9 +525,6 @@ export function TimelineCard({
               {isConfirmed ? '100%' : isDisproven ? '0%' : `${displayConfidence}%`}
             </span>
           )}
-          <span className="timeline-card__time">
-            {formatTime(item.timestamp)}
-          </span>
           <button
             type="button"
             className="timeline-card__toggle-btn"

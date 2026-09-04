@@ -62,11 +62,9 @@ export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
           display: flex;
           align-items: center;
           gap: 6px;
-          padding: 6px 16px;
-          background: rgba(14, 16, 22, 0.7);
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
-          border-bottom: 1px solid var(--border-subtle);
+          padding: 6px 14px;
+          background: var(--bg-surface);
+          border-bottom: 1px solid var(--border-hairline);
           flex-shrink: 0;
           z-index: 5;
           overflow-x: auto;
@@ -80,7 +78,7 @@ export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
           padding: 0 8px;
           border-radius: var(--radius-full);
           background: var(--bg-surface-raised);
-          border: 1px solid var(--border-subtle);
+          border: 1px solid var(--border-hairline);
           color: var(--text-secondary);
           font-family: var(--font-sans);
           font-size: 10.5px;
@@ -93,20 +91,20 @@ export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
 
         .timeline-filter-pill:hover {
           color: var(--text-primary);
-          border-color: var(--border-default);
+          border-color: var(--border-emphasis);
           background: var(--bg-surface-hover);
         }
 
         .timeline-filter-pill--active {
-          background: rgba(212, 168, 83, 0.12);
-          border-color: rgba(212, 168, 83, 0.4);
+          background: var(--color-aura-dim);
+          border-color: rgba(245, 158, 11, 0.4);
           color: var(--color-aura);
           font-weight: 600;
         }
 
         .timeline-filter-pill__dot {
-          width: 6px;
-          height: 6px;
+          width: 5px;
+          height: 5px;
           border-radius: 50%;
           flex-shrink: 0;
         }
@@ -121,7 +119,7 @@ export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
         }
 
         .timeline-filter-pill--active .timeline-filter-pill__count {
-          background: rgba(212, 168, 83, 0.2);
+          background: rgba(245, 158, 11, 0.2);
           color: var(--color-aura);
         }
 
@@ -132,24 +130,18 @@ export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
           flex: 1;
           min-height: 0;
           overflow-y: auto;
-          padding: var(--space-3) var(--space-3) var(--space-4) 38px;
-          gap: 6px;
+          padding: 8px 12px 16px 36px;
+          gap: 3px;
         }
 
         /* ─── Continuous Vertical Chronological Spine ─── */
         .timeline-feed__spine {
           position: absolute;
-          top: var(--space-3);
-          bottom: var(--space-3);
-          left: 19px;
+          top: 8px;
+          bottom: 16px;
+          left: 17px;
           width: 1px;
-          background: linear-gradient(
-            to bottom,
-            var(--border-subtle) 0%,
-            rgba(255, 255, 255, 0.12) 15%,
-            rgba(255, 255, 255, 0.08) 85%,
-            transparent 100%
-          );
+          background: var(--border-hairline);
           pointer-events: none;
           z-index: 1;
         }
