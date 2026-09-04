@@ -65,7 +65,7 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
       if (typeof window === 'undefined') return;
 
       const AgoraRTC = (await import('agora-rtc-sdk-ng')).default;
-      AgoraRTC.setLogLevel(1); // Warnings and errors only
+      AgoraRTC.setLogLevel(2); // Warnings and errors only
 
       if (!clientRef.current && mounted) {
         const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
@@ -260,6 +260,46 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
 
       // 3. Create and publish local microphone audio track if not already active
       if (!localTrackRef.current) {
+        // Pre-check permission query if supported by the browser
+        let isDenied = false;
+        if (typeof navigator !== 'undefined' && navigator.permissions?.query) {
+          try {
+            const perm = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+            if (perm.state === 'denied') {
+              isDenied = true;
+            }
+          } catch {
+            // Some browsers do not support microphone in permissions.query
+          }
+        }
+
+        if (isDenied) {
+          console.info('[useAgoraRTC] Microphone permission is in denied state. Operating in listen-only mode.');
+          return;
+        }
+
+        // Intercept console.error temporarily around createMicrophoneAudioTrack to prevent
+        // Agora's internal logger from triggering Next.js unhandled dev overlay errors
+        const originalConsoleError = console.error;
+        let isPermissionDismissed = false;
+
+        console.error = (...args: unknown[]) => {
+          const str = args
+            .map((a) => (typeof a === 'string' ? a : a instanceof Error ? a.message : ''))
+            .join(' ');
+          if (
+            str.includes('PERMISSION_DENIED') ||
+            str.includes('Permission dismissed') ||
+            str.includes('NotAllowedError') ||
+            str.includes('Permission denied')
+          ) {
+            isPermissionDismissed = true;
+            console.info('[useAgoraRTC] Notice: Microphone permission dismissed or blocked. Operating in listen-only mode.');
+            return;
+          }
+          originalConsoleError.apply(console, args);
+        };
+
         try {
           const audioTrack = await AgoraRTC.createMicrophoneAudioTrack({
             AEC: true, // Acoustic Echo Cancellation
@@ -267,22 +307,26 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
             AGC: true, // Auto Gain Control
           });
 
+          console.error = originalConsoleError;
           localTrackRef.current = audioTrack;
           setLocalAudioTrack(audioTrack);
           await client.publish([audioTrack]);
         } catch (micErr) {
+          console.error = originalConsoleError;
           const micMsg = micErr instanceof Error ? micErr.message : String(micErr);
           if (
+            isPermissionDismissed ||
             micMsg.includes('PERMISSION_DENIED') ||
             micMsg.includes('NotAllowedError') ||
-            micMsg.includes('Permission dismissed')
+            micMsg.includes('Permission dismissed') ||
+            micMsg.includes('Permission denied')
           ) {
-            console.warn('[useAgoraRTC] Microphone permission dismissed/denied. Connected in listen-only mode.');
-            setError('Microphone permission dismissed. Connected in listen-only mode.');
+            console.info('[useAgoraRTC] Microphone permission dismissed or unavailable. Connected in listen-only mode.');
           } else {
             console.warn('[useAgoraRTC] Could not initialize microphone track:', micErr);
-            setError('Microphone unavailable. Connected in listen-only mode.');
           }
+        } finally {
+          console.error = originalConsoleError;
         }
       }
     } catch (err) {
