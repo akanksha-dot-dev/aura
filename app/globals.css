@@ -129,8 +129,8 @@
   --bg-glass-hover: rgba(20, 23, 30, 0.85);
   --bg-glass-raised: rgba(22, 26, 34, 0.65);
   --bg-glass-panel: rgba(14, 16, 21, 0.85);
-  --border-glass: rgba(255, 255, 255, 0.05);
-  --border-glass-emphasis: rgba(255, 255, 255, 0.09);
+  --border-glass: rgba(255, 255, 255, 0.04);
+  --border-glass-emphasis: rgba(255, 255, 255, 0.08);
 
   /* ─── Panel Collapse System ─── */
   --panel-collapsed-width: 48px;
@@ -685,14 +685,14 @@ input, textarea, select {
   container-type: inline-size;
   container-name: status;
   grid-area: status;
-  border-bottom: 1px solid var(--border-glass);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .speaker-panel {
   container-type: inline-size;
   container-name: speakers;
   grid-area: speakers;
-  border-right: 1px solid var(--border-glass);
+  border-right: 1px solid var(--border-subtle);
 }
 
 .conflict-banner {
@@ -710,14 +710,14 @@ input, textarea, select {
   height: 100%;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--border-glass);
+  border-right: 1px solid var(--border-subtle);
 }
 
 .action-tracker {
   container-type: inline-size;
   container-name: actions;
   grid-area: actions;
-  border-left: 1px solid var(--border-glass);
+  border-left: 1px solid var(--border-subtle);
 }
 
 .narrative-bar {
@@ -801,10 +801,8 @@ input, textarea, select {
   justify-content: space-between;
   padding: 0 var(--space-4);
   height: 42px;
-  background: var(--bg-glass-panel);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border-glass);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
@@ -812,11 +810,11 @@ input, textarea, select {
   position: relative;
   display: inline-flex;
   align-items: center;
-  background: var(--bg-glass);
-  border: 1px solid var(--border-glass);
-  border-radius: 99px;
-  padding: 3px;
-  gap: 3px;
+  background: var(--bg-surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 2px;
+  gap: 2px;
 }
 
 .main-view__tab {
@@ -833,7 +831,7 @@ input, textarea, select {
   justify-content: center;
   gap: var(--space-1h);
   padding: 0 14px;
-  border-radius: 99px;
+  border-radius: var(--radius-sm);
   transition: all var(--duration-fast) var(--ease-standard);
   user-select: none;
   position: relative;
@@ -845,10 +843,10 @@ input, textarea, select {
 }
 
 .main-view__tab--active {
-  background: var(--bg-glass-hover);
+  background: var(--bg-surface-hover);
   color: var(--color-aura);
   font-weight: var(--weight-semibold);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), var(--shadow-inner-glow);
 }
 
 .main-view__tab-icon {
@@ -955,11 +953,11 @@ input, textarea, select {
 .mission-deck {
   grid-area: dock;
   height: 68px;
-  background: var(--bg-glass-panel);
+  background: var(--bg-surface);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-top: 1px solid var(--border-glass-emphasis);
-  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.45);
+  border-top: 1px solid var(--border-subtle);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4), var(--shadow-inner-glow);
   display: grid;
   grid-template-columns: minmax(180px, var(--speaker-col-width, 250px)) minmax(0, 1fr) auto;
   align-items: center;
@@ -973,14 +971,14 @@ input, textarea, select {
   height: 100%;
   min-width: 160px;
   overflow: hidden;
-  border-right: 1px solid var(--border-glass);
+  border-right: 1px solid var(--border-subtle);
 }
 
 .mission-deck__captions {
   height: 100%;
   min-width: 0;
   overflow: hidden;
-  border-right: 1px solid var(--border-glass);
+  border-right: 1px solid var(--border-subtle);
 }
 
 .mission-deck__right {
@@ -1213,8 +1211,8 @@ input, textarea, select {
 }
 
 .postmortem-modal {
-  background: var(--bg-surface-raised);
-  border: 1px solid var(--border-emphasis);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-xl);
   max-width: 840px;
   width: 94vw;
@@ -1222,7 +1220,7 @@ input, textarea, select {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: var(--shadow-modal), 0 0 48px rgba(0, 0, 0, 0.75);
+  box-shadow: var(--shadow-modal), var(--shadow-inner-glow);
 }
 
 .postmortem-header {
@@ -1230,7 +1228,7 @@ input, textarea, select {
   align-items: center;
   justify-content: space-between;
   padding: var(--space-3) var(--space-5);
-  border-bottom: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--border-subtle);
   background: var(--bg-surface);
 }
 
