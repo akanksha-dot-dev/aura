@@ -896,7 +896,7 @@ input, textarea, select {
   width: 100vw;
   height: 100vh;
   display: grid;
-  grid-template-columns: var(--speaker-col-width, 250px) 1fr 290px;
+  grid-template-columns: var(--speaker-col-width, 250px) 1fr var(--action-col-width, 290px);
   grid-template-rows: 52px auto 1fr 68px;
   grid-template-areas:
     "status    status    status"
@@ -914,6 +914,10 @@ input, textarea, select {
 
 .command-center.speakers-collapsed {
   --speaker-col-width: var(--panel-collapsed-width, 48px);
+}
+
+.command-center.actions-collapsed {
+  --action-col-width: var(--panel-collapsed-width, 48px);
 }
 
 .command-center.speakers-collapsed .mission-deck {

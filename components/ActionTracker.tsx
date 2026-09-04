@@ -61,7 +61,8 @@ export function ActionTracker({
         }
 
         .action-tracker.is-collapsed {
-          padding-bottom: 8px;
+          padding: var(--space-2) 6px;
+          overflow: hidden;
         }
 
         /* ─── Header Section ─── */
@@ -72,6 +73,12 @@ export function ActionTracker({
           padding-bottom: 8px;
           border-bottom: 1px solid var(--border-subtle);
           gap: 8px;
+          min-height: 28px;
+        }
+
+        .action-tracker__header--collapsed {
+          justify-content: center;
+          padding-bottom: var(--space-1);
         }
 
         .action-tracker__title-group {
@@ -111,20 +118,139 @@ export function ActionTracker({
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          width: 22px;
-          height: 22px;
-          border-radius: var(--radius-sm);
-          background: transparent;
+          width: 20px;
+          height: 20px;
+          border-radius: var(--radius-xs);
+          background: var(--bg-surface-raised);
           border: 1px solid var(--border-subtle);
+          box-shadow: var(--shadow-inner-glow);
           color: var(--text-muted);
           cursor: pointer;
+          font-family: var(--font-mono);
+          font-size: 10px;
           transition: all var(--duration-fast) var(--ease-standard);
         }
 
         .action-tracker__collapse-btn:hover {
           color: var(--text-primary);
-          background: var(--bg-surface-hover);
-          border-color: var(--border-default);
+          border-color: var(--border-emphasis);
+        }
+
+        /* ─── Collapsed Action Rail ─── */
+        .action-rail {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 6px;
+          width: 100%;
+          height: 100%;
+          min-height: 0;
+        }
+
+        .action-rail__progress {
+          margin: 4px 0 6px 0;
+          padding: 2px 4px;
+          border-radius: var(--radius-xs);
+          background: var(--bg-surface-raised);
+          border: 1px solid var(--border-subtle);
+          font-family: var(--font-mono);
+          font-size: 9px;
+          font-weight: 600;
+          color: var(--color-aura);
+          text-align: center;
+          width: 100%;
+          box-sizing: border-box;
+        }
+
+        .action-rail__stack {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 6px;
+          width: 100%;
+          overflow-y: auto;
+        }
+
+        .action-rail__item {
+          width: 32px;
+          height: 32px;
+          border-radius: var(--radius-sm);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          border: 1px solid var(--border-subtle);
+          background: var(--bg-surface-raised);
+          box-shadow: var(--shadow-inner-glow);
+          color: var(--text-muted);
+          transition: all var(--duration-fast) var(--ease-standard);
+          position: relative;
+          padding: 0;
+        }
+
+        .action-rail__item:hover {
+          transform: scale(1.05);
+          border-color: var(--border-emphasis);
+          color: var(--text-primary);
+        }
+
+        .action-rail__item--done {
+          background: rgba(59, 212, 162, 0.08);
+          border-color: rgba(59, 212, 162, 0.3);
+          color: var(--color-fact);
+        }
+
+        .action-rail__item--in_progress {
+          background: rgba(123, 140, 255, 0.08);
+          border-color: rgba(123, 140, 255, 0.35);
+          color: #7B8CFF;
+        }
+
+        .action-rail__pulse-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #7B8CFF;
+          animation: action-dot-pulse 1.6s ease-in-out infinite;
+        }
+
+        @keyframes action-dot-pulse {
+          0%, 100% { transform: scale(0.85); opacity: 0.6; }
+          50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 6px #7B8CFF; }
+        }
+
+        .action-rail__pending-dot {
+          font-family: var(--font-mono);
+          font-size: 10px;
+          font-weight: 600;
+          color: var(--text-muted);
+        }
+
+        .action-rail__hypo {
+          margin-top: auto;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 2px;
+          padding: 6px 4px;
+          border-radius: var(--radius-xs);
+          background: rgba(212, 168, 83, 0.05);
+          border: 1px solid rgba(212, 168, 83, 0.2);
+          cursor: pointer;
+          width: 100%;
+          box-sizing: border-box;
+        }
+
+        .action-rail__hypo-icon {
+          font-size: 8px;
+          color: var(--color-aura);
+        }
+
+        .action-rail__hypo-count {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          font-weight: 600;
+          color: var(--color-aura);
         }
 
         /* ─── Slim Precision Progress Bar ─── */
@@ -446,55 +572,89 @@ export function ActionTracker({
         className={`action-tracker ${isCollapsed ? 'is-collapsed' : ''}`}
         aria-label="Incident action items and investigation matrix"
       >
-        <div className="action-tracker__header">
-          <div className="action-tracker__title-group">
-            <span className="action-tracker__title">Mitigation Actions</span>
-          </div>
+        <div className={`action-tracker__header ${isCollapsed ? 'action-tracker__header--collapsed' : ''}`}>
+          {!isCollapsed && (
+            <div className="action-tracker__title-group">
+              <span className="action-tracker__title">Mitigation Actions</span>
+            </div>
+          )}
           <div className="action-tracker__controls">
-            <span className="action-tracker__count-badge">
-              {doneCount} of {actions.length} Done
-            </span>
+            {!isCollapsed && (
+              <span className="action-tracker__count-badge">
+                {doneCount} of {actions.length} Done
+              </span>
+            )}
             <button
               type="button"
               className="action-tracker__collapse-btn"
               onClick={toggleCollapse}
-              title={isCollapsed ? 'Expand Action Items' : 'Collapse Action Items'}
-              aria-label={isCollapsed ? 'Expand Action Items' : 'Collapse Action Items'}
+              title={isCollapsed ? 'Expand Action Items (Press ])' : 'Collapse to action rail (Press ])'}
+              aria-label={isCollapsed ? 'Expand Action Items' : 'Collapse to action rail'}
               aria-expanded={!isCollapsed}
             >
-              <svg
-                width="10"
-                height="10"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                style={{
-                  transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
-                  transition: 'transform var(--duration-fast) var(--ease-standard)',
-                }}
-                aria-hidden="true"
-              >
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
+              {isCollapsed ? '«' : '»'}
             </button>
           </div>
         </div>
 
-        {!isCollapsed && (
-          <div className="action-tracker__progress-wrap">
-            <div className="action-tracker__progress-track">
-              <div
-                className="action-tracker__progress-fill"
-                style={{ width: `${progressPercent}%` }}
-              />
+        {isCollapsed ? (
+          <div className="action-rail">
+            <div
+              className="action-rail__progress"
+              title={`${doneCount} of ${actions.length} completed (${progressPercent}%)`}
+            >
+              {actions.length > 0 ? `${doneCount}/${actions.length}` : '0/0'}
+            </div>
+
+            <div className="action-rail__stack">
+              {actions.map((act, index) => {
+                const status = act.actionStatus ?? 'pending';
+                const ticketNumber = (act.id.replace(/[^0-9]/g, '') || String(index + 1)).slice(-3);
+                const tooltip = `[ACT-${ticketNumber}] ${act.content} (@${act.assignedTo || 'unassigned'}) — ${status.toUpperCase()}`;
+
+                return (
+                  <button
+                    key={act.id}
+                    type="button"
+                    className={`action-rail__item action-rail__item--${status}`}
+                    onClick={() => handleCycleStatus(act)}
+                    title={tooltip}
+                    aria-label={tooltip}
+                  >
+                    {status === 'done' ? (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    ) : status === 'in_progress' ? (
+                      <span className="action-rail__pulse-dot" />
+                    ) : (
+                      <span className="action-rail__pending-dot">{ticketNumber.slice(-1)}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div
+              className="action-rail__hypo"
+              title="Active Hypotheses & Findings (3 tracked)"
+            >
+              <span className="action-rail__hypo-icon">●</span>
+              <span className="action-rail__hypo-count">3</span>
             </div>
           </div>
-        )}
+        ) : (
+          <>
+            <div className="action-tracker__progress-wrap">
+              <div className="action-tracker__progress-track">
+                <div
+                  className="action-tracker__progress-fill"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+            </div>
 
-        <div className="action-tracker__list">
+            <div className="action-tracker__list">
           {actions.length === 0 ? (
             <div className="action-tracker__empty-state">
               <div className="action-tracker__empty-icon">
@@ -573,28 +733,27 @@ export function ActionTracker({
           )}
         </div>
 
-        {/* Live Incident Hypotheses & Findings Board */}
-        {!isCollapsed && (
-          <div className="hypothesis-board">
-            <div className="hypothesis-board__header">
-              <span>Active Hypotheses &amp; Findings</span>
-              <span className="hypothesis-board__badge">3 tracked</span>
+            <div className="hypothesis-board">
+              <div className="hypothesis-board__header">
+                <span>Active Hypotheses &amp; Findings</span>
+                <span className="hypothesis-board__badge">3 tracked</span>
+              </div>
+              <div className="hypothesis-board__list">
+                <div className="hypothesis-item hypothesis-item--confirmed">
+                  <span className="hypothesis-item__icon">✓</span>
+                  <span>Redis connection pool starvation at 99.8% capacity</span>
+                </div>
+                <div className="hypothesis-item hypothesis-item--disproven">
+                  <span className="hypothesis-item__icon">✕</span>
+                  <span>Stripe webhook signature mismatch (Refuted by 200 OKs)</span>
+                </div>
+                <div className="hypothesis-item hypothesis-item--active">
+                  <span className="hypothesis-item__icon">●</span>
+                  <span>Checkout queue worker thread exhaustion</span>
+                </div>
+              </div>
             </div>
-            <div className="hypothesis-board__list">
-              <div className="hypothesis-item hypothesis-item--confirmed">
-                <span className="hypothesis-item__icon">✓</span>
-                <span>Redis connection pool starvation at 99.8% capacity</span>
-              </div>
-              <div className="hypothesis-item hypothesis-item--disproven">
-                <span className="hypothesis-item__icon">✕</span>
-                <span>Stripe webhook signature mismatch (Refuted by 200 OKs)</span>
-              </div>
-              <div className="hypothesis-item hypothesis-item--active">
-                <span className="hypothesis-item__icon">●</span>
-                <span>Checkout queue worker thread exhaustion</span>
-              </div>
-            </div>
-          </div>
+          </>
         )}
       </section>
     </>

@@ -51,8 +51,9 @@ function DashboardContent() {
   const [isAnalyticsCollapsed, setIsAnalyticsCollapsed] = useState(true);
   const [isCostPaused, setIsCostPaused] = useState(false);
   const [isSpeakerCollapsed, setIsSpeakerCollapsed] = useState(false);
+  const [isActionsCollapsed, setIsActionsCollapsed] = useState(false);
 
-  // Global Mission-Control Keyboard Shortcuts (T: Tab, J: Drawer, P: Postmortem, K: Pause Cost, Esc: Close)
+  // Global Mission-Control Keyboard Shortcuts (T: Tab, J: Drawer, P: Postmortem, K: Pause Cost, [: Left Sidebar, ]: Right Sidebar, \: Full Focus, Esc: Close)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -68,6 +69,16 @@ function DashboardContent() {
         setIsPostmortemOpen((prev) => !prev);
       } else if (e.key === 'k' || e.key === 'K') {
         setIsCostPaused((prev) => !prev);
+      } else if (e.key === '[') {
+        setIsSpeakerCollapsed((prev) => !prev);
+      } else if (e.key === ']') {
+        setIsActionsCollapsed((prev) => !prev);
+      } else if (e.key === '\\') {
+        setIsSpeakerCollapsed((prev) => {
+          const next = !prev;
+          setIsActionsCollapsed(next);
+          return next;
+        });
       } else if (e.key === 'Escape') {
         setIsTranscriptDrawerOpen(false);
         setIsPostmortemOpen(false);
@@ -436,7 +447,9 @@ function DashboardContent() {
     <div
       className={`command-center ${activeConflict ? 'has-conflict' : ''} ${
         state.status === 'resolved' ? 'command-center--resolved' : ''
-      } ${isSpeakerCollapsed ? 'speakers-collapsed' : ''}`}
+      } ${isSpeakerCollapsed ? 'speakers-collapsed' : ''} ${
+        isActionsCollapsed ? 'actions-collapsed' : ''
+      }`}
     >
       {/* 1. Status Bar */}
       <StatusBar
@@ -507,6 +520,8 @@ function DashboardContent() {
       <ActionTracker
         actions={actions}
         onStatusChange={updateActionStatus}
+        isCollapsed={isActionsCollapsed}
+        onToggleCollapse={() => setIsActionsCollapsed((prev) => !prev)}
       />
 
       {/* 6-8. Unified Mission Deck (Bottom Dock: Tension Sparkline, Live Captions, Incident Stats) */}
