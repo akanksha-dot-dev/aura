@@ -25,12 +25,31 @@ export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
     <>
       <style>{`
         .timeline-feed {
+          position: relative;
           display: flex;
           flex-direction: column;
           height: 100%;
           overflow-y: auto;
-          padding: var(--space-4);
-          gap: var(--space-2);
+          padding: var(--space-4) var(--space-4) var(--space-6) 42px;
+          gap: var(--space-3);
+        }
+
+        /* ─── Continuous Vertical Chronological Spine ─── */
+        .timeline-feed__spine {
+          position: absolute;
+          top: var(--space-4);
+          bottom: var(--space-4);
+          left: 20px;
+          width: 1px;
+          background: linear-gradient(
+            to bottom,
+            var(--border-subtle) 0%,
+            rgba(255, 255, 255, 0.12) 15%,
+            rgba(255, 255, 255, 0.08) 85%,
+            transparent 100%
+          );
+          pointer-events: none;
+          z-index: 1;
         }
 
         .timeline-feed__empty {
@@ -45,36 +64,39 @@ export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
           text-align: center;
           gap: var(--space-3);
           padding: var(--space-8);
+          margin-left: -22px;
         }
 
         .timeline-feed__empty-icon {
-          width: 48px;
-          height: 48px;
+          width: 44px;
+          height: 44px;
           display: flex;
           align-items: center;
           justify-content: center;
           border-radius: var(--radius-full);
-          background: var(--color-aura-dim);
-          border: 1px solid rgba(212, 168, 83, 0.25);
+          background: var(--bg-surface-raised);
+          border: 1px solid var(--border-default);
           color: var(--color-aura);
+          box-shadow: var(--shadow-inner-glow);
           animation: empty-pulse 2.5s ease-in-out infinite;
         }
 
         @keyframes empty-pulse {
-          0%, 100% { opacity: 0.4; transform: scale(1); box-shadow: 0 0 0 0 rgba(212, 168, 83, 0.2); }
-          50% { opacity: 0.9; transform: scale(1.05); box-shadow: 0 0 16px 4px rgba(212, 168, 83, 0.2); }
+          0%, 100% { opacity: 0.6; transform: scale(1); box-shadow: 0 0 0 0 rgba(212, 168, 83, 0.15); }
+          50% { opacity: 1; transform: scale(1.04); box-shadow: 0 0 16px 2px rgba(212, 168, 83, 0.2); }
         }
 
         .timeline-feed__empty-title {
           font-size: var(--text-md);
-          font-weight: var(--weight-medium);
-          color: var(--text-secondary);
+          font-weight: 500;
+          color: var(--text-primary);
+          letter-spacing: var(--tracking-tight);
           margin: 0;
         }
 
         .timeline-feed__empty-sub {
           font-size: var(--text-xs);
-          color: var(--text-muted);
+          color: var(--text-secondary);
           max-width: 320px;
           line-height: var(--leading-relaxed);
           margin: 0;
@@ -85,32 +107,34 @@ export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
           align-items: center;
           gap: 6px;
           margin-top: var(--space-2);
-          padding: 8px 18px;
-          background: var(--bg-glass-raised);
-          border: 1px solid var(--border-glass-emphasis);
+          padding: 6px 16px;
+          background: var(--bg-surface-raised);
+          border: 1px solid var(--border-default);
+          box-shadow: var(--shadow-inner-glow);
           border-radius: var(--radius-full);
           font-family: var(--font-sans);
           font-size: var(--text-xs);
-          font-weight: var(--weight-medium);
+          font-weight: 500;
           color: var(--color-aura);
           cursor: pointer;
-          backdrop-filter: blur(8px);
           transition: all var(--duration-fast) var(--ease-standard);
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
         }
 
         .timeline-feed__start-replay-btn:hover {
-          background: var(--bg-glass-hover);
+          background: var(--bg-surface-hover);
           border-color: var(--color-aura);
           transform: translateY(-1px);
-          box-shadow: 0 4px 14px rgba(212, 168, 83, 0.25);
+          box-shadow: 0 4px 14px rgba(212, 168, 83, 0.2);
         }
       `}</style>
       <div className="timeline-feed" ref={feedRef} role="feed" aria-label="Incident timeline feed">
+        {evidenceItems.length > 0 && (
+          <div className="timeline-feed__spine" aria-hidden="true" />
+        )}
         {evidenceItems.length === 0 ? (
           <div className="timeline-feed__empty">
             <div className="timeline-feed__empty-icon" aria-hidden="true">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
                 <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                 <line x1="12" y1="19" x2="12" y2="22" />
@@ -129,7 +153,7 @@ export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
               }}
               title="Start demo incident replay simulation"
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
                 <polygon points="5 3 19 12 5 21 5 3" />
               </svg>
               <span>Launch Demo Simulation</span>

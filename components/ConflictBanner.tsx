@@ -26,50 +26,38 @@ export function ConflictBanner({
           grid-area: conflict;
           display: flex;
           flex-direction: column;
-          justify-content: center;
-          padding: 0 var(--space-4);
-          background: var(--bg-glass);
-          background-image: linear-gradient(90deg, rgba(232, 84, 84, 0.10) 0%, rgba(232, 84, 84, 0.04) 50%, rgba(232, 84, 84, 0.08) 100%);
-          border: 1px solid rgba(232, 84, 84, 0.18);
-          border-left: 4px solid var(--color-conflict);
+          padding: var(--space-3) var(--space-4);
+          background: var(--bg-surface-raised);
+          border: 1px solid rgba(232, 84, 84, 0.25);
+          border-left: 3px solid var(--color-conflict);
           border-radius: var(--radius-md);
-          margin: 4px var(--space-3) 2px var(--space-3);
+          margin: 6px var(--space-4) 4px var(--space-4);
+          box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(232, 84, 84, 0.15);
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
           overflow: hidden;
-          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2), 0 0 1px rgba(232, 84, 84, 0.25);
-          transition: height var(--duration-normal) var(--ease-arrive),
-                      padding var(--duration-normal) var(--ease-arrive),
-                      margin var(--duration-normal) var(--ease-arrive),
-                      opacity var(--duration-normal) var(--ease-arrive);
+          transition: all var(--duration-normal) var(--ease-standard);
         }
 
         .conflict-banner--active {
-          min-height: 48px;
           opacity: 1;
         }
 
         .conflict-banner--inactive {
-          height: 0;
-          min-height: 0;
-          padding: 0;
-          margin-top: 0;
-          margin-bottom: 0;
-          opacity: 0;
-          border-width: 0;
-          pointer-events: none;
+          display: none;
         }
 
-        .conflict-banner__main {
+        .conflict-banner__header {
           display: flex;
           align-items: center;
-          gap: var(--space-2);
-          font-size: var(--text-xs);
-          font-weight: var(--weight-medium);
-          color: var(--text-primary);
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
+          justify-content: space-between;
+          margin-bottom: var(--space-2);
+        }
+
+        .conflict-banner__title-cluster {
+          display: flex;
+          align-items: center;
+          gap: 8px;
         }
 
         .conflict-banner__badge {
@@ -78,75 +66,123 @@ export function ConflictBanner({
           gap: 5px;
           font-family: var(--font-sans);
           font-size: 10px;
-          font-weight: var(--weight-semibold);
+          font-weight: 700;
+          color: var(--color-conflict);
+          background: var(--color-conflict-dim);
+          border: 1px solid var(--color-conflict-border);
+          border-radius: var(--radius-sm);
+          padding: 2px 7px;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .conflict-banner__dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: var(--color-conflict);
+          box-shadow: 0 0 6px var(--color-conflict);
+          animation: pulse-conflict-dot 1.6s ease-in-out infinite;
+        }
+
+        @keyframes pulse-conflict-dot {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.4; transform: scale(0.8); }
+        }
+
+        .conflict-banner__subtitle {
+          font-family: var(--font-sans);
+          font-size: 12px;
+          font-weight: 500;
+          color: var(--text-primary);
+          letter-spacing: var(--tracking-tight);
+        }
+
+        /* ─── Side-by-Side Comparison Grid ─── */
+        .conflict-banner__comparison {
+          display: grid;
+          grid-template-columns: 1fr auto 1fr;
+          align-items: center;
+          gap: var(--space-3);
+          padding: 8px 12px;
+          background: var(--bg-surface);
+          border: 1px solid var(--border-default);
+          border-radius: var(--radius-sm);
+          margin-bottom: 6px;
+        }
+
+        .conflict-banner__claim-card {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          min-width: 0;
+        }
+
+        .conflict-banner__speaker-row {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-family: var(--font-sans);
+          font-size: 11px;
+          font-weight: 600;
+          color: var(--text-secondary);
+        }
+
+        .conflict-banner__quote {
+          font-family: var(--font-sans);
+          font-size: 12px;
+          color: var(--text-primary);
+          line-height: 1.35;
+          letter-spacing: var(--tracking-tight);
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .conflict-banner__vs-divider {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-family: var(--font-mono);
+          font-size: 10px;
+          font-weight: 700;
           color: var(--color-conflict);
           background: rgba(232, 84, 84, 0.12);
           border: 1px solid rgba(232, 84, 84, 0.25);
-          border-radius: var(--radius-full);
-          padding: 1px 8px;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          user-select: none;
           flex-shrink: 0;
         }
 
-        .conflict-banner__claim {
-          display: inline-flex;
-          align-items: baseline;
-          gap: 4px;
-          min-width: 0;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .conflict-banner__speaker {
-          font-weight: var(--weight-bold);
-          color: var(--text-primary);
-          font-family: var(--font-sans);
-          flex-shrink: 0;
-        }
-
-        .conflict-banner__hypo {
-          color: var(--text-secondary);
-          font-family: var(--font-sans);
-          font-style: normal;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        .conflict-banner__vs {
-          color: var(--color-conflict);
-          font-weight: var(--weight-bold);
-          font-family: var(--font-sans);
-          font-size: 10px;
-          background: rgba(232, 84, 84, 0.10);
-          border: 1px solid rgba(232, 84, 84, 0.2);
-          padding: 1px 6px;
-          border-radius: var(--radius-sm);
-          flex-shrink: 0;
-          letter-spacing: 0.04em;
-        }
-
-        .conflict-banner__metric {
+        /* ─── Deciding Telemetry Footer ─── */
+        .conflict-banner__footer {
           display: flex;
           align-items: center;
-          gap: 5px;
-          font-family: var(--font-mono);
-          font-size: 10px;
+          gap: 8px;
+          font-size: 11px;
           color: var(--color-hypothesis);
-          margin-top: 2px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
+          padding-top: 4px;
         }
 
-        .conflict-banner__metric-label {
+        .conflict-banner__metric-tag {
           font-family: var(--font-sans);
-          font-weight: var(--weight-medium);
+          font-weight: 600;
           font-size: 10px;
-          color: var(--text-muted);
           text-transform: uppercase;
-          letter-spacing: 0.05em;
+          letter-spacing: 0.04em;
+          color: var(--text-muted);
+          flex-shrink: 0;
+        }
+
+        .conflict-banner__metric-val {
+          font-family: var(--font-mono);
+          font-size: 11px;
+          color: var(--color-hypothesis);
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
       `}</style>
       <div
@@ -159,49 +195,46 @@ export function ConflictBanner({
       >
         {isActive && (
           <>
-            <div className="conflict-banner__main">
-              <span className="conflict-banner__badge">
-                <svg
-                  width="11"
-                  height="11"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                  <line x1="12" y1="9" x2="12" y2="13" />
-                  <line x1="12" y1="17" x2="12.01" y2="17" />
-                </svg>
-                ACTIVE CONFLICT
-              </span>
+            <div className="conflict-banner__header">
+              <div className="conflict-banner__title-cluster">
+                <span className="conflict-banner__badge">
+                  <span className="conflict-banner__dot" aria-hidden="true" />
+                  ACTIVE CONFLICT
+                </span>
+                <span className="conflict-banner__subtitle">
+                  Contradictory Hypothesis Detected in Bridge Audio
+                </span>
+              </div>
+            </div>
 
-              <span className="conflict-banner__claim">
-                <span className="conflict-banner__speaker">{speakerAName}:</span>{' '}
-                <span className="conflict-banner__hypo">
+            <div className="conflict-banner__comparison">
+              <div className="conflict-banner__claim-card">
+                <div className="conflict-banner__speaker-row">
+                  <span>{speakerAName}</span>
+                </div>
+                <div className="conflict-banner__quote" title={hypothesisA}>
                   &ldquo;{hypothesisA}&rdquo;
-                </span>
-              </span>
+                </div>
+              </div>
 
-              <span className="conflict-banner__vs" aria-label="versus">
+              <div className="conflict-banner__vs-divider" aria-label="versus">
                 VS
-              </span>
+              </div>
 
-              <span className="conflict-banner__claim">
-                <span className="conflict-banner__speaker">{speakerBName}:</span>{' '}
-                <span className="conflict-banner__hypo">
+              <div className="conflict-banner__claim-card">
+                <div className="conflict-banner__speaker-row">
+                  <span>{speakerBName}</span>
+                </div>
+                <div className="conflict-banner__quote" title={hypothesisB}>
                   &ldquo;{hypothesisB}&rdquo;
-                </span>
-              </span>
+                </div>
+              </div>
             </div>
 
             {decidingMetric && (
-              <div className="conflict-banner__metric">
-                <span className="conflict-banner__metric-label">Deciding Telemetry:</span>
-                <span>{decidingMetric}</span>
+              <div className="conflict-banner__footer">
+                <span className="conflict-banner__metric-tag">Deciding Telemetry:</span>
+                <span className="conflict-banner__metric-val">{decidingMetric}</span>
               </div>
             )}
           </>
