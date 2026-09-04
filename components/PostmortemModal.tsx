@@ -248,7 +248,7 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
 
             .sre-doc-modal {
               background: var(--bg-surface);
-              border: 1px solid var(--border-default);
+              border: 1px solid var(--border-subtle);
               border-radius: var(--radius-lg);
               max-width: 960px;
               width: 95vw;
@@ -256,7 +256,7 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
               display: flex;
               flex-direction: column;
               overflow: hidden;
-              box-shadow: var(--shadow-inner-glow), 0 24px 64px rgba(0, 0, 0, 0.75);
+              box-shadow: 0 24px 64px rgba(0, 0, 0, 0.75), inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
               font-family: var(--font-sans);
               color: var(--text-primary);
             }
@@ -760,45 +760,28 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
               <section className="sre-section">
                 <h3 className="sre-section-title">2. Causal Evidence Chain & Pipeline</h3>
                 <div className="sre-pipeline-container">
-                  <svg viewBox="0 0 720 100" width="100%" height="100">
+                  <svg viewBox="0 0 720 74" width="100%" height="74">
                     <defs>
                       <marker
                         id="sre-arrow"
                         viewBox="0 0 10 10"
-                        refX="18"
-                        refY="5"
-                        markerWidth="5"
-                        markerHeight="5"
+                        refX="6"
+                        refY="3"
+                        markerWidth="4"
+                        markerHeight="4"
                         orient="auto-start-reverse"
                       >
-                        <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(255, 255, 255, 0.25)" />
+                        <path d="M 0 0.5 L 5 3 L 0 5.5 z" fill="rgba(255, 255, 255, 0.35)" />
                       </marker>
                     </defs>
 
-                    {/* Connectors */}
-                    {chainNodes.slice(0, -1).map((node, i) => {
-                      const x1 = 55 + i * 102;
-                      const y1 = 45;
-                      const x2 = 55 + (i + 1) * 102;
-                      const y2 = 45;
-                      return (
-                        <line
-                          key={`sre-line-${i}`}
-                          x1={x1}
-                          y1={y1}
-                          x2={x2}
-                          y2={y2}
-                          stroke="rgba(255, 255, 255, 0.15)"
-                          strokeWidth="1.5"
-                          markerEnd="url(#sre-arrow)"
-                        />
-                      );
-                    })}
-
-                    {/* Nodes */}
+                    {/* Nodes and Connecting Arrows */}
                     {chainNodes.map((node, i) => {
-                      const cx = 55 + i * 102;
-                      const cy = 45;
+                      const cardW = 86;
+                      const cardH = 46;
+                      const gap = 16;
+                      const x = 8 + i * (cardW + gap);
+                      const y = 14;
                       const isDis = node.status === 'disproven';
                       const fillColor = isDis
                         ? '#EF4444'
@@ -810,42 +793,38 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
                         ? '#A855F7'
                         : '#10B981';
 
+                      const isLast = i === chainNodes.length - 1;
+
                       return (
                         <g key={node.id}>
-                          <circle
-                            cx={cx}
-                            cy={cy}
-                            r={14}
-                            fill="#0A0C10"
-                            stroke={fillColor}
-                            strokeWidth={2}
-                            opacity={isDis ? 0.4 : 1}
-                          />
-                          <text
-                            x={cx}
-                            y={cy + 3.5}
-                            textAnchor="middle"
-                            fill="var(--text-primary)"
-                            fontSize="9"
-                            fontFamily="var(--font-mono)"
-                            fontWeight="bold"
-                          >
-                            {isDis ? '✕' : node.id.replace('evt-', '').substring(0, 4)}
-                          </text>
+                          {/* Main Card */}
                           <rect
-                            x={cx - 30}
-                            y={cy + 22}
-                            width="60"
-                            height="16"
-                            rx="3"
-                            fill="#13161E"
-                            stroke="rgba(255, 255, 255, 0.08)"
-                            strokeWidth="0.5"
+                            x={x}
+                            y={y}
+                            width={cardW}
+                            height={cardH}
+                            rx="4"
+                            fill="var(--bg-surface)"
+                            stroke={isDis ? 'rgba(239, 68, 68, 0.4)' : 'var(--border-subtle)'}
+                            strokeWidth="1"
+                            opacity={isDis ? 0.5 : 1}
                           />
+
+                          {/* Top Accent Strip */}
+                          <rect
+                            x={x}
+                            y={y}
+                            width={cardW}
+                            height={14}
+                            rx="3"
+                            fill={fillColor}
+                            opacity={0.12}
+                          />
+
+                          {/* Category Label */}
                           <text
-                            x={cx}
-                            y={cy + 33}
-                            textAnchor="middle"
+                            x={x + 6}
+                            y={y + 10}
                             fill={fillColor}
                             fontSize="8"
                             fontFamily="var(--font-mono)"
@@ -854,6 +833,53 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
                           >
                             {node.category.toUpperCase()}
                           </text>
+
+                          {/* Event ID */}
+                          <text
+                            x={x + cardW - 6}
+                            y={y + 10}
+                            textAnchor="end"
+                            fill="var(--text-muted)"
+                            fontSize="7.5"
+                            fontFamily="var(--font-mono)"
+                          >
+                            {node.id.toUpperCase()}
+                          </text>
+
+                          {/* Statement Snippet */}
+                          <text
+                            x={x + 6}
+                            y={y + 26}
+                            fill={isDis ? 'var(--text-muted)' : 'var(--text-primary)'}
+                            fontSize="8"
+                            fontFamily="var(--font-sans)"
+                            fontWeight="500"
+                          >
+                            {isDis ? 'DISPROVEN' : (node.content.length > 13 ? node.content.substring(0, 12) + '…' : node.content)}
+                          </text>
+
+                          <text
+                            x={x + 6}
+                            y={y + 37}
+                            fill="var(--text-muted)"
+                            fontSize="7.5"
+                            fontFamily="var(--font-mono)"
+                          >
+                            {node.confidence}% CONF
+                          </text>
+
+                          {/* Connector Arrow to Next Card */}
+                          {!isLast && (
+                            <line
+                              x1={x + cardW + 2}
+                              y1={y + cardH / 2}
+                              x2={x + cardW + gap - 3}
+                              y2={y + cardH / 2}
+                              stroke="rgba(255, 255, 255, 0.2)"
+                              strokeWidth="1.25"
+                              markerEnd="url(#sre-arrow)"
+                            />
+                          )}
                         </g>
                       );
                     })}

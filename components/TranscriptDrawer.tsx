@@ -21,13 +21,17 @@ export function TranscriptDrawer({
   entries,
 }: TranscriptDrawerProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Close on Escape key press
+  // Close on Escape key press, focus search on '/'
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
         onClose();
+      } else if (e.key === '/' && isOpen && document.activeElement !== searchInputRef.current) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
       }
     };
 
@@ -205,40 +209,52 @@ export function TranscriptDrawer({
           color: var(--text-muted);
         }
 
+        .transcript-search-hint {
+          font-family: var(--font-mono);
+          font-size: 9.5px;
+          color: var(--text-muted);
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid var(--border-subtle);
+          border-radius: 2px;
+          padding: 1px 4px;
+          line-height: 1;
+        }
+
         /* ─── Body Stream ─── */
         .transcript-body {
           flex: 1;
           overflow-y: auto;
-          padding: 14px 18px;
+          padding: 12px 16px;
           display: flex;
           flex-direction: column;
-          gap: 10px;
+          gap: 6px;
           scrollbar-width: thin;
           scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
         }
 
-        /* Conversational Bubble */
+        /* Conversational Row */
         .transcript-bubble {
           display: flex;
           flex-direction: column;
-          gap: 5px;
-          padding: 10px 12px;
-          border-radius: var(--radius-sm);
+          gap: 4px;
+          padding: 8px 11px;
+          border-radius: var(--radius-xs);
           background: var(--bg-surface-raised);
           border: 1px solid var(--border-subtle);
+          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.02);
           transition: all var(--duration-fast) var(--ease-standard);
         }
 
         .transcript-bubble:hover {
           background: var(--bg-surface-hover);
-          border-color: rgba(255, 255, 255, 0.09);
+          border-color: rgba(255, 255, 255, 0.08);
         }
 
         /* AURA AI Special Card */
         .transcript-bubble--aura {
-          background: rgba(212, 168, 83, 0.04);
-          border-color: rgba(212, 168, 83, 0.25);
-          border-left: 3px solid var(--color-aura);
+          background: rgba(212, 168, 83, 0.03);
+          border-color: rgba(212, 168, 83, 0.2);
+          border-left: 2px solid var(--color-aura);
         }
 
         .transcript-bubble-top {
@@ -394,6 +410,7 @@ export function TranscriptDrawer({
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
             <input
+              ref={searchInputRef}
               type="text"
               placeholder="Filter by speaker or text..."
               value={searchQuery}
@@ -401,7 +418,7 @@ export function TranscriptDrawer({
               className="transcript-search-input"
               aria-label="Filter transcript entries"
             />
-            {searchQuery && (
+            {searchQuery ? (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
@@ -416,6 +433,8 @@ export function TranscriptDrawer({
               >
                 ✕
               </button>
+            ) : (
+              <span className="transcript-search-hint" title="Press / to search">/</span>
             )}
           </div>
         </header>
