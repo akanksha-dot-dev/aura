@@ -18,16 +18,17 @@ export function TempoIndicator({ level }: TempoIndicatorProps) {
           align-items: center;
           justify-content: space-between;
           font-family: var(--font-sans);
-          font-size: var(--text-xs);
+          font-size: 11px;
           color: var(--text-muted);
           width: 100%;
         }
         .tempo-indicator__dots {
           display: inline-flex;
           align-items: center;
-          gap: 2px;
+          gap: 3px;
           font-family: var(--font-mono);
-          letter-spacing: 0.1em;
+          letter-spacing: 0.05em;
+          font-size: 10px;
           user-select: none;
         }
         .tempo-indicator__dot--active {

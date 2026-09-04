@@ -44,6 +44,29 @@ function getAvatarColor(uid: string): string {
   return palette[hash];
 }
 
+function getSpeakerRole(uid: string, speakerName?: string): string {
+  if (uid === 'aura_agent' || speakerName?.toLowerCase().includes('aura')) return 'AURA AI';
+  if (uid.includes('sarah') || speakerName?.toLowerCase().includes('sarah')) return 'Incident Commander';
+  if (uid.includes('marcus') || speakerName?.toLowerCase().includes('marcus')) return 'Senior SRE';
+  if (uid.includes('priya') || speakerName?.toLowerCase().includes('priya')) return 'Product Lead';
+  return 'Responder';
+}
+
+function getCleanSpeakerInfo(rawName?: string, rawUid: string = '') {
+  let name = rawName || 'Unknown';
+  let role = '';
+
+  const match = name.match(/^(.*?)\s*\((.*?)\)$/);
+  if (match) {
+    name = match[1].trim();
+    role = match[2].trim();
+  } else {
+    role = getSpeakerRole(rawUid, rawName);
+  }
+
+  return { name, role };
+}
+
 function formatSpeakingTime(ms: number): string {
   const totalSec = Math.max(0, Math.floor(ms / 1000));
   const m = Math.floor(totalSec / 60);
@@ -105,7 +128,7 @@ export function SpeakerPanel({
           width: 100%;
           height: 100%;
           background: var(--bg-surface);
-          border-right: 1px solid var(--border-default);
+          border-right: 1px solid var(--border-subtle);
           box-shadow: var(--shadow-inner-glow);
           display: flex;
           flex-direction: column;
@@ -159,7 +182,8 @@ export function SpeakerPanel({
           font-size: 10px;
           background: rgba(255, 255, 255, 0.05);
           padding: 1px 6px;
-          border-radius: var(--radius-sm);
+          border-radius: var(--radius-xs);
+          border: 1px solid var(--border-subtle);
           color: var(--text-secondary);
         }
 
@@ -169,9 +193,9 @@ export function SpeakerPanel({
           justify-content: center;
           width: 20px;
           height: 20px;
-          border-radius: var(--radius-sm);
+          border-radius: var(--radius-xs);
           background: var(--bg-surface-raised);
-          border: 1px solid var(--border-default);
+          border: 1px solid var(--border-subtle);
           box-shadow: var(--shadow-inner-glow);
           color: var(--text-muted);
           cursor: pointer;
@@ -228,7 +252,7 @@ export function SpeakerPanel({
         }
 
         .speaker-row--aura {
-          border: 1px solid rgba(212, 168, 83, 0.25);
+          border: 1px solid rgba(212, 168, 83, 0.22);
           background: rgba(212, 168, 83, 0.04);
           box-shadow: inset 0 1px 0 0 rgba(212, 168, 83, 0.15);
         }
@@ -377,7 +401,7 @@ export function SpeakerPanel({
           height: 24px;
           margin-top: 4px;
           background: rgba(0, 0, 0, 0.4);
-          border-radius: var(--radius-sm);
+          border-radius: var(--radius-xs);
           border: 1px solid rgba(212, 168, 83, 0.2);
         }
 
@@ -395,9 +419,9 @@ export function SpeakerPanel({
           margin: var(--space-2) 0;
           padding: 5px 8px;
           background: var(--bg-surface-raised);
-          border: 1px solid var(--border-default);
+          border: 1px solid var(--border-subtle);
           box-shadow: var(--shadow-inner-glow);
-          border-radius: var(--radius-sm);
+          border-radius: var(--radius-xs);
           font-family: var(--font-mono);
           font-size: 10px;
           color: var(--text-secondary);
@@ -423,11 +447,11 @@ export function SpeakerPanel({
           display: flex;
           flex-direction: column;
           gap: var(--space-2);
-          padding: var(--space-3);
+          padding: 10px 12px;
           background: var(--bg-surface-raised);
-          border: 1px solid var(--border-default);
+          border: 1px solid var(--border-subtle);
           box-shadow: var(--shadow-inner-glow);
-          border-radius: var(--radius-md);
+          border-radius: var(--radius-sm);
           flex-shrink: 0;
         }
 
@@ -438,7 +462,7 @@ export function SpeakerPanel({
           font-family: var(--font-sans);
           font-size: 11px;
           font-weight: 600;
-          letter-spacing: 0.05em;
+          letter-spacing: 0.04em;
           text-transform: uppercase;
           color: var(--text-muted);
         }
@@ -448,7 +472,7 @@ export function SpeakerPanel({
           font-size: 10px;
           font-weight: 600;
           padding: 1px 6px;
-          border-radius: var(--radius-sm);
+          border-radius: var(--radius-xs);
           border: 1px solid var(--border-subtle);
         }
       `}</style>
@@ -499,6 +523,8 @@ export function SpeakerPanel({
                     ? 'var(--color-orient)'
                     : 'var(--color-conflict)';
 
+                const cleanInfo = getCleanSpeakerInfo(p.displayName, p.uid);
+
                 return (
                   <div
                     key={p.uid}
@@ -515,7 +541,7 @@ export function SpeakerPanel({
                           }`}
                         >
                           <VoiceBadge
-                            displayName={p.displayName}
+                            displayName={cleanInfo.name}
                             avatarColor={getAvatarColor(p.uid)}
                             isSpeaking={isSpeaking}
                           />
@@ -563,7 +589,7 @@ export function SpeakerPanel({
             {/* AURA Agent Row (Always Present) */}
             <div
               className={`speaker-row speaker-row--aura ${collapsed ? 'speaker-row--collapsed' : ''}`}
-              title={collapsed ? "AURA (AI Commander)" : undefined}
+              title={collapsed ? "AURA (AI Incident Commander)" : undefined}
             >
               <div className="speaker-row__header">
                 <div className="speaker-row__meta">
