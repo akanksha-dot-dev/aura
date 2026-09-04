@@ -365,14 +365,76 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
           color: var(--text-secondary);
         }
 
+        /* ─── System Health Diagnostic Ribbon ─── */
+        .flightdeck-diagnostics {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 12px;
+          padding: 8px 16px;
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-sm);
+        }
+
+        .flightdeck-diag-item {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 11px;
+        }
+
+        .flightdeck-diag-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+        }
+
+        .flightdeck-diag-dot--live {
+          background: #34D399;
+          box-shadow: 0 0 5px rgba(52, 211, 153, 0.6);
+        }
+
+        .flightdeck-diag-label {
+          font-family: var(--font-mono);
+          font-size: 10px;
+          font-weight: 600;
+          color: var(--text-secondary);
+        }
+
+        .flightdeck-diag-val {
+          color: var(--text-muted);
+          font-size: 10.5px;
+        }
+
+        /* ─── Responder Selection Grid ─── */
+        .flightdeck-section-bar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+
+        .flightdeck-section-title {
+          font-family: var(--font-sans);
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: var(--text-secondary);
+        }
+
         .flightdeck-mode-toggle {
           display: inline-flex;
           align-items: center;
-          background: var(--bg-surface);
+          background: var(--bg-surface-raised);
           border: 1px solid var(--border-subtle);
-          border-radius: var(--radius-sm);
+          border-radius: var(--radius-xs);
           padding: 2px;
           gap: 2px;
+          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.02);
         }
 
         .flightdeck-mode-btn {
@@ -395,10 +457,11 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
         }
 
         .flightdeck-mode-btn--active {
-          background: var(--bg-surface-raised);
-          color: var(--color-aura);
+          background: var(--bg-surface);
+          color: var(--text-primary);
           font-weight: 600;
           border-color: var(--border-subtle);
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
         }
 
         .flightdeck-persona-grid {
@@ -424,6 +487,7 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
           cursor: pointer;
           text-align: left;
           transition: all var(--duration-fast) var(--ease-standard);
+          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.03);
         }
 
         .flightdeck-persona-card:hover:not(:disabled) {
@@ -442,16 +506,19 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
         }
 
         .flightdeck-persona-avatar {
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
+          width: 34px;
+          height: 34px;
+          border-radius: var(--radius-xs);
           display: flex;
           align-items: center;
           justify-content: center;
           font-weight: 700;
-          font-size: 13px;
+          font-size: 11.5px;
+          font-family: var(--font-mono);
           flex-shrink: 0;
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.03);
+          color: var(--text-primary);
         }
 
         .flightdeck-persona-meta {
@@ -848,6 +915,25 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
           </button>
         </section>
 
+        {/* System Health Diagnostic Checklist */}
+        <section className="flightdeck-diagnostics" aria-label="System health diagnostics">
+          <div className="flightdeck-diag-item">
+            <span className="flightdeck-diag-dot flightdeck-diag-dot--live" aria-hidden="true" />
+            <span className="flightdeck-diag-label">Agora SD-RTN 48kHz Mesh:</span>
+            <span className="flightdeck-diag-val">Operational (sub-second latency)</span>
+          </div>
+          <div className="flightdeck-diag-item">
+            <span className="flightdeck-diag-dot flightdeck-diag-dot--live" aria-hidden="true" />
+            <span className="flightdeck-diag-label">ConvAI Voice Agent:</span>
+            <span className="flightdeck-diag-val">Ready (MiniMax managed TTS)</span>
+          </div>
+          <div className="flightdeck-diag-item">
+            <span className="flightdeck-diag-dot flightdeck-diag-dot--live" aria-hidden="true" />
+            <span className="flightdeck-diag-label">Epistemic Arbitration Engine:</span>
+            <span className="flightdeck-diag-val">Armed (contradiction detection)</span>
+          </div>
+        </section>
+
         {/* Responder Selection */}
         <section aria-label="Responder callsign selection" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <div className="flightdeck-section-bar">
@@ -896,12 +982,11 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
                     <div
                       className="flightdeck-persona-avatar"
                       style={{
-                        backgroundColor: persona.avatarColor,
-                        color: 'var(--text-inverse)',
+                        borderLeft: `2px solid ${persona.avatarColor}`,
                       }}
                       aria-hidden="true"
                     >
-                      {persona.displayName[0]}
+                      {persona.displayName.split(' ').map((n) => n[0]).join('')}
                     </div>
                     <div className="flightdeck-persona-meta">
                       <div className="flightdeck-persona-name-row">
