@@ -70,11 +70,7 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
           align-items: center;
           justify-content: flex-start;
           padding: 2.5rem 1.5rem 4rem 1.5rem;
-          background:
-            radial-gradient(ellipse 90% 50% at 50% -12%, rgba(212, 168, 83, 0.10) 0%, transparent 65%),
-            radial-gradient(circle at 10% 80%, rgba(99, 102, 241, 0.04) 0%, transparent 45%),
-            radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.03) 0%, transparent 45%),
-            #08090C;
+          background: var(--bg-base);
           position: relative;
           overflow-y: auto;
           overflow-x: hidden;
@@ -84,33 +80,34 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
 
         .flightdeck-content {
           width: 100%;
-          max-width: 1240px;
+          max-width: 1180px;
           display: flex;
           flex-direction: column;
-          gap: 1.75rem;
+          gap: 1.5rem;
           position: relative;
           z-index: 1;
         }
 
-        /* ─── Header ─── */
+        /* ─── Mission Hero Header ─── */
         .flightdeck-header {
           text-align: center;
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 0.625rem;
-          margin-bottom: 0.5rem;
+          gap: 8px;
+          margin-bottom: 0.25rem;
         }
 
         .flightdeck-status-pill {
           display: inline-flex;
           align-items: center;
-          gap: 0.5rem;
-          padding: 0.25rem 0.875rem;
+          gap: 7px;
+          padding: 3px 10px;
           background: rgba(212, 168, 83, 0.08);
           border: 1px solid rgba(212, 168, 83, 0.2);
           border-radius: var(--radius-full);
-          font-size: 0.6875rem;
+          font-family: var(--font-mono);
+          font-size: 10px;
           font-weight: 600;
           color: var(--color-aura);
           letter-spacing: 0.08em;
@@ -122,32 +119,29 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
           height: 6px;
           border-radius: 50%;
           background: var(--color-fact);
-          box-shadow: 0 0 8px var(--color-fact);
+          box-shadow: 0 0 6px var(--color-fact);
           animation: flightdeck-pulse 2s ease-in-out infinite;
         }
 
         .flightdeck-brand-title {
-          font-size: clamp(2.5rem, 5.5vw, 3.75rem);
+          font-size: clamp(2.25rem, 5vw, 3.25rem);
           font-weight: 800;
           letter-spacing: -0.03em;
           line-height: 1;
-          margin: 0.25rem 0;
-          background: linear-gradient(180deg, #FFFFFF 25%, #D4A853 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          filter: drop-shadow(0 2px 24px rgba(212, 168, 83, 0.25));
+          margin: 4px 0;
+          color: var(--text-primary);
         }
 
         .flightdeck-subtitle {
-          font-size: 1.0625rem;
-          color: var(--text-primary);
+          font-size: 16px;
+          color: var(--text-secondary);
           font-weight: 500;
           letter-spacing: -0.01em;
           margin: 0;
         }
 
         .flightdeck-tagline {
-          font-size: 0.8125rem;
+          font-size: 12px;
           color: var(--text-muted);
           line-height: 1.5;
           max-width: 620px;
@@ -158,36 +152,32 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
         .flightdeck-connecting {
           display: flex;
           align-items: center;
-          gap: 1rem;
-          padding: 0.875rem 1.25rem;
-          background: rgba(212, 168, 83, 0.08);
-          border: 1px solid rgba(212, 168, 83, 0.35);
-          border-radius: var(--radius-lg);
-          box-shadow: 0 0 24px rgba(212, 168, 83, 0.15);
-          animation: flightdeck-connecting-pulse 1.8s ease-in-out infinite alternate;
+          gap: 12px;
+          padding: 12px 16px;
+          background: rgba(212, 168, 83, 0.06);
+          border: 1px solid rgba(212, 168, 83, 0.3);
+          border-radius: var(--radius-sm);
         }
 
         .flightdeck-spinner {
-          width: 20px;
-          height: 20px;
-          border: 2px solid rgba(212, 168, 83, 0.25);
+          width: 18px;
+          height: 18px;
+          border: 2px solid rgba(212, 168, 83, 0.2);
           border-top-color: var(--color-aura);
           border-radius: 50%;
           animation: flightdeck-spin 0.8s linear infinite;
           flex-shrink: 0;
         }
 
-        /* ─── Briefing Card ─── */
+        /* ─── Cohesive Flight Status Briefing Strip ─── */
         .flightdeck-briefing {
-          background: #0E1015;
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: var(--radius-xl);
-          padding: 1.5rem 1.75rem;
+          background: var(--bg-surface);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-md);
+          padding: 18px 22px;
           display: flex;
           flex-direction: column;
-          gap: 1.125rem;
-          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.07), 0 8px 32px rgba(0, 0, 0, 0.45);
-          position: relative;
+          gap: 14px;
         }
 
         .flightdeck-briefing-header {
@@ -195,47 +185,48 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
           align-items: center;
           justify-content: space-between;
           flex-wrap: wrap;
-          gap: 0.75rem;
+          gap: 10px;
         }
 
         .flightdeck-chips-group {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
+          gap: 8px;
           flex-wrap: wrap;
         }
 
         .flightdeck-chip {
           font-family: var(--font-mono);
-          font-size: 0.6875rem;
+          font-size: 10px;
           font-weight: 600;
-          padding: 0.2rem 0.625rem;
+          padding: 3px 8px;
           border-radius: var(--radius-sm);
           letter-spacing: 0.04em;
         }
 
         .flightdeck-chip-incident {
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid var(--border-subtle);
           color: var(--text-secondary);
         }
 
         .flightdeck-chip-sev1 {
-          background: rgba(239, 68, 68, 0.12);
-          border: 1px solid rgba(239, 68, 68, 0.3);
+          background: rgba(239, 68, 68, 0.1);
+          border: 1px solid rgba(239, 68, 68, 0.28);
           color: #F87171;
         }
 
         .flightdeck-chip-ready {
           display: inline-flex;
           align-items: center;
-          gap: 0.375rem;
-          background: rgba(16, 185, 129, 0.1);
-          border: 1px solid rgba(16, 185, 129, 0.25);
+          gap: 6px;
+          background: rgba(16, 185, 129, 0.08);
+          border: 1px solid rgba(16, 185, 129, 0.2);
           color: #34D399;
-          font-size: 0.6875rem;
+          font-size: 10px;
+          font-family: var(--font-mono);
           font-weight: 600;
-          padding: 0.2rem 0.625rem;
+          padding: 3px 8px;
           border-radius: var(--radius-sm);
         }
 
@@ -248,107 +239,112 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
         }
 
         .flightdeck-briefing-title {
-          font-size: 1.25rem;
+          font-size: 18px;
           font-weight: 700;
           letter-spacing: -0.015em;
           color: var(--text-primary);
           margin: 0;
         }
 
-        .flightdeck-narrative-grid {
+        /* Continuous Horizontal Telemetry Strip */
+        .flightdeck-narrative-strip {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 0.875rem;
+          grid-template-columns: 1fr 1fr 1fr;
+          background: var(--bg-surface-raised);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-sm);
+          overflow: hidden;
         }
 
         @media (max-width: 900px) {
-          .flightdeck-narrative-grid {
+          .flightdeck-narrative-strip {
             grid-template-columns: 1fr;
           }
         }
 
-        .flightdeck-narrative-card {
-          background: #13161D;
-          border: 1px solid rgba(255, 255, 255, 0.05);
-          border-radius: var(--radius-lg);
-          padding: 0.875rem 1rem;
+        .flightdeck-narrative-cell {
+          padding: 12px 16px;
+          border-right: 1px solid var(--border-subtle);
           display: flex;
           flex-direction: column;
-          gap: 0.375rem;
+          gap: 4px;
+        }
+
+        .flightdeck-narrative-cell:last-child {
+          border-right: none;
         }
 
         .flightdeck-narrative-label {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
-          font-size: 0.6875rem;
+          gap: 6px;
+          font-family: var(--font-mono);
+          font-size: 10px;
           font-weight: 700;
           letter-spacing: 0.06em;
           text-transform: uppercase;
         }
 
         .flightdeck-narrative-desc {
-          font-size: 0.8125rem;
+          font-size: 12px;
           color: var(--text-secondary);
           line-height: 1.45;
           margin: 0;
         }
 
-        /* ─── Primary Simulation Launch Button ─── */
+        /* ─── Authoritative Primary Simulation Launch Button ─── */
         .flightdeck-launch-btn {
           width: 100%;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 1rem 1.5rem;
-          background: linear-gradient(180deg, rgba(212, 168, 83, 0.18) 0%, rgba(212, 168, 83, 0.08) 100%);
-          border: 1px solid rgba(212, 168, 83, 0.5);
-          border-radius: var(--radius-lg);
+          padding: 14px 20px;
+          background: rgba(212, 168, 83, 0.12);
+          border: 1px solid rgba(212, 168, 83, 0.35);
+          border-radius: var(--radius-sm);
           color: var(--color-aura);
           font-weight: 700;
-          font-size: 0.875rem;
-          letter-spacing: 0.03em;
+          font-size: 13px;
+          letter-spacing: 0.04em;
           cursor: pointer;
-          box-shadow: inset 0 1px 0 0 rgba(212, 168, 83, 0.3), 0 4px 24px rgba(212, 168, 83, 0.18);
-          transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
+          transition: all var(--duration-fast) var(--ease-standard);
         }
 
         .flightdeck-launch-btn:hover:not(:disabled) {
-          background: linear-gradient(180deg, rgba(212, 168, 83, 0.28) 0%, rgba(212, 168, 83, 0.14) 100%);
-          border-color: rgba(212, 168, 83, 0.8);
-          box-shadow: inset 0 1px 0 0 rgba(212, 168, 83, 0.4), 0 6px 32px rgba(212, 168, 83, 0.3);
-          transform: translateY(-1px);
+          background: rgba(212, 168, 83, 0.18);
+          border-color: rgba(212, 168, 83, 0.6);
         }
 
         .flightdeck-launch-left {
           display: flex;
           align-items: center;
-          gap: 0.75rem;
+          gap: 10px;
         }
 
         .flightdeck-launch-play {
-          width: 24px;
-          height: 24px;
+          width: 22px;
+          height: 22px;
           border-radius: 50%;
           background: var(--color-aura);
           color: #08090C;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 0.75rem;
+          font-size: 10px;
+          font-weight: bold;
           flex-shrink: 0;
         }
 
         .flightdeck-launch-badge {
           font-family: var(--font-mono);
-          font-size: 0.6875rem;
-          font-weight: 700;
-          padding: 0.25rem 0.625rem;
+          font-size: 10px;
+          font-weight: 600;
+          padding: 3px 8px;
           border-radius: var(--radius-sm);
-          background: rgba(212, 168, 83, 0.15);
-          border: 1px solid rgba(212, 168, 83, 0.3);
+          background: rgba(212, 168, 83, 0.12);
+          border: 1px solid rgba(212, 168, 83, 0.25);
           color: var(--color-aura);
-          letter-spacing: 0.05em;
+          letter-spacing: 0.04em;
         }
 
         /* ─── Responder Selection Grid ─── */
@@ -357,13 +353,14 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
           align-items: center;
           justify-content: space-between;
           flex-wrap: wrap;
-          gap: 0.75rem;
+          gap: 10px;
         }
 
         .flightdeck-section-title {
-          font-size: 0.75rem;
+          font-family: var(--font-sans);
+          font-size: 11px;
           font-weight: 700;
-          letter-spacing: 0.06em;
+          letter-spacing: 0.08em;
           text-transform: uppercase;
           color: var(--text-secondary);
         }
@@ -371,26 +368,26 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
         .flightdeck-mode-toggle {
           display: inline-flex;
           align-items: center;
-          background: #101218;
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: var(--radius-full);
-          padding: 3px;
-          gap: 3px;
+          background: var(--bg-surface);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-sm);
+          padding: 2px;
+          gap: 2px;
         }
 
         .flightdeck-mode-btn {
           display: inline-flex;
           align-items: center;
-          gap: 0.4rem;
-          padding: 0.3rem 0.875rem;
-          border-radius: var(--radius-full);
+          gap: 6px;
+          padding: 4px 10px;
+          border-radius: 3px;
           background: transparent;
           border: 1px solid transparent;
           color: var(--text-muted);
-          font-size: 0.75rem;
+          font-size: 11px;
           font-weight: 500;
           cursor: pointer;
-          transition: all 150ms ease;
+          transition: all var(--duration-fast) var(--ease-standard);
         }
 
         .flightdeck-mode-btn:hover {
@@ -398,17 +395,16 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
         }
 
         .flightdeck-mode-btn--active {
-          background: #181B24;
+          background: var(--bg-surface-raised);
           color: var(--color-aura);
           font-weight: 600;
-          border-color: rgba(212, 168, 83, 0.35);
-          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+          border-color: var(--border-subtle);
         }
 
         .flightdeck-persona-grid {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
-          gap: 1rem;
+          gap: 12px;
         }
 
         @media (max-width: 900px) {
@@ -418,53 +414,50 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
         }
 
         .flightdeck-persona-card {
-          background: #0E1015;
-          border: 1px solid rgba(255, 255, 255, 0.07);
-          border-radius: var(--radius-xl);
-          padding: 1.25rem;
+          background: var(--bg-surface);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-md);
+          padding: 16px;
           display: flex;
           flex-direction: column;
-          gap: 0.875rem;
+          gap: 12px;
           cursor: pointer;
           text-align: left;
-          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 4px 20px rgba(0, 0, 0, 0.3);
-          transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
+          transition: all var(--duration-fast) var(--ease-standard);
         }
 
         .flightdeck-persona-card:hover:not(:disabled) {
-          background: #13161E;
-          border-color: rgba(212, 168, 83, 0.5);
-          transform: translateY(-2px);
-          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 8px 30px rgba(212, 168, 83, 0.15);
+          background: var(--bg-surface-hover);
+          border-color: rgba(255, 255, 255, 0.1);
         }
 
         .flightdeck-persona-card:hover:not(:disabled) .flightdeck-persona-arrow {
-          transform: translateX(4px);
+          transform: translateX(3px);
         }
 
         .flightdeck-persona-top {
           display: flex;
           align-items: center;
-          gap: 0.75rem;
+          gap: 10px;
         }
 
         .flightdeck-persona-avatar {
-          width: 42px;
-          height: 42px;
+          width: 36px;
+          height: 36px;
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
           font-weight: 700;
-          font-size: 0.9375rem;
+          font-size: 13px;
           flex-shrink: 0;
-          border: 2px solid rgba(255, 255, 255, 0.12);
+          border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .flightdeck-persona-meta {
           display: flex;
           flex-direction: column;
-          gap: 0.15rem;
+          gap: 2px;
           flex: 1;
           min-width: 0;
         }
@@ -473,33 +466,34 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 0.5rem;
+          gap: 6px;
         }
 
         .flightdeck-persona-name {
-          font-size: 0.9375rem;
+          font-size: 13px;
           font-weight: 700;
           color: var(--text-primary);
         }
 
         .flightdeck-persona-badge {
-          font-size: 0.625rem;
+          font-size: 9px;
           font-family: var(--font-mono);
           font-weight: 700;
-          padding: 0.15rem 0.45rem;
-          border-radius: var(--radius-sm);
-          background: rgba(255, 255, 255, 0.06);
+          padding: 2px 6px;
+          border-radius: 2px;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid var(--border-subtle);
           color: var(--text-secondary);
           letter-spacing: 0.04em;
         }
 
         .flightdeck-persona-role {
-          font-size: 0.75rem;
+          font-size: 11px;
           color: var(--text-muted);
         }
 
         .flightdeck-persona-desc {
-          font-size: 0.75rem;
+          font-size: 11.5px;
           color: var(--text-secondary);
           line-height: 1.45;
           margin: 0;
@@ -510,31 +504,32 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 0.5rem 0.875rem;
-          background: rgba(212, 168, 83, 0.08);
-          border: 1px solid rgba(212, 168, 83, 0.2);
-          border-radius: var(--radius-md);
-          font-size: 0.6875rem;
+          padding: 6px 12px;
+          background: var(--bg-surface-raised);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-sm);
+          font-size: 10.5px;
+          font-family: var(--font-mono);
           font-weight: 700;
           color: var(--color-aura);
-          letter-spacing: 0.05em;
-          transition: all 150ms ease;
+          letter-spacing: 0.04em;
+          transition: all var(--duration-fast) var(--ease-standard);
         }
 
         .flightdeck-persona-card:hover:not(:disabled) .flightdeck-persona-cta {
-          background: rgba(212, 168, 83, 0.18);
-          border-color: rgba(212, 168, 83, 0.45);
+          background: rgba(212, 168, 83, 0.1);
+          border-color: rgba(212, 168, 83, 0.3);
         }
 
         .flightdeck-persona-arrow {
-          transition: transform 150ms ease;
+          transition: transform var(--duration-fast) var(--ease-standard);
         }
 
-        /* ─── Bottom Grid ─── */
+        /* ─── Bottom Telemetry & Custom Responder Grid ─── */
         .flightdeck-bottom-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 1.25rem;
+          gap: 16px;
           align-items: stretch;
         }
 
@@ -545,14 +540,13 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
         }
 
         .flightdeck-bottom-card {
-          background: #0E1015;
-          border: 1px solid rgba(255, 255, 255, 0.07);
-          border-radius: var(--radius-xl);
-          padding: 1.25rem 1.5rem;
+          background: var(--bg-surface);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-md);
+          padding: 16px 20px;
           display: flex;
           flex-direction: column;
-          gap: 1rem;
-          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+          gap: 12px;
         }
 
         .flightdeck-bottom-header {
@@ -560,12 +554,12 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
           align-items: center;
           justify-content: space-between;
           flex-wrap: wrap;
-          gap: 0.5rem;
+          gap: 8px;
         }
 
         .flightdeck-burn-readout {
           font-family: var(--font-mono);
-          font-size: 0.75rem;
+          font-size: 11px;
           color: var(--color-aura);
           font-weight: 600;
         }
@@ -573,7 +567,7 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
         .flightdeck-preset-grid {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
-          gap: 0.5rem;
+          gap: 8px;
         }
 
         @media (max-width: 600px) {
@@ -583,38 +577,38 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
         }
 
         .flightdeck-preset-chip {
-          background: #13161D;
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          border-radius: var(--radius-md);
-          padding: 0.5rem 0.375rem;
+          background: var(--bg-surface-raised);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-sm);
+          padding: 8px 6px;
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 0.2rem;
+          gap: 3px;
           cursor: pointer;
           color: var(--text-secondary);
-          transition: all 150ms ease;
+          transition: all var(--duration-fast) var(--ease-standard);
         }
 
         .flightdeck-preset-chip:hover {
-          background: #181B24;
+          background: var(--bg-surface-hover);
           color: var(--text-primary);
         }
 
         .flightdeck-preset-chip--active {
-          background: rgba(212, 168, 83, 0.12);
-          border-color: rgba(212, 168, 83, 0.5);
+          background: rgba(212, 168, 83, 0.08);
+          border-color: rgba(212, 168, 83, 0.4);
           color: var(--color-aura);
         }
 
         .flightdeck-preset-label {
-          font-size: 0.625rem;
+          font-size: 9.5px;
           font-weight: 500;
         }
 
         .flightdeck-preset-rate {
           font-family: var(--font-mono);
-          font-size: 0.8125rem;
+          font-size: 12px;
           font-weight: 700;
           color: var(--text-primary);
         }
@@ -626,11 +620,11 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
         .flightdeck-custom-burn {
           display: flex;
           align-items: center;
-          gap: 0.75rem;
+          gap: 10px;
         }
 
         .flightdeck-custom-burn-label {
-          font-size: 0.75rem;
+          font-size: 11px;
           color: var(--text-secondary);
           white-space: nowrap;
         }
@@ -638,14 +632,14 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
         .flightdeck-custom-burn-input-wrap {
           display: flex;
           align-items: center;
-          gap: 0.375rem;
-          background: #13161D;
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: var(--radius-md);
-          padding: 0.35rem 0.75rem;
+          gap: 6px;
+          background: var(--bg-surface-raised);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-sm);
+          padding: 5px 10px;
           flex: 1;
-          max-width: 220px;
-          transition: border-color 150ms ease;
+          max-width: 200px;
+          transition: border-color var(--duration-fast) var(--ease-standard);
         }
 
         .flightdeck-custom-burn-input-wrap:focus-within {
@@ -657,7 +651,7 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
           border: none;
           color: var(--text-primary);
           font-family: var(--font-mono);
-          font-size: 0.8125rem;
+          font-size: 12px;
           font-weight: 600;
           width: 100%;
           outline: none;
@@ -666,13 +660,13 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
         .flightdeck-custom-join-form {
           display: flex;
           flex-direction: column;
-          gap: 0.625rem;
+          gap: 8px;
         }
 
         .flightdeck-custom-join-fields {
           display: grid;
           grid-template-columns: 1.2fr 1fr auto;
-          gap: 0.5rem;
+          gap: 8px;
         }
 
         @media (max-width: 600px) {
@@ -682,14 +676,14 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
         }
 
         .flightdeck-input {
-          background: #13161D;
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: var(--radius-md);
-          padding: 0.45rem 0.75rem;
-          font-size: 0.75rem;
+          background: var(--bg-surface-raised);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-sm);
+          padding: 6px 10px;
+          font-size: 11.5px;
           color: var(--text-primary);
           outline: none;
-          transition: border-color 150ms ease;
+          transition: border-color var(--duration-fast) var(--ease-standard);
         }
 
         .flightdeck-input:focus {
@@ -700,17 +694,17 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
           background: var(--color-aura);
           color: #08090C;
           border: none;
-          border-radius: var(--radius-md);
-          padding: 0.45rem 1rem;
-          font-size: 0.6875rem;
+          border-radius: var(--radius-sm);
+          padding: 6px 14px;
+          font-size: 11px;
           font-weight: 700;
           letter-spacing: 0.05em;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 0.375rem;
-          transition: opacity 150ms ease;
+          gap: 6px;
+          transition: opacity var(--duration-fast) var(--ease-standard);
         }
 
         .flightdeck-custom-submit-btn:hover:not(:disabled) {
@@ -718,19 +712,19 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
         }
 
         .flightdeck-custom-submit-btn:disabled {
-          opacity: 0.4;
+          opacity: 0.35;
           cursor: not-allowed;
         }
 
         .flightdeck-tech-note {
-          background: rgba(255, 255, 255, 0.02);
-          border: 1px solid rgba(255, 255, 255, 0.05);
-          border-radius: var(--radius-md);
-          padding: 0.75rem 0.875rem;
+          background: var(--bg-surface-raised);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-sm);
+          padding: 10px 12px;
           display: flex;
           align-items: flex-start;
-          gap: 0.625rem;
-          font-size: 0.6875rem;
+          gap: 10px;
+          font-size: 11px;
           color: var(--text-muted);
           line-height: 1.45;
         }
@@ -742,11 +736,6 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
 
         @keyframes flightdeck-spin {
           to { transform: rotate(360deg); }
-        }
-
-        @keyframes flightdeck-connecting-pulse {
-          from { opacity: 0.85; }
-          to { opacity: 1; }
         }
       `}</style>
 
@@ -770,11 +759,11 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
           <div className="flightdeck-connecting" role="status" aria-live="polite">
             <div className="flightdeck-spinner" aria-hidden="true" />
             <div>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-aura)' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-aura)' }}>
                 CONNECTING TO AGORA VOICE BRIDGE
               </div>
-              <div style={{ fontSize: '0.6875rem', color: 'var(--text-secondary)' }}>
-                Establishing sub-second SD-RTN audio channel & telemetry pipeline...
+              <div style={{ fontSize: '10.5px', color: 'var(--text-secondary)' }}>
+                Establishing sub-second SD-RTN audio channel &amp; telemetry pipeline...
               </div>
             </div>
           </div>
@@ -786,7 +775,7 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
             <div className="flightdeck-chips-group">
               <span className="flightdeck-chip flightdeck-chip-incident">INCIDENT #492</span>
               <span className="flightdeck-chip flightdeck-chip-sev1">SEV-1 CRITICAL</span>
-              <span className="flightdeck-chip" style={{ background: 'rgba(212, 168, 83, 0.1)', color: 'var(--color-aura)', border: '1px solid rgba(212, 168, 83, 0.25)' }}>
+              <span className="flightdeck-chip" style={{ background: 'rgba(212, 168, 83, 0.08)', color: 'var(--color-aura)', border: '1px solid rgba(212, 168, 83, 0.2)' }}>
                 CHECKOUT ROUTING
               </span>
             </div>
@@ -800,10 +789,10 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
             Payment Service Checkout Outage
           </h2>
 
-          <div className="flightdeck-narrative-grid">
-            <div className="flightdeck-narrative-card">
+          <div className="flightdeck-narrative-strip">
+            <div className="flightdeck-narrative-cell">
               <div className="flightdeck-narrative-label" style={{ color: '#F87171' }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
                   <line x1="12" y1="9" x2="12" y2="13" />
                   <line x1="12" y1="17" x2="12.01" y2="17" />
@@ -815,9 +804,9 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
               </p>
             </div>
 
-            <div className="flightdeck-narrative-card">
+            <div className="flightdeck-narrative-cell">
               <div className="flightdeck-narrative-label" style={{ color: 'var(--color-hypothesis)' }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="18" cy="18" r="3" />
                   <circle cx="6" cy="6" r="3" />
                   <path d="M13 6h3a2 2 0 0 1 2 2v7" />
@@ -830,9 +819,9 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
               </p>
             </div>
 
-            <div className="flightdeck-narrative-card">
+            <div className="flightdeck-narrative-cell">
               <div className="flightdeck-narrative-label" style={{ color: 'var(--color-fact)' }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
                 </svg>
                 <span>AURA Mission Directives</span>
@@ -860,7 +849,7 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
         </section>
 
         {/* Responder Selection */}
-        <section aria-label="Responder callsign selection" style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+        <section aria-label="Responder callsign selection" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <div className="flightdeck-section-bar">
             <span className="flightdeck-section-title">Select Responder Callsign:</span>
 
@@ -909,7 +898,6 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
                       style={{
                         backgroundColor: persona.avatarColor,
                         color: 'var(--text-inverse)',
-                        boxShadow: `0 0 16px color-mix(in srgb, ${persona.avatarColor} 40%, transparent)`,
                       }}
                       aria-hidden="true"
                     >
@@ -967,7 +955,7 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
             <div className="flightdeck-custom-burn">
               <span className="flightdeck-custom-burn-label">Custom Loss Rate:</span>
               <div className="flightdeck-custom-burn-input-wrap">
-                <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>$</span>
+                <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '11px' }}>$</span>
                 <input
                   type="number"
                   min="1"
@@ -982,7 +970,7 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
                   placeholder="150"
                   aria-label="Custom loss rate in dollars per second"
                 />
-                <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.6875rem' }}>/s</span>
+                <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '10px' }}>/s</span>
               </div>
             </div>
           </section>
@@ -1021,7 +1009,7 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
             </form>
 
             <div className="flightdeck-tech-note" role="note">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--color-aura)', flexShrink: 0, marginTop: 1 }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--color-aura)', flexShrink: 0, marginTop: 1 }}>
                 <circle cx="12" cy="12" r="10" />
                 <line x1="12" y1="16" x2="12" y2="12" />
                 <line x1="12" y1="8" x2="12.01" y2="8" />
@@ -1036,3 +1024,4 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
     </div>
   );
 }
+
