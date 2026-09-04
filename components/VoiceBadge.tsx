@@ -19,30 +19,33 @@ export function VoiceBadge({
     <>
       <style>{`
         .voice-badge {
-          width: 22px;
-          height: 22px;
+          width: 20px;
+          height: 20px;
           border-radius: var(--radius-full);
           display: inline-flex;
           align-items: center;
           justify-content: center;
           font-family: var(--font-sans);
-          font-size: 10px;
-          font-weight: var(--weight-bold);
+          font-size: 9.5px;
+          font-weight: 600;
           color: var(--text-inverse);
           flex-shrink: 0;
-          transition: transform var(--duration-fast) var(--ease-standard);
+          transition: all var(--duration-fast) var(--ease-standard);
           user-select: none;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+          border: 1px solid rgba(255, 255, 255, 0.08);
         }
+
         .voice-badge--speaking {
-          animation: voice-pulse 1.6s ease-in-out infinite;
+          animation: voice-presence-ring 1.8s ease-in-out infinite;
         }
-        @keyframes voice-pulse {
+
+        @keyframes voice-presence-ring {
           0%, 100% {
-            box-shadow: 0 0 0 0 rgba(59, 212, 162, 0.4);
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
           }
           50% {
-            box-shadow: 0 0 0 3px rgba(59, 212, 162, 0.25), 0 0 8px rgba(59, 212, 162, 0.3);
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.35), 0 0 8px rgba(16, 185, 129, 0.25), inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
           }
         }
       `}</style>
@@ -50,7 +53,6 @@ export function VoiceBadge({
         className={`voice-badge ${isSpeaking ? 'voice-badge--speaking' : ''}`}
         style={{
           backgroundColor: avatarColor,
-          color: 'var(--text-inverse)',
         }}
         title={`${displayName} (${isSpeaking ? 'speaking' : 'silent'})`}
         aria-label={`${displayName} (${isSpeaking ? 'speaking' : 'silent'})`}

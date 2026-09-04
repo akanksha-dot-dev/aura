@@ -57,32 +57,44 @@ export function SilenceCounter({
     <>
       <style>{`
         .silence-counter {
-          font-family: var(--font-sans);
-          font-size: var(--text-xs);
+          font-family: var(--font-mono);
+          font-size: 10px;
           display: inline-flex;
           align-items: center;
-          gap: var(--space-1);
+          gap: 4px;
+          padding: 1px 6px;
+          border-radius: var(--radius-sm);
+          background: var(--bg-surface);
+          border: 1px solid var(--border-hairline);
           white-space: nowrap;
-          transition: color var(--duration-normal) var(--ease-standard);
+          transition: all var(--duration-fast) var(--ease-standard);
+        }
+        .silence-counter__pip {
+          width: 4px;
+          height: 4px;
+          border-radius: 50%;
+          background: currentColor;
+          flex-shrink: 0;
         }
         .silence-counter__val {
-          font-family: var(--font-mono);
           font-variant-numeric: tabular-nums;
         }
         .silence-counter--speaking {
           color: var(--color-fact);
-          font-weight: var(--weight-semibold);
+          border-color: var(--color-fact-border);
+          background: var(--color-fact-dim);
+          font-weight: 500;
         }
         .silence-counter--normal {
-          color: var(--color-aura);
+          color: var(--text-secondary);
         }
         .silence-counter--warning {
-          color: var(--color-orient);
-          font-weight: var(--weight-medium);
+          color: var(--color-hypothesis);
+          border-color: var(--color-hypothesis-border);
         }
         .silence-counter--critical {
           color: var(--color-conflict);
-          font-weight: var(--weight-bold);
+          border-color: var(--color-conflict-border);
         }
       `}</style>
       <span
@@ -90,7 +102,7 @@ export function SilenceCounter({
         title={`AURA activity status: ${icon} ${text}`}
         aria-label={`AURA activity status: ${icon} ${text}`}
       >
-        <span aria-hidden="true">{icon}</span>
+        <span className="silence-counter__pip" aria-hidden="true" />
         <span className={isTimer ? 'silence-counter__val' : undefined}>{text}</span>
       </span>
     </>

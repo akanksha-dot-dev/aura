@@ -128,25 +128,25 @@ export function SpeakerPanel({
           width: 100%;
           height: 100%;
           background: var(--bg-surface);
-          border-right: 1px solid var(--border-subtle);
+          border-right: 1px solid var(--border-hairline);
           box-shadow: var(--shadow-inner-glow);
           display: flex;
           flex-direction: column;
           justify-content: space-between;
-          padding: var(--space-3);
+          padding: 12px;
           overflow: hidden;
           user-select: none;
           transition: width var(--transition-panel), padding var(--transition-panel);
         }
 
         .speaker-panel--collapsed {
-          padding: var(--space-2) 6px;
+          padding: 8px 6px;
         }
 
         .speaker-panel__top {
           display: flex;
           flex-direction: column;
-          gap: var(--space-2);
+          gap: 8px;
           overflow-y: auto;
           min-height: 0;
         }
@@ -156,34 +156,34 @@ export function SpeakerPanel({
           font-size: 11px;
           font-weight: 600;
           color: var(--text-muted);
-          letter-spacing: 0.06em;
+          letter-spacing: 0.04em;
           text-transform: uppercase;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding-bottom: var(--space-2);
-          border-bottom: 1px solid var(--border-subtle);
+          padding-bottom: 8px;
+          border-bottom: 1px solid var(--border-hairline);
           min-height: 28px;
         }
 
         .speaker-panel__title--collapsed {
           justify-content: center;
-          padding-bottom: var(--space-1);
+          padding-bottom: 4px;
         }
 
         .speaker-panel__title-right {
           display: flex;
           align-items: center;
-          gap: var(--space-2);
+          gap: 6px;
         }
 
         .speaker-panel__count {
           font-family: var(--font-mono);
           font-size: 10px;
-          background: rgba(255, 255, 255, 0.05);
+          background: var(--bg-surface-raised);
           padding: 1px 6px;
-          border-radius: var(--radius-xs);
-          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-sm);
+          border: 1px solid var(--border-hairline);
           color: var(--text-secondary);
         }
 
@@ -193,9 +193,9 @@ export function SpeakerPanel({
           justify-content: center;
           width: 20px;
           height: 20px;
-          border-radius: var(--radius-xs);
+          border-radius: var(--radius-sm);
           background: var(--bg-surface-raised);
-          border: 1px solid var(--border-subtle);
+          border: 1px solid var(--border-hairline);
           box-shadow: var(--shadow-inner-glow);
           color: var(--text-muted);
           cursor: pointer;
@@ -212,31 +212,31 @@ export function SpeakerPanel({
         .speaker-panel__roster {
           display: flex;
           flex-direction: column;
-          gap: 6px;
+          gap: 5px;
         }
 
         .speaker-panel__roster--collapsed {
           align-items: center;
-          gap: var(--space-2);
-          padding-top: var(--space-1);
+          gap: 8px;
+          padding-top: 4px;
         }
 
         .speaker-panel__empty {
           font-family: var(--font-sans);
           font-size: var(--text-xs);
           color: var(--text-muted);
-          padding: var(--space-2) 0;
+          padding: 8px 0;
         }
 
         /* ─── Sleek Participant Rows ─── */
         .speaker-row {
           display: flex;
           flex-direction: column;
-          gap: 4px;
-          padding: 6px 8px;
+          gap: 3px;
+          padding: 5px 8px;
           background: var(--bg-surface-raised);
           border-radius: var(--radius-sm);
-          border: 1px solid var(--border-subtle);
+          border: 1px solid var(--border-hairline);
           box-shadow: var(--shadow-inner-glow);
           transition: all var(--duration-fast) var(--ease-standard);
         }
@@ -247,14 +247,14 @@ export function SpeakerPanel({
         }
 
         .speaker-row--speaking {
-          border-color: rgba(59, 212, 162, 0.4);
-          background: rgba(59, 212, 162, 0.05);
+          border-color: rgba(16, 185, 129, 0.4);
+          background: rgba(16, 185, 129, 0.04);
         }
 
         .speaker-row--aura {
-          border: 1px solid rgba(212, 168, 83, 0.22);
-          background: rgba(212, 168, 83, 0.04);
-          box-shadow: inset 0 1px 0 0 rgba(212, 168, 83, 0.15);
+          border: 1px solid rgba(245, 158, 11, 0.22);
+          background: rgba(245, 158, 11, 0.03);
+          box-shadow: inset 0 1px 0 0 rgba(245, 158, 11, 0.12);
         }
 
         .speaker-row--collapsed {
@@ -442,16 +442,14 @@ export function SpeakerPanel({
           text-overflow: ellipsis;
         }
 
-        /* ─── Consolidated Bridge Vitality Card ─── */
+        /* ─── Consolidated Bridge Vitality (Integrated Quadrant) ─── */
         .speaker-panel__bottom {
           display: flex;
           flex-direction: column;
-          gap: var(--space-2);
-          padding: 10px 12px;
-          background: var(--bg-surface-raised);
-          border: 1px solid var(--border-subtle);
-          box-shadow: var(--shadow-inner-glow);
-          border-radius: var(--radius-sm);
+          gap: 8px;
+          padding: 10px 0 0 0;
+          background: transparent;
+          border-top: 1px solid var(--border-hairline);
           flex-shrink: 0;
         }
 
@@ -470,10 +468,11 @@ export function SpeakerPanel({
         .bridge-vitality__status-pill {
           font-family: var(--font-mono);
           font-size: 10px;
-          font-weight: 600;
+          font-weight: 500;
           padding: 1px 6px;
-          border-radius: var(--radius-xs);
-          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-sm);
+          background: var(--bg-surface-raised);
+          border: 1px solid var(--border-hairline);
         }
       `}</style>
       <aside
