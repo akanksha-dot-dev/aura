@@ -777,10 +777,10 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
 
                     {/* Nodes and Connecting Arrows */}
                     {chainNodes.map((node, i) => {
-                      const cardW = 86;
+                      const cardW = 94;
                       const cardH = 46;
-                      const gap = 16;
-                      const x = 8 + i * (cardW + gap);
+                      const gap = 12;
+                      const x = 6 + i * (cardW + gap);
                       const y = 14;
                       const isDis = node.status === 'disproven';
                       const fillColor = isDis
@@ -794,6 +794,12 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
                         : '#10B981';
 
                       const isLast = i === chainNodes.length - 1;
+                      const categoryLabel =
+                        node.category === 'hypothesis'
+                          ? 'HYPO'
+                          : node.category === 'decision'
+                          ? 'DECISION'
+                          : node.category.toUpperCase();
 
                       return (
                         <g key={node.id}>
@@ -823,24 +829,24 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
 
                           {/* Category Label */}
                           <text
-                            x={x + 6}
+                            x={x + 5}
                             y={y + 10}
                             fill={fillColor}
-                            fontSize="8"
+                            fontSize="7.5"
                             fontFamily="var(--font-mono)"
                             fontWeight="700"
                             letterSpacing="0.04em"
                           >
-                            {node.category.toUpperCase()}
+                            {categoryLabel}
                           </text>
 
                           {/* Event ID */}
                           <text
-                            x={x + cardW - 6}
+                            x={x + cardW - 5}
                             y={y + 10}
                             textAnchor="end"
                             fill="var(--text-muted)"
-                            fontSize="7.5"
+                            fontSize="7"
                             fontFamily="var(--font-mono)"
                           >
                             {node.id.toUpperCase()}
@@ -848,18 +854,18 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
 
                           {/* Statement Snippet */}
                           <text
-                            x={x + 6}
+                            x={x + 5}
                             y={y + 26}
                             fill={isDis ? 'var(--text-muted)' : 'var(--text-primary)'}
                             fontSize="8"
                             fontFamily="var(--font-sans)"
                             fontWeight="500"
                           >
-                            {isDis ? 'DISPROVEN' : (node.content.length > 13 ? node.content.substring(0, 12) + '…' : node.content)}
+                            {isDis ? 'DISPROVEN' : (node.content.length > 15 ? node.content.substring(0, 14) + '…' : node.content)}
                           </text>
 
                           <text
-                            x={x + 6}
+                            x={x + 5}
                             y={y + 37}
                             fill="var(--text-muted)"
                             fontSize="7.5"
