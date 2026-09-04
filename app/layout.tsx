@@ -1,17 +1,15 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const ibmPlexSans = IBM_Plex_Sans({
+const inter = Inter({
   variable: "--font-sans-loaded",
-  weight: ["400", "500", "600", "700"],
   subsets: ["latin"],
   display: "swap",
 });
 
-const ibmPlexMono = IBM_Plex_Mono({
+const jetbrainsMono = JetBrains_Mono({
   variable: "--font-mono-loaded",
-  weight: ["400", "500", "600"],
   subsets: ["latin"],
   display: "swap",
 });
@@ -51,7 +49,7 @@ export default function RootLayout({
     <html
       lang="en"
       data-theme="dark"
-      className={`${ibmPlexSans.variable} ${ibmPlexMono.variable}`}
+      className={`${inter.variable} ${jetbrainsMono.variable}`}
     >
       <body>{children}</body>
     </html>
