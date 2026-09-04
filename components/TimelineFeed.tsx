@@ -30,16 +30,16 @@ export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
           flex-direction: column;
           height: 100%;
           overflow-y: auto;
-          padding: var(--space-4) var(--space-4) var(--space-6) 42px;
-          gap: var(--space-3);
+          padding: var(--space-3) var(--space-3) var(--space-4) 38px;
+          gap: 6px;
         }
 
         /* ─── Continuous Vertical Chronological Spine ─── */
         .timeline-feed__spine {
           position: absolute;
-          top: var(--space-4);
-          bottom: var(--space-4);
-          left: 20px;
+          top: var(--space-3);
+          bottom: var(--space-3);
+          left: 19px;
           width: 1px;
           background: linear-gradient(
             to bottom,
@@ -64,12 +64,12 @@ export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
           text-align: center;
           gap: var(--space-3);
           padding: var(--space-8);
-          margin-left: -22px;
+          margin-left: -19px;
         }
 
         .timeline-feed__empty-icon {
-          width: 44px;
-          height: 44px;
+          width: 40px;
+          height: 40px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -107,7 +107,7 @@ export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
           align-items: center;
           gap: 6px;
           margin-top: var(--space-2);
-          padding: 6px 16px;
+          padding: 5px 14px;
           background: var(--bg-surface-raised);
           border: 1px solid var(--border-default);
           box-shadow: var(--shadow-inner-glow);
@@ -134,7 +134,7 @@ export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
         {evidenceItems.length === 0 ? (
           <div className="timeline-feed__empty">
             <div className="timeline-feed__empty-icon" aria-hidden="true">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
                 <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                 <line x1="12" y1="19" x2="12" y2="22" />

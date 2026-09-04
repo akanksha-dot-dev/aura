@@ -43,6 +43,21 @@ function getSpeakerRole(uid: string, speakerName?: string): string {
   return 'Responder';
 }
 
+function getCleanSpeakerInfo(rawName?: string, rawUid: string = '') {
+  let name = rawName || 'Unknown';
+  let role = '';
+
+  const match = name.match(/^(.*?)\s*\((.*?)\)$/);
+  if (match) {
+    name = match[1].trim();
+    role = match[2].trim();
+  } else {
+    role = getSpeakerRole(rawUid, rawName);
+  }
+
+  return { name, role };
+}
+
 function formatTime(timestamp: number): string {
   const d = new Date(timestamp);
   const hours = d.getHours().toString().padStart(2, '0');
@@ -88,14 +103,14 @@ export function TimelineCard({
     ? 'timeline-card--fact timeline-card--confirmed'
     : `timeline-card--${item.category}`;
 
-  const speakerRole = getSpeakerRole(item.speakerUid, item.speakerName);
+  const speakerInfo = getCleanSpeakerInfo(item.speakerName, item.speakerUid);
 
   // Node glyph rendered on the vertical spine
   const renderSpineGlyph = () => {
     if (isConfirmed) {
       return (
         <span className="timeline-card__spine-node timeline-card__spine-node--fact" title="Confirmed Fact">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
             <polyline points="20 6 9 17 4 12" />
           </svg>
         </span>
@@ -155,10 +170,12 @@ export function TimelineCard({
           background: var(--bg-surface);
           border: 1px solid var(--border-default);
           box-shadow: var(--shadow-inner-glow);
-          border-radius: var(--radius-md);
-          padding: 10px 14px;
-          margin-bottom: var(--space-2);
-          transition: all var(--duration-fast) var(--ease-standard);
+          border-radius: var(--radius-sm);
+          padding: 8px 12px;
+          margin-bottom: 0;
+          transition: background-color var(--duration-fast) var(--ease-standard),
+                      border-color var(--duration-fast) var(--ease-standard),
+                      box-shadow var(--duration-fast) var(--ease-standard);
         }
 
         .timeline-card:hover {
@@ -170,17 +187,17 @@ export function TimelineCard({
         /* ─── Spine Node Positioned on Vertical Spine ─── */
         .timeline-card__spine-node {
           position: absolute;
-          left: -32px;
-          top: 13px;
-          width: 20px;
-          height: 20px;
+          left: -27px;
+          top: 10px;
+          width: 17px;
+          height: 17px;
           border-radius: 50%;
           background: var(--bg-base);
           border: 1px solid var(--border-default);
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 10px;
+          font-size: 9px;
           font-weight: 700;
           z-index: 2;
           box-shadow: 0 0 0 3px var(--bg-base);
@@ -228,22 +245,22 @@ export function TimelineCard({
         }
 
         .timeline-card__node-dot {
-          width: 6px;
-          height: 6px;
+          width: 5px;
+          height: 5px;
           border-radius: 50%;
           background: currentColor;
         }
 
         .timeline-card__node-diamond {
-          width: 6px;
-          height: 6px;
+          width: 5px;
+          height: 5px;
           transform: rotate(45deg);
           background: currentColor;
         }
 
         .timeline-card__node-square {
-          width: 6px;
-          height: 6px;
+          width: 5px;
+          height: 5px;
           border-radius: 1px;
           background: currentColor;
         }
@@ -254,27 +271,28 @@ export function TimelineCard({
           align-items: center;
           justify-content: space-between;
           gap: var(--space-2);
-          margin-bottom: 6px;
+          margin-bottom: 4px;
         }
 
         .timeline-card__meta-left {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
           min-width: 0;
+          flex-wrap: wrap;
         }
 
         .timeline-card__category-badge {
           display: inline-flex;
           align-items: center;
-          gap: 4px;
-          padding: 1px 7px;
-          font-family: var(--font-sans);
-          font-size: 10px;
+          gap: 3px;
+          padding: 1px 6px;
+          font-family: var(--font-mono);
+          font-size: 9px;
           font-weight: 600;
           letter-spacing: 0.04em;
           text-transform: uppercase;
-          border-radius: var(--radius-sm);
+          border-radius: var(--radius-xs);
           white-space: nowrap;
           border: 1px solid transparent;
         }
@@ -312,27 +330,28 @@ export function TimelineCard({
         .timeline-card__speaker {
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 5px;
         }
 
         .timeline-card__speaker-name {
           font-family: var(--font-sans);
-          font-size: 12px;
-          font-weight: 500;
+          font-size: 11px;
+          font-weight: 600;
           color: var(--text-primary);
           letter-spacing: var(--tracking-tight);
         }
 
         .timeline-card__speaker-role {
-          font-family: var(--font-sans);
-          font-size: 11px;
+          font-family: var(--font-mono);
+          font-size: 10px;
           color: var(--text-muted);
+          letter-spacing: 0.02em;
         }
 
         .timeline-card__header-right {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
           flex-shrink: 0;
         }
 
@@ -340,8 +359,8 @@ export function TimelineCard({
           font-family: var(--font-mono);
           font-size: 10px;
           font-weight: 500;
-          padding: 1px 6px;
-          border-radius: var(--radius-sm);
+          padding: 1px 5px;
+          border-radius: var(--radius-xs);
           background: rgba(255, 255, 255, 0.04);
           border: 1px solid var(--border-subtle);
           color: var(--text-secondary);
@@ -361,7 +380,7 @@ export function TimelineCard({
 
         .timeline-card__time {
           font-family: var(--font-mono);
-          font-size: 11px;
+          font-size: 10px;
           color: var(--text-muted);
         }
 
@@ -369,10 +388,10 @@ export function TimelineCard({
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          width: 20px;
-          height: 20px;
+          width: 18px;
+          height: 18px;
           color: var(--text-muted);
-          border-radius: var(--radius-sm);
+          border-radius: var(--radius-xs);
           cursor: pointer;
           transition: color var(--duration-fast) var(--ease-standard);
         }
@@ -392,8 +411,8 @@ export function TimelineCard({
         /* ─── Body Content ─── */
         .timeline-card__content {
           font-family: var(--font-sans);
-          font-size: 13px;
-          line-height: 1.45;
+          font-size: 12.5px;
+          line-height: 1.4;
           letter-spacing: var(--tracking-tight);
           color: var(--text-primary);
           margin: 0;
@@ -415,35 +434,35 @@ export function TimelineCard({
           display: inline-flex;
           align-items: center;
           gap: 4px;
-          margin-top: 6px;
+          margin-top: 4px;
           font-family: var(--font-mono);
-          font-size: 10px;
+          font-size: 9px;
           font-weight: 600;
           color: var(--color-conflict);
           background: var(--color-conflict-dim);
           border: 1px solid var(--color-conflict-border);
-          padding: 2px 6px;
-          border-radius: var(--radius-sm);
+          padding: 1px 5px;
+          border-radius: var(--radius-xs);
         }
 
         .timeline-card__footer {
           display: flex;
           align-items: center;
           flex-wrap: wrap;
-          gap: 6px;
-          margin-top: 8px;
-          padding-top: 8px;
+          gap: 5px;
+          margin-top: 6px;
+          padding-top: 6px;
           border-top: 1px solid var(--border-subtle);
         }
 
         .meta-chip {
           display: inline-flex;
           align-items: center;
-          gap: 5px;
+          gap: 4px;
           font-family: var(--font-sans);
-          font-size: 11px;
-          padding: 2px 7px;
-          border-radius: var(--radius-sm);
+          font-size: 10px;
+          padding: 1px 6px;
+          border-radius: var(--radius-xs);
           background: var(--bg-surface-raised);
           border: 1px solid var(--border-subtle);
           color: var(--text-secondary);
@@ -463,14 +482,14 @@ export function TimelineCard({
 
         .meta-chip--related {
           font-family: var(--font-mono);
-          font-size: 10px;
+          font-size: 9px;
         }
 
         .meta-chip__status {
           font-family: var(--font-mono);
-          font-size: 9px;
+          font-size: 8.5px;
           text-transform: uppercase;
-          padding: 1px 4px;
+          padding: 0 3px;
           border-radius: 2px;
           background: rgba(255, 255, 255, 0.08);
           margin-left: 2px;
@@ -491,12 +510,12 @@ export function TimelineCard({
 
           <div className="timeline-card__speaker">
             <VoiceBadge
-              displayName={item.speakerName}
+              displayName={speakerInfo.name}
               avatarColor={getSpeakerColor(item.speakerUid)}
               isSpeaking={false}
             />
-            <span className="timeline-card__speaker-name">{item.speakerName}</span>
-            <span className="timeline-card__speaker-role">({speakerRole})</span>
+            <span className="timeline-card__speaker-name">{speakerInfo.name}</span>
+            <span className="timeline-card__speaker-role">({speakerInfo.role})</span>
           </div>
         </div>
 
@@ -591,7 +610,7 @@ export function TimelineCard({
             <div className="timeline-card__footer">
               {item.assignedTo && (
                 <span className="meta-chip meta-chip--assignee">
-                  <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
+                  <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
                     <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0-2.21-3.58-4-6-4s-6 1.79-6 4v1h12v-1zm-10.8-1c.7-1.02 2.6-2 4.8-2s4.1.98 4.8 2H3.2z"/>
                   </svg>
                   <span>{item.assignedTo}</span>
@@ -604,8 +623,8 @@ export function TimelineCard({
               )}
               {item.decidingMetric && (
                 <span className="meta-chip meta-chip--metric" title={`Deciding Metric: ${item.decidingMetric}`}>
-                  <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
-                    <path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5v-3zM2.5 2a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zm6.5.5A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zM1 10.5A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zm7.5 1a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5z"/>
+                  <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5v-3zM2.5 2a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zm6.5.5A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zM1 10.5A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zm7.5 1a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5z"/>
                   </svg>
                   <span>{item.decidingMetric}</span>
                 </span>
