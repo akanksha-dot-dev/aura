@@ -58,6 +58,7 @@ export function ActionTracker({
           overflow-y: auto;
           user-select: none;
           gap: 12px;
+          box-shadow: inset 1px 0 0 0 rgba(255, 255, 255, 0.02);
         }
 
         .action-tracker.is-collapsed {
@@ -92,7 +93,7 @@ export function ActionTracker({
           font-size: 11px;
           font-weight: 600;
           color: var(--text-secondary);
-          letter-spacing: 0.08em;
+          letter-spacing: 0.06em;
           text-transform: uppercase;
         }
 
@@ -107,10 +108,10 @@ export function ActionTracker({
           font-size: 10px;
           font-weight: 500;
           padding: 2px 7px;
-          background: var(--bg-surface-raised);
+          background: rgba(255, 255, 255, 0.03);
           border: 1px solid var(--border-subtle);
-          border-radius: var(--radius-sm);
-          color: var(--color-aura);
+          border-radius: var(--radius-xs);
+          color: var(--text-muted);
           letter-spacing: 0.02em;
         }
 
@@ -121,19 +122,19 @@ export function ActionTracker({
           width: 20px;
           height: 20px;
           border-radius: var(--radius-xs);
-          background: var(--bg-surface-raised);
+          background: rgba(255, 255, 255, 0.03);
           border: 1px solid var(--border-subtle);
-          box-shadow: var(--shadow-inner-glow);
           color: var(--text-muted);
           cursor: pointer;
           font-family: var(--font-mono);
-          font-size: 10px;
+          font-size: 11px;
           transition: all var(--duration-fast) var(--ease-standard);
         }
 
         .action-tracker__collapse-btn:hover {
           color: var(--text-primary);
           border-color: var(--border-emphasis);
+          background: rgba(255, 255, 255, 0.06);
         }
 
         /* ─── Collapsed Action Rail ─── */
@@ -151,12 +152,12 @@ export function ActionTracker({
           margin: 4px 0 6px 0;
           padding: 2px 4px;
           border-radius: var(--radius-xs);
-          background: var(--bg-surface-raised);
+          background: rgba(255, 255, 255, 0.03);
           border: 1px solid var(--border-subtle);
           font-family: var(--font-mono);
           font-size: 9px;
           font-weight: 600;
-          color: var(--color-aura);
+          color: var(--text-secondary);
           text-align: center;
           width: 100%;
           box-sizing: border-box;
@@ -172,16 +173,16 @@ export function ActionTracker({
         }
 
         .action-rail__item {
-          width: 32px;
-          height: 32px;
-          border-radius: var(--radius-sm);
+          width: 28px;
+          height: 28px;
+          border-radius: var(--radius-xs);
           display: flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
           border: 1px solid var(--border-subtle);
           background: var(--bg-surface-raised);
-          box-shadow: var(--shadow-inner-glow);
+          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
           color: var(--text-muted);
           transition: all var(--duration-fast) var(--ease-standard);
           position: relative;
@@ -189,7 +190,7 @@ export function ActionTracker({
         }
 
         .action-rail__item:hover {
-          transform: scale(1.05);
+          transform: translateY(-1px);
           border-color: var(--border-emphasis);
           color: var(--text-primary);
         }
@@ -201,14 +202,14 @@ export function ActionTracker({
         }
 
         .action-rail__item--in_progress {
-          background: rgba(123, 140, 255, 0.08);
-          border-color: rgba(123, 140, 255, 0.35);
+          background: rgba(94, 106, 210, 0.08);
+          border-color: rgba(94, 106, 210, 0.35);
           color: #7B8CFF;
         }
 
         .action-rail__pulse-dot {
-          width: 8px;
-          height: 8px;
+          width: 7px;
+          height: 7px;
           border-radius: 50%;
           background: #7B8CFF;
           animation: action-dot-pulse 1.6s ease-in-out infinite;
@@ -216,7 +217,7 @@ export function ActionTracker({
 
         @keyframes action-dot-pulse {
           0%, 100% { transform: scale(0.85); opacity: 0.6; }
-          50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 6px #7B8CFF; }
+          50% { transform: scale(1.15); opacity: 1; box-shadow: 0 0 5px #7B8CFF; }
         }
 
         .action-rail__pending-dot {
@@ -232,10 +233,10 @@ export function ActionTracker({
           flex-direction: column;
           align-items: center;
           gap: 2px;
-          padding: 6px 4px;
+          padding: 5px 4px;
           border-radius: var(--radius-xs);
-          background: rgba(212, 168, 83, 0.05);
-          border: 1px solid rgba(212, 168, 83, 0.2);
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid var(--border-subtle);
           cursor: pointer;
           width: 100%;
           box-sizing: border-box;
@@ -243,14 +244,14 @@ export function ActionTracker({
 
         .action-rail__hypo-icon {
           font-size: 8px;
-          color: var(--color-aura);
+          color: var(--color-hypothesis);
         }
 
         .action-rail__hypo-count {
           font-family: var(--font-mono);
           font-size: 9px;
           font-weight: 600;
-          color: var(--color-aura);
+          color: var(--text-muted);
         }
 
         /* ─── Slim Precision Progress Bar ─── */
@@ -278,7 +279,7 @@ export function ActionTracker({
         .action-tracker__list {
           display: flex;
           flex-direction: column;
-          gap: 6px;
+          gap: 5px;
         }
 
         .action-tracker.is-collapsed .action-tracker__list,
@@ -290,37 +291,39 @@ export function ActionTracker({
         .action-item {
           display: flex;
           align-items: flex-start;
-          gap: 10px;
-          padding: 9px 11px;
+          gap: 9px;
+          padding: 8px 10px;
           background: var(--bg-surface-raised);
           border: 1px solid var(--border-subtle);
           border-radius: var(--radius-sm);
           cursor: pointer;
           transition: all var(--duration-fast) var(--ease-standard);
           position: relative;
+          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.03);
         }
 
         .action-item:hover {
           background: var(--bg-surface-hover);
-          border-color: rgba(255, 255, 255, 0.09);
+          border-color: rgba(255, 255, 255, 0.1);
         }
 
         .action-item--done {
-          background: rgba(14, 16, 21, 0.7);
-          border-color: rgba(59, 212, 162, 0.25);
+          background: rgba(14, 16, 21, 0.6);
+          border-color: rgba(59, 212, 162, 0.2);
+          opacity: 0.85;
         }
 
         .action-item--in_progress {
-          border-color: rgba(123, 140, 255, 0.28);
-          background: rgba(123, 140, 255, 0.035);
+          border-color: rgba(123, 140, 255, 0.3);
+          background: rgba(123, 140, 255, 0.04);
         }
 
         /* Interactive Status Check Ring */
         .action-item__ring {
-          width: 16px;
-          height: 16px;
-          border-radius: 4px;
-          border: 1.25px solid rgba(255, 255, 255, 0.18);
+          width: 15px;
+          height: 15px;
+          border-radius: 3px;
+          border: 1px solid rgba(255, 255, 255, 0.16);
           background: rgba(255, 255, 255, 0.02);
           display: flex;
           align-items: center;
@@ -331,7 +334,7 @@ export function ActionTracker({
         }
 
         .action-item:hover .action-item__ring {
-          border-color: rgba(212, 168, 83, 0.4);
+          border-color: rgba(255, 255, 255, 0.35);
         }
 
         .action-item--done .action-item__ring {
@@ -354,7 +357,7 @@ export function ActionTracker({
         .action-item__body {
           display: flex;
           flex-direction: column;
-          gap: 4px;
+          gap: 3px;
           min-width: 0;
           flex: 1;
         }
@@ -368,21 +371,21 @@ export function ActionTracker({
 
         .action-item__ticket {
           font-family: var(--font-mono);
-          font-size: 9.5px;
-          font-weight: 600;
+          font-size: 9px;
+          font-weight: 500;
           color: var(--text-muted);
-          background: rgba(255, 255, 255, 0.035);
+          background: rgba(255, 255, 255, 0.03);
           border: 1px solid rgba(255, 255, 255, 0.04);
-          padding: 1px 5px;
+          padding: 1px 4px;
           border-radius: 2px;
-          letter-spacing: 0.03em;
+          letter-spacing: 0.02em;
         }
 
         .action-item__title {
           font-family: var(--font-sans);
-          font-size: 12px;
-          line-height: 1.42;
-          letter-spacing: var(--tracking-tight);
+          font-size: 11.5px;
+          line-height: 1.4;
+          letter-spacing: -0.01em;
           color: var(--text-primary);
           margin: 0;
         }
@@ -402,12 +405,12 @@ export function ActionTracker({
           align-items: center;
           justify-content: space-between;
           gap: 6px;
-          margin-top: 1px;
+          margin-top: 2px;
         }
 
         .action-item__assignee {
           font-family: var(--font-sans);
-          font-size: 10.5px;
+          font-size: 10px;
           font-weight: 500;
           color: var(--color-action);
           overflow: hidden;
@@ -417,7 +420,7 @@ export function ActionTracker({
 
         .action-item__sla {
           font-family: var(--font-mono);
-          font-size: 9.5px;
+          font-size: 9px;
           color: var(--text-muted);
           flex-shrink: 0;
           letter-spacing: 0.02em;
@@ -427,7 +430,7 @@ export function ActionTracker({
         .hypothesis-board {
           display: flex;
           flex-direction: column;
-          gap: 7px;
+          gap: 6px;
           margin-top: 4px;
           padding-top: 10px;
           border-top: 1px solid var(--border-subtle);
@@ -440,7 +443,7 @@ export function ActionTracker({
           font-family: var(--font-sans);
           font-size: 10px;
           font-weight: 600;
-          letter-spacing: 0.08em;
+          letter-spacing: 0.06em;
           text-transform: uppercase;
           color: var(--text-muted);
         }
@@ -450,7 +453,8 @@ export function ActionTracker({
           font-size: 9px;
           padding: 1px 5px;
           background: rgba(255, 255, 255, 0.03);
-          border-radius: 2px;
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-xs);
           color: var(--text-muted);
         }
 
@@ -466,12 +470,13 @@ export function ActionTracker({
           gap: 8px;
           font-family: var(--font-sans);
           font-size: 11px;
-          line-height: 1.38;
-          letter-spacing: var(--tracking-tight);
-          padding: 6px 9px;
+          line-height: 1.36;
+          letter-spacing: -0.01em;
+          padding: 6px 8px;
           background: var(--bg-surface-raised);
-          border-radius: var(--radius-sm);
+          border-radius: var(--radius-xs);
           border: 1px solid var(--border-subtle);
+          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.02);
           transition: border-color var(--duration-fast) var(--ease-standard);
         }
 
@@ -485,7 +490,7 @@ export function ActionTracker({
         }
 
         .hypothesis-item--disproven {
-          border-left: 2px solid rgba(232, 84, 84, 0.6);
+          border-left: 2px solid rgba(232, 84, 84, 0.5);
           color: var(--text-muted);
           text-decoration: line-through;
         }
@@ -514,21 +519,21 @@ export function ActionTracker({
           color: var(--color-hypothesis);
         }
 
-        /* ─── Empty State (Acoustic Pulse) ─── */
+        /* ─── Empty State (Acoustic Listener) ─── */
         .action-tracker__empty-state {
           display: flex;
           align-items: center;
-          gap: 12px;
-          padding: 14px 14px;
-          background: rgba(20, 23, 30, 0.4);
+          gap: 10px;
+          padding: 10px 12px;
+          background: rgba(255, 255, 255, 0.015);
           border: 1px dashed rgba(255, 255, 255, 0.06);
           border-radius: var(--radius-sm);
         }
 
         .action-tracker__empty-icon {
           position: relative;
-          width: 32px;
-          height: 32px;
+          width: 26px;
+          height: 26px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -540,7 +545,7 @@ export function ActionTracker({
 
         .action-tracker__empty-pulse {
           position: absolute;
-          inset: -3px;
+          inset: -2px;
           border-radius: 50%;
           border: 1px solid rgba(212, 168, 83, 0.25);
           animation: empty-pulse 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;

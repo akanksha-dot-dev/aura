@@ -28,8 +28,9 @@ export function ConflictBanner({
           align-items: center;
           justify-content: space-between;
           padding: 8px 16px;
-          background: rgba(22, 12, 15, 0.88);
-          border-bottom: 1px solid rgba(232, 84, 84, 0.25);
+          background: rgba(15, 14, 18, 0.95);
+          border-bottom: 1px solid var(--border-subtle);
+          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
           gap: 12px;
@@ -60,11 +61,11 @@ export function ConflictBanner({
           gap: 6px;
           font-family: var(--font-mono);
           font-size: 10px;
-          font-weight: 700;
+          font-weight: 600;
           color: var(--color-conflict);
-          background: rgba(232, 84, 84, 0.12);
-          border: 1px solid rgba(232, 84, 84, 0.35);
-          border-radius: var(--radius-sm);
+          background: rgba(232, 84, 84, 0.08);
+          border: 1px solid rgba(232, 84, 84, 0.25);
+          border-radius: var(--radius-xs);
           padding: 3px 7px;
           text-transform: uppercase;
           letter-spacing: 0.06em;
@@ -72,17 +73,16 @@ export function ConflictBanner({
         }
 
         .conflict-banner__dot {
-          width: 6px;
-          height: 6px;
+          width: 5px;
+          height: 5px;
           border-radius: 50%;
           background: var(--color-conflict);
-          box-shadow: 0 0 6px var(--color-conflict);
-          animation: pulse-conflict-dot 1.6s ease-in-out infinite;
+          animation: pulse-conflict-dot 1.8s ease-in-out infinite;
         }
 
         @keyframes pulse-conflict-dot {
           0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.35; transform: scale(0.85); }
+          50% { opacity: 0.4; transform: scale(0.9); }
         }
 
         .conflict-banner__subtitle {
@@ -90,7 +90,7 @@ export function ConflictBanner({
           font-size: 11px;
           font-weight: 500;
           color: var(--text-muted);
-          letter-spacing: var(--tracking-tight);
+          letter-spacing: -0.01em;
           white-space: nowrap;
         }
 
@@ -98,7 +98,7 @@ export function ConflictBanner({
         .conflict-banner__comparison {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 8px;
           flex: 1;
           min-width: 0;
           justify-content: center;
@@ -110,26 +110,27 @@ export function ConflictBanner({
           gap: 6px;
           min-width: 0;
           max-width: 320px;
-          background: rgba(255, 255, 255, 0.025);
-          border: 1px solid rgba(255, 255, 255, 0.05);
-          border-radius: var(--radius-sm);
+          background: var(--bg-surface-raised);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-xs);
           padding: 4px 8px;
+          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.02);
         }
 
         .conflict-banner__speaker-row {
           font-family: var(--font-sans);
           font-size: 10.5px;
           font-weight: 600;
-          color: var(--text-secondary);
+          color: var(--text-primary);
           flex-shrink: 0;
         }
 
         .conflict-banner__quote {
           font-family: var(--font-sans);
-          font-size: 11.5px;
-          color: var(--text-primary);
+          font-size: 11px;
+          color: var(--text-secondary);
           line-height: 1.35;
-          letter-spacing: var(--tracking-tight);
+          letter-spacing: -0.01em;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -141,10 +142,10 @@ export function ConflictBanner({
           justify-content: center;
           font-family: var(--font-mono);
           font-size: 9px;
-          font-weight: 700;
-          color: var(--color-conflict);
-          background: rgba(232, 84, 84, 0.12);
-          border: 1px solid rgba(232, 84, 84, 0.3);
+          font-weight: 600;
+          color: var(--text-muted);
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid var(--border-subtle);
           width: 20px;
           height: 20px;
           border-radius: 50%;
@@ -156,10 +157,10 @@ export function ConflictBanner({
         .conflict-banner__footer {
           display: flex;
           align-items: center;
-          gap: 7px;
-          background: rgba(212, 168, 83, 0.06);
-          border: 1px solid rgba(212, 168, 83, 0.2);
-          border-radius: var(--radius-sm);
+          gap: 6px;
+          background: rgba(212, 168, 83, 0.05);
+          border: 1px solid rgba(212, 168, 83, 0.18);
+          border-radius: var(--radius-xs);
           padding: 4px 8px;
           flex-shrink: 0;
         }
@@ -167,16 +168,16 @@ export function ConflictBanner({
         .conflict-banner__metric-tag {
           font-family: var(--font-mono);
           font-weight: 600;
-          font-size: 9.5px;
+          font-size: 9px;
           text-transform: uppercase;
-          letter-spacing: 0.06em;
+          letter-spacing: 0.05em;
           color: var(--color-aura);
           white-space: nowrap;
         }
 
         .conflict-banner__metric-val {
           font-family: var(--font-mono);
-          font-size: 10.5px;
+          font-size: 10px;
           color: var(--color-hypothesis);
           overflow: hidden;
           text-overflow: ellipsis;
