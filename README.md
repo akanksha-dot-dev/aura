@@ -1,36 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AURA — Voice AI Incident Commander
+
+Real-time Voice AI Incident Commander that joins live IT war rooms as an active voice participant over Agora SD-RTN™ and Conversational AI Engine.
+
+Deployed at: [aura.akanksha.dev](https://aura.akanksha.dev)
+
+---
+
+## Tech Stack
+
+- **Framework:** Next.js 16 (App Router, Turbopack)
+- **Voice & Real-Time:** Agora RTC SDK (WebRTC), Agora Conversational AI Engine, Agora Signaling (RTM 2.x)
+- **Animation & Physics:** Motion (`motion/react`)
+- **Visuals:** Vanilla CSS Design System ("Operational Calm"), D3-Force (`d3-force`)
+- **Testing:** Vitest, React Testing Library, JSDOM
+- **Type Safety:** TypeScript 5, Zod
+
+---
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 20+
+- Agora Developer Account (App ID, Certificate, Customer REST Key/Secret)
+
+### Environment Setup
+
+Copy `.env.example` to `.env.local` and populate credentials:
+
+```bash
+cp .env.example .env.local
+```
+
+Required environment variables:
+```bash
+# Agora RTC & RTM Configuration
+NEXT_PUBLIC_AGORA_APP_ID=your_agora_app_id
+AGORA_APP_ID=your_agora_app_id
+AGORA_APP_CERTIFICATE=your_agora_app_certificate
+AGORA_CUSTOMER_KEY=your_agora_customer_key
+AGORA_CUSTOMER_SECRET=your_agora_customer_secret
+
+# Agora Conversational AI Agent ID
+NEXT_PUBLIC_AGORA_AGENT_ID=your_agora_agent_id
+
+# Optional Integrations
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+```
+
+### Installation
+
+```bash
+npm install
+```
+
+### Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to view the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Testing & Quality Assurance
 
-## Learn More
+### Run Automated Test Suite
 
-To learn more about Next.js, take a look at the following resources:
+AURA features comprehensive unit, component, API route, and integration test suites:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm test
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+To run tests in interactive watch mode:
+```bash
+npm run test:watch
+```
 
-## Deploy on Vercel
+### Production Build
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run build
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## License
+
+MIT
