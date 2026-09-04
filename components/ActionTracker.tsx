@@ -51,18 +51,17 @@ export function ActionTracker({
           width: 100%;
           height: 100%;
           background: var(--bg-surface);
-          border-left: 1px solid var(--border-default);
-          box-shadow: var(--shadow-inner-glow);
+          border-left: 1px solid var(--border-subtle);
           display: flex;
           flex-direction: column;
-          padding: var(--space-3);
+          padding: 12px 14px;
           overflow-y: auto;
           user-select: none;
-          gap: var(--space-3);
+          gap: 12px;
         }
 
         .action-tracker.is-collapsed {
-          padding-bottom: var(--space-2);
+          padding-bottom: 8px;
         }
 
         /* ─── Header Section ─── */
@@ -70,23 +69,23 @@ export function ActionTracker({
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding-bottom: var(--space-2);
+          padding-bottom: 8px;
           border-bottom: 1px solid var(--border-subtle);
-          gap: var(--space-2);
+          gap: 8px;
         }
 
         .action-tracker__title-group {
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
         }
 
         .action-tracker__title {
           font-family: var(--font-sans);
           font-size: 11px;
           font-weight: 600;
-          color: var(--text-muted);
-          letter-spacing: 0.06em;
+          color: var(--text-secondary);
+          letter-spacing: 0.08em;
           text-transform: uppercase;
         }
 
@@ -99,24 +98,24 @@ export function ActionTracker({
         .action-tracker__count-badge {
           font-family: var(--font-mono);
           font-size: 10px;
-          font-weight: 600;
-          padding: 1px 6px;
+          font-weight: 500;
+          padding: 2px 7px;
           background: var(--bg-surface-raised);
           border: 1px solid var(--border-subtle);
           border-radius: var(--radius-sm);
           color: var(--color-aura);
+          letter-spacing: 0.02em;
         }
 
         .action-tracker__collapse-btn {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          width: 20px;
-          height: 20px;
+          width: 22px;
+          height: 22px;
           border-radius: var(--radius-sm);
-          background: var(--bg-surface-raised);
-          border: 1px solid var(--border-default);
-          box-shadow: var(--shadow-inner-glow);
+          background: transparent;
+          border: 1px solid var(--border-subtle);
           color: var(--text-muted);
           cursor: pointer;
           transition: all var(--duration-fast) var(--ease-standard);
@@ -124,10 +123,11 @@ export function ActionTracker({
 
         .action-tracker__collapse-btn:hover {
           color: var(--text-primary);
-          border-color: var(--border-emphasis);
+          background: var(--bg-surface-hover);
+          border-color: var(--border-default);
         }
 
-        /* ─── Slim Progress Bar ─── */
+        /* ─── Slim Precision Progress Bar ─── */
         .action-tracker__progress-wrap {
           display: flex;
           flex-direction: column;
@@ -135,8 +135,8 @@ export function ActionTracker({
         }
 
         .action-tracker__progress-track {
-          height: 3px;
-          background: rgba(255, 255, 255, 0.06);
+          height: 2px;
+          background: rgba(255, 255, 255, 0.04);
           border-radius: 99px;
           overflow: hidden;
         }
@@ -145,10 +145,10 @@ export function ActionTracker({
           height: 100%;
           background: var(--color-fact);
           border-radius: 99px;
-          transition: width 0.4s var(--ease-standard);
+          transition: width 0.35s var(--ease-standard);
         }
 
-        /* ─── Linear-Grade Action Item Rows ─── */
+        /* ─── Linear-Grade Action Item Checklist Rows ─── */
         .action-tracker__list {
           display: flex;
           flex-direction: column;
@@ -165,37 +165,38 @@ export function ActionTracker({
           display: flex;
           align-items: flex-start;
           gap: 10px;
-          padding: 8px 10px;
+          padding: 9px 11px;
           background: var(--bg-surface-raised);
           border: 1px solid var(--border-subtle);
-          box-shadow: var(--shadow-inner-glow);
           border-radius: var(--radius-sm);
           cursor: pointer;
           transition: all var(--duration-fast) var(--ease-standard);
+          position: relative;
         }
 
         .action-item:hover {
           background: var(--bg-surface-hover);
-          border-color: var(--border-emphasis);
+          border-color: rgba(255, 255, 255, 0.09);
         }
 
         .action-item--done {
-          opacity: 0.75;
-          border-color: rgba(59, 212, 162, 0.2);
+          opacity: 0.65;
+          background: rgba(14, 16, 21, 0.5);
+          border-color: rgba(59, 212, 162, 0.15);
         }
 
         .action-item--in_progress {
-          border-color: rgba(123, 140, 255, 0.3);
-          background: rgba(123, 140, 255, 0.04);
+          border-color: rgba(123, 140, 255, 0.28);
+          background: rgba(123, 140, 255, 0.035);
         }
 
         /* Interactive Status Check Ring */
         .action-item__ring {
           width: 16px;
           height: 16px;
-          border-radius: 50%;
-          border: 1.5px solid var(--border-emphasis);
-          background: transparent;
+          border-radius: 4px;
+          border: 1.25px solid rgba(255, 255, 255, 0.18);
+          background: rgba(255, 255, 255, 0.02);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -204,16 +205,21 @@ export function ActionTracker({
           transition: all var(--duration-fast) var(--ease-standard);
         }
 
+        .action-item:hover .action-item__ring {
+          border-color: rgba(212, 168, 83, 0.4);
+        }
+
         .action-item--done .action-item__ring {
           background: var(--color-fact);
           border-color: var(--color-fact);
-          color: var(--text-inverse);
+          color: #08090C;
         }
 
         .action-item--in_progress .action-item__ring {
           border-color: var(--color-decision);
           border-top-color: transparent;
-          animation: ring-spin 1.2s linear infinite;
+          border-radius: 50%;
+          animation: ring-spin 1s linear infinite;
         }
 
         @keyframes ring-spin {
@@ -237,18 +243,20 @@ export function ActionTracker({
 
         .action-item__ticket {
           font-family: var(--font-mono);
-          font-size: 10px;
+          font-size: 9.5px;
           font-weight: 600;
           color: var(--text-muted);
-          background: rgba(255, 255, 255, 0.04);
+          background: rgba(255, 255, 255, 0.035);
+          border: 1px solid rgba(255, 255, 255, 0.04);
           padding: 1px 5px;
           border-radius: 2px;
+          letter-spacing: 0.03em;
         }
 
         .action-item__title {
           font-family: var(--font-sans);
           font-size: 12px;
-          line-height: 1.4;
+          line-height: 1.42;
           letter-spacing: var(--tracking-tight);
           color: var(--text-primary);
           margin: 0;
@@ -264,12 +272,13 @@ export function ActionTracker({
           align-items: center;
           justify-content: space-between;
           gap: 6px;
-          margin-top: 2px;
+          margin-top: 1px;
         }
 
         .action-item__assignee {
           font-family: var(--font-sans);
-          font-size: 11px;
+          font-size: 10.5px;
+          font-weight: 500;
           color: var(--color-action);
           overflow: hidden;
           text-overflow: ellipsis;
@@ -278,22 +287,20 @@ export function ActionTracker({
 
         .action-item__sla {
           font-family: var(--font-mono);
-          font-size: 10px;
+          font-size: 9.5px;
           color: var(--text-muted);
           flex-shrink: 0;
+          letter-spacing: 0.02em;
         }
 
-        /* ─── Hypothesis Board & Context Matrix (Fills Dead Space) ─── */
+        /* ─── Hypothesis Board & Context Matrix ─── */
         .hypothesis-board {
           display: flex;
           flex-direction: column;
-          gap: 8px;
-          margin-top: var(--space-2);
-          padding: var(--space-3);
-          background: var(--bg-surface-raised);
-          border: 1px solid var(--border-subtle);
-          box-shadow: var(--shadow-inner-glow);
-          border-radius: var(--radius-md);
+          gap: 7px;
+          margin-top: 4px;
+          padding-top: 10px;
+          border-top: 1px solid var(--border-subtle);
         }
 
         .hypothesis-board__header {
@@ -301,17 +308,26 @@ export function ActionTracker({
           align-items: center;
           justify-content: space-between;
           font-family: var(--font-sans);
-          font-size: 11px;
+          font-size: 10px;
           font-weight: 600;
-          letter-spacing: 0.05em;
+          letter-spacing: 0.08em;
           text-transform: uppercase;
+          color: var(--text-muted);
+        }
+
+        .hypothesis-board__badge {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          padding: 1px 5px;
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 2px;
           color: var(--text-muted);
         }
 
         .hypothesis-board__list {
           display: flex;
           flex-direction: column;
-          gap: 6px;
+          gap: 5px;
         }
 
         .hypothesis-item {
@@ -320,27 +336,32 @@ export function ActionTracker({
           gap: 8px;
           font-family: var(--font-sans);
           font-size: 11px;
-          line-height: 1.35;
+          line-height: 1.38;
           letter-spacing: var(--tracking-tight);
-          padding: 5px 8px;
-          background: var(--bg-surface);
+          padding: 6px 9px;
+          background: var(--bg-surface-raised);
           border-radius: var(--radius-sm);
           border: 1px solid var(--border-subtle);
+          transition: border-color var(--duration-fast) var(--ease-standard);
+        }
+
+        .hypothesis-item:hover {
+          border-color: rgba(255, 255, 255, 0.08);
         }
 
         .hypothesis-item--confirmed {
-          border-color: rgba(59, 212, 162, 0.25);
+          border-left: 2px solid var(--color-fact);
           color: var(--text-primary);
         }
 
         .hypothesis-item--disproven {
-          border-color: rgba(232, 84, 84, 0.2);
+          border-left: 2px solid rgba(232, 84, 84, 0.6);
           color: var(--text-muted);
           text-decoration: line-through;
         }
 
         .hypothesis-item--active {
-          border-color: rgba(232, 168, 56, 0.25);
+          border-left: 2px solid var(--color-hypothesis);
           color: var(--text-primary);
         }
 
@@ -363,16 +384,15 @@ export function ActionTracker({
           color: var(--color-hypothesis);
         }
 
-        /* ─── Empty State Animation ─── */
+        /* ─── Empty State (Acoustic Pulse) ─── */
         .action-tracker__empty-state {
           display: flex;
           align-items: center;
           gap: 12px;
-          padding: 12px 14px;
-          background: rgba(20, 23, 30, 0.6);
-          border: 1px dashed rgba(255, 255, 255, 0.08);
-          border-radius: var(--radius-md);
-          box-shadow: var(--shadow-inner-glow);
+          padding: 14px 14px;
+          background: rgba(20, 23, 30, 0.4);
+          border: 1px dashed rgba(255, 255, 255, 0.06);
+          border-radius: var(--radius-sm);
         }
 
         .action-tracker__empty-icon {
@@ -383,7 +403,7 @@ export function ActionTracker({
           align-items: center;
           justify-content: center;
           border-radius: 50%;
-          background: rgba(245, 158, 11, 0.1);
+          background: rgba(212, 168, 83, 0.08);
           color: var(--color-aura);
           flex-shrink: 0;
         }
@@ -392,14 +412,14 @@ export function ActionTracker({
           position: absolute;
           inset: -3px;
           border-radius: 50%;
-          border: 1px solid rgba(245, 158, 11, 0.35);
-          animation: empty-pulse 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+          border: 1px solid rgba(212, 168, 83, 0.25);
+          animation: empty-pulse 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
         }
 
         @keyframes empty-pulse {
-          0% { transform: scale(0.95); opacity: 0.8; }
-          50% { transform: scale(1.15); opacity: 0.2; }
-          100% { transform: scale(0.95); opacity: 0.8; }
+          0% { transform: scale(0.95); opacity: 0.7; }
+          50% { transform: scale(1.15); opacity: 0.15; }
+          100% { transform: scale(0.95); opacity: 0.7; }
         }
 
         .action-tracker__empty-text {
@@ -411,7 +431,7 @@ export function ActionTracker({
         .action-tracker__empty-headline {
           font-size: 11px;
           font-weight: 600;
-          color: var(--text-primary);
+          color: var(--text-secondary);
           letter-spacing: -0.01em;
         }
 
@@ -553,11 +573,12 @@ export function ActionTracker({
           )}
         </div>
 
-        {/* Live Incident Hypotheses & Findings Board (Eliminates 70% dead space) */}
+        {/* Live Incident Hypotheses & Findings Board */}
         {!isCollapsed && (
           <div className="hypothesis-board">
             <div className="hypothesis-board__header">
-              <span>Active Hypotheses & Findings</span>
+              <span>Active Hypotheses &amp; Findings</span>
+              <span className="hypothesis-board__badge">3 tracked</span>
             </div>
             <div className="hypothesis-board__list">
               <div className="hypothesis-item hypothesis-item--confirmed">
@@ -579,3 +600,4 @@ export function ActionTracker({
     </>
   );
 }
+
