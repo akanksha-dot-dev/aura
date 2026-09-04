@@ -4,26 +4,27 @@
    ═══════════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* ─── Canvas Backgrounds ───
-     Warm charcoal with a hint of violet undertone — the color of a dimmed war room.
-     NOT pure black (#000). NOT blue-black (#0A0E1A). */
-  --bg-base: #0B0A10;
-  --bg-surface: #131219;
-  --bg-surface-raised: #1A192A;
-  --bg-surface-hover: #222135;
-  --bg-overlay: rgba(11, 10, 16, 0.85);
+  /* ─── Tonal Obsidian Canvas (Linear/Stripe Grade) ─── */
+  --bg-base: #08090C;
+  --bg-surface: #0E1015;
+  --bg-surface-raised: #14171E;
+  --bg-surface-hover: #1A1E26;
+  --bg-overlay: rgba(8, 9, 12, 0.82);
 
-  /* ─── Borders (Subtle Glass Effect) ─── */
+  /* ─── Precision Hairline Borders & Inner Glow ─── */
   --border-subtle: rgba(255, 255, 255, 0.04);
-  --border-default: rgba(255, 255, 255, 0.05);
-  --border-emphasis: rgba(255, 255, 255, 0.08);
-  --border-focus: rgba(212, 168, 83, 0.5);
+  --border-default: rgba(255, 255, 255, 0.06);
+  --border-emphasis: rgba(255, 255, 255, 0.10);
+  --border-focus: rgba(245, 158, 11, 0.5);
+  --shadow-inner-glow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+  --shadow-card-elevated: 0 4px 20px -2px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
 
-  /* ─── Typography ───
-     PRIMARY: IBM Plex Sans — purpose-built for information-dense operational UIs.
-     MONOSPACE: IBM Plex Mono — visual harmony with primary face for telemetry. */
-  --font-sans: var(--font-sans-loaded), 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
-  --font-mono: var(--font-mono-loaded), 'IBM Plex Mono', 'Cascadia Code', 'Fira Code', monospace;
+  /* ─── Typography Polish ─── */
+  --font-sans: var(--font-sans-loaded), 'Inter', 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-mono-loaded), 'JetBrains Mono', 'IBM Plex Mono', 'Cascadia Code', 'Fira Code', monospace;
+  --tracking-tight: -0.015em;
+  --tracking-normal: 0em;
+  --tracking-wide: 0.04em;
 
   /* ─── Font Sizes ─── */
   --text-xs: 0.6875rem;    /* 11px — timestamps, metadata, counters */
@@ -124,12 +125,12 @@
   --shadow-glass: 0 4px 24px rgba(0, 0, 0, 0.3), 0 0 1px rgba(255, 255, 255, 0.06);
 
   /* ─── Glassmorphism Surfaces ─── */
-  --bg-glass: rgba(18, 19, 26, 0.65);
-  --bg-glass-hover: rgba(24, 25, 36, 0.75);
-  --bg-glass-raised: rgba(26, 25, 42, 0.55);
-  --bg-glass-panel: rgba(19, 18, 25, 0.80);
-  --border-glass: rgba(255, 255, 255, 0.06);
-  --border-glass-emphasis: rgba(255, 255, 255, 0.10);
+  --bg-glass: rgba(14, 16, 21, 0.75);
+  --bg-glass-hover: rgba(20, 23, 30, 0.85);
+  --bg-glass-raised: rgba(22, 26, 34, 0.65);
+  --bg-glass-panel: rgba(14, 16, 21, 0.85);
+  --border-glass: rgba(255, 255, 255, 0.05);
+  --border-glass-emphasis: rgba(255, 255, 255, 0.09);
 
   /* ─── Panel Collapse System ─── */
   --panel-collapsed-width: 48px;
@@ -234,6 +235,7 @@ body {
     var(--bg-base);
   color: var(--text-primary);
   font-family: var(--font-sans);
+  letter-spacing: var(--tracking-tight);
   font-size: var(--text-base);
   line-height: var(--leading-normal);
   -webkit-font-smoothing: antialiased;
@@ -372,15 +374,15 @@ input, textarea, select {
 /* ─── Timeline Card Styles & Temporal Decay (color-mix) ─── */
 .timeline-card {
   container-type: inline-size;
-  background: var(--bg-glass);
+  background: var(--bg-surface);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--border-glass);
-  border-left: 4px solid var(--border-default);
-  padding: var(--space-4);
+  border: 1px solid var(--border-default);
+  border-left: 3px solid var(--border-default);
+  padding: var(--space-3) var(--space-4);
   margin-bottom: var(--space-2);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-glass);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-inner-glow);
   animation: card-arrive var(--duration-normal) var(--ease-arrive) both;
   transition: transform var(--duration-fast) var(--ease-standard),
               box-shadow var(--duration-fast) var(--ease-standard),
@@ -389,10 +391,10 @@ input, textarea, select {
 }
 
 .timeline-card:hover {
-  background: var(--bg-glass-hover);
-  transform: scale(var(--hover-scale, 1.015));
-  box-shadow: var(--shadow-float);
-  border-color: var(--border-glass-emphasis);
+  background: var(--bg-surface-raised);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-card-elevated);
+  border-color: var(--border-emphasis);
 }
 
 .timeline-card--fact { border-left-color: var(--color-fact); }
