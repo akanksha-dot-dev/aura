@@ -30,6 +30,23 @@ interface RtmClientInstance {
 
 const MAX_DEDUP_SET_SIZE = 1000;
 
+function isAbortOrCancelError(err: unknown): boolean {
+  if (!err) return false;
+  const msg = err instanceof Error ? err.message : String(err);
+  const code =
+    typeof err === 'object' && err !== null && 'code' in err
+      ? String((err as { code: unknown }).code)
+      : '';
+  return (
+    code === 'OPERATION_ABORTED' ||
+    msg.includes('OPERATION_ABORTED') ||
+    msg.includes('cancel token canceled') ||
+    msg.includes('AbortError') ||
+    msg.includes('already in connecting/connected state') ||
+    msg.includes('INVALID_OPERATION')
+  );
+}
+
 export function useAgoraRTM({
   uid,
   channelName,
@@ -41,7 +58,15 @@ export function useAgoraRTM({
 
   const clientRef = useRef<RtmClientInstance | null>(null);
   const isConnectingRef = useRef(false);
+  const isMountedRef = useRef(true);
   const onEventRef = useRef(onEvent);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     onEventRef.current = onEvent;
@@ -51,6 +76,7 @@ export function useAgoraRTM({
   const eventBufferRef = useRef<RTMDashboardEvent[]>([]);
 
   const processAndDispatchEvent = useCallback((event: RTMDashboardEvent) => {
+    if (!isMountedRef.current) return;
     // 1. Deduplication check
     if (seenEventIdsRef.current.has(event.id)) {
       return;
@@ -72,7 +98,7 @@ export function useAgoraRTM({
     // 3. Dispatch ordered events
     while (eventBufferRef.current.length > 0) {
       const nextEvt = eventBufferRef.current.shift();
-      if (nextEvt) {
+      if (nextEvt && isMountedRef.current) {
         onEventRef.current(nextEvt);
       }
     }
@@ -98,14 +124,18 @@ export function useAgoraRTM({
           // Ignore logout error on teardown
         }
       }
-      setIsConnected(false);
+      if (isMountedRef.current) {
+        setIsConnected(false);
+      }
     } catch (err) {
-      console.warn('[useAgoraRTM] Disconnect error:', err);
+      if (!isAbortOrCancelError(err)) {
+        console.warn('[useAgoraRTM] Disconnect error:', err);
+      }
     }
   }, [channelName]);
 
   const connect = useCallback(async () => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !isMountedRef.current) return;
     if (!channelName || !uid) {
       setError('channelName and uid are required for RTM');
       return;
@@ -125,11 +155,13 @@ export function useAgoraRTM({
         body: JSON.stringify({ channelName, uid }),
       });
 
+      if (!isMountedRef.current) return;
+
       if (!tokenRes.ok) {
         const errData = await tokenRes.json().catch(() => ({}));
         if (tokenRes.status === 500 && String(errData.error).includes('credentials not configured')) {
           console.info('[useAgoraRTM] Telemetry standby: Agora credentials not configured in .env.local');
-          setError('Agora telemetry standby (credentials not configured)');
+          if (isMountedRef.current) setError('Agora telemetry standby (credentials not configured)');
           return;
         }
         throw new Error(
@@ -142,6 +174,8 @@ export function useAgoraRTM({
         throw new Error('Missing Agora App ID from token endpoint');
       }
 
+      if (!isMountedRef.current) return;
+
       // 2. Dynamic import to avoid SSR errors
       const AgoraRTM = (await import('agora-rtm-sdk')).default;
 
@@ -151,6 +185,7 @@ export function useAgoraRTM({
 
       // 4. Attach event listeners
       client.addEventListener('message', (eventData: Record<string, unknown>) => {
+        if (!isMountedRef.current) return;
         try {
           let rawData = eventData?.message;
           if (rawData instanceof Uint8Array) {
@@ -181,6 +216,7 @@ export function useAgoraRTM({
       });
 
       client.addEventListener('linkState', (eventData: Record<string, unknown>) => {
+        if (!isMountedRef.current) return;
         const stateStr =
           typeof eventData?.currentState === 'string'
             ? eventData.currentState
@@ -198,16 +234,21 @@ export function useAgoraRTM({
 
       // 5. Login to Agora RTM
       await client.login({ token: rtmToken || undefined });
+      if (!isMountedRef.current) return;
 
       // 6. Subscribe to channel
       await client.subscribe(channelName);
+      if (!isMountedRef.current) return;
 
       setIsConnected(true);
       setError(null);
     } catch (err) {
+      if (isAbortOrCancelError(err) || !isMountedRef.current) {
+        return;
+      }
       const errMsg =
         err instanceof Error ? err.message : 'Failed to connect to Agora RTM';
-      setError(errMsg);
+      if (isMountedRef.current) setError(errMsg);
       console.error('[useAgoraRTM] Connection error:', err);
     } finally {
       isConnectingRef.current = false;
@@ -220,7 +261,7 @@ export function useAgoraRTM({
 
     if (enabled && channelName && uid) {
       const init = async () => {
-        if (!mounted) return;
+        if (!mounted || !isMountedRef.current) return;
         await connect();
       };
       void init();

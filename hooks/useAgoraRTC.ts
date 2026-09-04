@@ -35,6 +35,23 @@ export interface UseAgoraRTCReturn {
   error: string | null;
 }
 
+function isAbortOrCancelError(err: unknown): boolean {
+  if (!err) return false;
+  const msg = err instanceof Error ? err.message : String(err);
+  const code =
+    typeof err === 'object' && err !== null && 'code' in err
+      ? String((err as { code: unknown }).code)
+      : '';
+  return (
+    code === 'OPERATION_ABORTED' ||
+    msg.includes('OPERATION_ABORTED') ||
+    msg.includes('cancel token canceled') ||
+    msg.includes('AbortError') ||
+    msg.includes('already in connecting/connected state') ||
+    msg.includes('INVALID_OPERATION')
+  );
+}
+
 export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCOptions): UseAgoraRTCReturn {
   const [isJoined, setIsJoined] = useState(false);
   const [connectionState, setConnectionState] = useState<ConnectionState | 'DISCONNECTED'>('DISCONNECTED');
@@ -54,24 +71,32 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
   const clientRef = useRef<IAgoraRTCClient | null>(null);
   const localTrackRef = useRef<ILocalAudioTrack | null>(null);
   const isJoiningRef = useRef<boolean>(false);
+  const isMountedRef = useRef<boolean>(true);
   const currentUplinkQualityRef = useRef<number>(1);
   const currentDownlinkQualityRef = useRef<number>(1);
 
+  // Track component mount status
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   // Initialize client instance
   useEffect(() => {
-    let mounted = true;
-
     async function initClient() {
       if (typeof window === 'undefined') return;
 
       const AgoraRTC = (await import('agora-rtc-sdk-ng')).default;
       AgoraRTC.setLogLevel(2); // Warnings and errors only
 
-      if (!clientRef.current && mounted) {
+      if (!clientRef.current && isMountedRef.current) {
         const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
         clientRef.current = client;
 
         client.on('connection-state-change', (curState) => {
+          if (!isMountedRef.current) return;
           setConnectionState(curState);
           if (curState === 'CONNECTED') {
             setIsJoined(true);
@@ -82,22 +107,34 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
 
         client.on('user-published', async (user, mediaType) => {
           if (mediaType === 'audio') {
-            await client.subscribe(user, 'audio');
-            user.audioTrack?.play();
-            setRemoteUsers((prev) => {
-              if (prev.some((u) => u.uid === user.uid)) return prev;
-              return [...prev, user];
-            });
+            try {
+              await client.subscribe(user, 'audio');
+              if (!isMountedRef.current) return;
+              user.audioTrack?.play();
+              setRemoteUsers((prev) => {
+                if (prev.some((u) => u.uid === user.uid)) return prev;
+                return [...prev, user];
+              });
+            } catch (subErr) {
+              if (!isAbortOrCancelError(subErr)) {
+                console.warn('[useAgoraRTC] Audio subscribe notice:', subErr);
+              }
+            }
           }
         });
 
         client.on('user-unpublished', (user, mediaType) => {
           if (mediaType === 'audio') {
-            user.audioTrack?.stop();
+            try {
+              user.audioTrack?.stop();
+            } catch {
+              // Ignore track stop error
+            }
           }
         });
 
         client.on('user-left', (user) => {
+          if (!isMountedRef.current) return;
           setRemoteUsers((prev) => prev.filter((u) => u.uid !== user.uid));
           setVolumeLevels((prev) => {
             const next = { ...prev };
@@ -108,6 +145,7 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
 
         client.enableAudioVolumeIndicator();
         client.on('volume-indicator', (volumes) => {
+          if (!isMountedRef.current) return;
           const levels: Record<string, number> = {};
           volumes.forEach((vol) => {
             // vol.uid is 0 for local user or string/number for remote user
@@ -125,10 +163,6 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
     }
 
     initClient();
-
-    return () => {
-      mounted = false;
-    };
   }, [uid]);
 
   // Real-time Agora WebRTC telemetry poller (runs when CONNECTED)
@@ -139,6 +173,7 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
 
     const client = clientRef.current;
     const pollStats = () => {
+      if (!isMountedRef.current) return;
       try {
         const rtcStats = client.getRTCStats();
         const remoteAudioStats = client.getRemoteAudioStats();
@@ -182,7 +217,9 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
           downlinkQuality: currentDownlinkQualityRef.current,
         });
       } catch (err) {
-        console.warn('[useAgoraRTC] Stats polling skipped:', err);
+        if (!isAbortOrCancelError(err)) {
+          console.warn('[useAgoraRTC] Stats polling skipped:', err);
+        }
       }
     };
 
@@ -192,8 +229,10 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
   }, [connectionState]);
 
   const joinChannel = useCallback(async () => {
-    if (!channelName || !uid) {
-      setError('channelName and uid are required to join');
+    if (!channelName || !uid || !isMountedRef.current) {
+      if (!channelName || !uid) {
+        setError('channelName and uid are required to join');
+      }
       return;
     }
 
@@ -208,14 +247,14 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
       (clientRef.current.connectionState === 'CONNECTING' ||
         clientRef.current.connectionState === 'CONNECTED')
     ) {
-      setIsJoined(true);
+      if (isMountedRef.current) setIsJoined(true);
       return;
     }
 
     isJoiningRef.current = true;
 
     try {
-      setError(null);
+      if (isMountedRef.current) setError(null);
       const AgoraRTC = (await import('agora-rtc-sdk-ng')).default;
 
       // 1. Fetch token from server
@@ -225,11 +264,13 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
         body: JSON.stringify({ channelName, uid }),
       });
 
+      if (!isMountedRef.current) return;
+
       if (!tokenRes.ok) {
         const errJson = await tokenRes.json().catch(() => ({}));
         if (tokenRes.status === 500 && String(errJson.error).includes('credentials not configured')) {
           console.info('[useAgoraRTC] Voice standby: Agora credentials not configured in .env.local');
-          setError('Agora voice standby (credentials not configured)');
+          if (isMountedRef.current) setError('Agora voice standby (credentials not configured)');
           return;
         }
         throw new Error(errJson.error || `Failed to get Agora token (HTTP ${tokenRes.status})`);
@@ -238,6 +279,8 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
       const tokenData = await tokenRes.json();
       const targetAppId = propAppId || tokenData.appId;
       const rtcToken = tokenData.rtcToken;
+
+      if (!isMountedRef.current) return;
 
       if (!clientRef.current) {
         clientRef.current = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
@@ -250,12 +293,13 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
         client.connectionState === 'CONNECTING' ||
         client.connectionState === 'CONNECTED'
       ) {
-        setIsJoined(true);
+        if (isMountedRef.current) setIsJoined(true);
         return;
       }
 
       // 2. Join RTC channel with string UID
       await client.join(targetAppId, channelName, rtcToken || null, uid);
+      if (!isMountedRef.current) return;
       setIsJoined(true);
 
       // 3. Create and publish local microphone audio track if not already active
@@ -308,11 +352,17 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
           });
 
           console.error = originalConsoleError;
+          if (!isMountedRef.current) {
+            audioTrack.close();
+            return;
+          }
+
           localTrackRef.current = audioTrack;
           setLocalAudioTrack(audioTrack);
           await client.publish([audioTrack]);
         } catch (micErr) {
           console.error = originalConsoleError;
+          if (isAbortOrCancelError(micErr)) return;
           const micMsg = micErr instanceof Error ? micErr.message : String(micErr);
           if (
             isPermissionDismissed ||
@@ -330,13 +380,11 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
         }
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to join voice channel';
-      // Suppress benign "already in connecting/connected state" error if caught
-      if (message.includes('already in connecting/connected state')) {
-        setIsJoined(true);
+      if (isAbortOrCancelError(err) || !isMountedRef.current) {
         return;
       }
-      setError(message);
+      const message = err instanceof Error ? err.message : 'Failed to join voice channel';
+      if (isMountedRef.current) setError(message);
       if (message.includes('credentials not configured')) {
         console.info('[useAgoraRTC] Voice channel on standby (Agora credentials not configured in .env.local).');
       } else {
@@ -351,44 +399,57 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
     isJoiningRef.current = false;
     try {
       if (localTrackRef.current) {
-        localTrackRef.current.stop();
-        localTrackRef.current.close();
+        try {
+          localTrackRef.current.stop();
+          localTrackRef.current.close();
+        } catch {
+          // Ignore track close error
+        }
         localTrackRef.current = null;
-        setLocalAudioTrack(null);
+        if (isMountedRef.current) setLocalAudioTrack(null);
       }
 
       if (clientRef.current) {
-        if (
-          clientRef.current.connectionState === 'CONNECTED' ||
-          clientRef.current.connectionState === 'CONNECTING'
-        ) {
-          await clientRef.current.leave();
+        const curState = clientRef.current.connectionState;
+        if (curState === 'CONNECTED' || curState === 'CONNECTING') {
+          await clientRef.current.leave().catch((leaveErr) => {
+            if (!isAbortOrCancelError(leaveErr)) {
+              console.warn('[useAgoraRTC] Leave notice:', leaveErr);
+            }
+          });
         }
       }
 
-      setIsJoined(false);
-      setConnectionState('DISCONNECTED');
-      setRemoteUsers([]);
-      setVolumeLevels({});
+      if (isMountedRef.current) {
+        setIsJoined(false);
+        setConnectionState('DISCONNECTED');
+        setRemoteUsers([]);
+        setVolumeLevels({});
+      }
     } catch (err) {
-      console.error('[useAgoraRTC] Leave error:', err);
+      if (!isAbortOrCancelError(err)) {
+        console.warn('[useAgoraRTC] Leave notice:', err);
+      }
     }
   }, []);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      isMountedRef.current = false;
       isJoiningRef.current = false;
       if (localTrackRef.current) {
-        localTrackRef.current.stop();
-        localTrackRef.current.close();
+        try {
+          localTrackRef.current.stop();
+          localTrackRef.current.close();
+        } catch {
+          // Ignore track close error
+        }
         localTrackRef.current = null;
       }
       if (clientRef.current) {
-        if (
-          clientRef.current.connectionState === 'CONNECTED' ||
-          clientRef.current.connectionState === 'CONNECTING'
-        ) {
+        const curState = clientRef.current.connectionState;
+        if (curState === 'CONNECTED' || curState === 'CONNECTING') {
           clientRef.current.leave().catch(() => {});
         }
       }
@@ -407,3 +468,4 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
     error,
   };
 }
+

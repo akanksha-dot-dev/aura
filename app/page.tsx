@@ -172,7 +172,10 @@ function DashboardContent() {
   useEffect(() => {
     if (!isMockReplay && !isJoined && channel && uid) {
       joinChannel().catch((err: unknown) => {
-        console.warn('[Dashboard] Agora RTC join standby:', err);
+        const msg = err instanceof Error ? err.message : String(err);
+        if (!msg.includes('OPERATION_ABORTED') && !msg.includes('cancel token canceled')) {
+          console.warn('[Dashboard] Agora RTC join standby:', err);
+        }
       });
     }
   }, [isMockReplay, isJoined, channel, uid, joinChannel]);
