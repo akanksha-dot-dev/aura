@@ -9,7 +9,7 @@
   justify-content: space-between;
   padding: 0 var(--space-4);
   background: var(--bg-surface);
-  border-bottom: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-inner-glow);
   height: 48px;
   z-index: var(--z-sticky);
@@ -21,6 +21,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  flex: 1 1 0%;
   min-width: 0;
   overflow: hidden;
 }
@@ -42,7 +43,7 @@
   font-family: var(--font-sans);
   font-weight: 700;
   font-size: 13px;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   color: var(--text-primary);
 }
 
@@ -51,7 +52,7 @@
   font-size: 11px;
   user-select: none;
   flex-shrink: 0;
-  opacity: 0.6;
+  opacity: 0.4;
 }
 
 .incidentId {
@@ -63,6 +64,7 @@
   padding: 2px 7px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
+  letter-spacing: 0.04em;
   flex-shrink: 0;
 }
 
@@ -71,52 +73,52 @@
   align-items: center;
   gap: 5px;
   padding: 2px 8px;
-  border-radius: var(--radius-md);
-  font-family: var(--font-sans);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
   white-space: nowrap;
   flex-shrink: 0;
   border: 1px solid transparent;
 }
 
 .sevDot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: currentColor;
-  box-shadow: 0 0 5px currentColor;
+  box-shadow: 0 0 4px currentColor;
 }
 
 .sev0 {
-  background: rgba(232, 84, 84, 0.12);
-  color: var(--color-sev0);
-  border-color: rgba(232, 84, 84, 0.25);
+  background: var(--color-conflict-dim);
+  color: var(--color-conflict);
+  border-color: var(--color-conflict-border);
 }
 
 .sev1 {
-  background: rgba(232, 125, 62, 0.12);
-  color: var(--color-sev1);
-  border-color: rgba(232, 125, 62, 0.25);
+  background: var(--color-action-dim);
+  color: var(--color-action);
+  border-color: var(--color-action-border);
 }
 
 .sev2 {
-  background: rgba(232, 168, 56, 0.12);
-  color: var(--color-sev2);
-  border-color: rgba(232, 168, 56, 0.25);
+  background: var(--color-hypothesis-dim);
+  color: var(--color-hypothesis);
+  border-color: var(--color-hypothesis-border);
 }
 
 .sev3 {
   background: rgba(142, 138, 157, 0.12);
   color: var(--text-secondary);
-  border-color: var(--border-default);
+  border-color: var(--border-subtle);
 }
 
 .title {
   font-family: var(--font-sans);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
   letter-spacing: var(--tracking-tight);
   overflow: hidden;
@@ -129,13 +131,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  flex: 0 0 auto;
 }
 
 .right {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: 8px;
+  flex: 1 1 0%;
+  justify-content: flex-end;
   flex-shrink: 0;
 }
 
@@ -145,11 +149,11 @@
   gap: 5px;
   padding: 3px 8px;
   background: var(--bg-surface-raised);
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-inner-glow);
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
@@ -160,7 +164,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-family: var(--font-sans);
+  font-family: var(--font-mono);
   font-size: 11px;
   padding: 3px 8px;
   border-radius: var(--radius-sm);
@@ -169,8 +173,8 @@
 }
 
 .icLocked {
-  background: rgba(212, 168, 83, 0.10);
-  border: 1px solid rgba(212, 168, 83, 0.25);
+  background: var(--color-aura-dim);
+  border: 1px solid rgba(212, 168, 83, 0.22);
   color: var(--color-aura);
   font-weight: 500;
 }
@@ -192,11 +196,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: var(--radius-sm);
   background: var(--bg-surface-raised);
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-inner-glow);
   color: var(--text-secondary);
   cursor: pointer;
@@ -213,19 +217,19 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  padding: 5px 6px;
+  padding: 4px 6px;
   background: var(--bg-surface-raised);
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-inner-glow);
   border-radius: var(--radius-sm);
   flex-shrink: 0;
 }
 
 .connDot {
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
   border-radius: 50%;
-  background: var(--border-subtle);
+  background: rgba(255, 255, 255, 0.1);
   transition: background-color 0.3s ease;
 }
 
