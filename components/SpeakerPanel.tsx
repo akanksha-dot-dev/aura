@@ -90,6 +90,13 @@ export function SpeakerPanel({
     ...participantList.map((p) => p.totalSpeakingMs)
   );
 
+  const vitalityStatus =
+    cognitiveLoadScore >= 70
+      ? { label: 'Elevated', color: 'var(--color-conflict)' }
+      : cognitiveLoadScore >= 40
+      ? { label: 'Active', color: 'var(--color-orient)' }
+      : { label: 'Calm', color: 'var(--color-fact)' };
+
   return (
     <>
       <style>{`
@@ -98,7 +105,8 @@ export function SpeakerPanel({
           width: 100%;
           height: 100%;
           background: var(--bg-surface);
-          border-right: 1px solid var(--border-glass);
+          border-right: 1px solid var(--border-default);
+          box-shadow: var(--shadow-inner-glow);
           display: flex;
           flex-direction: column;
           justify-content: space-between;
@@ -122,16 +130,16 @@ export function SpeakerPanel({
 
         .speaker-panel__title {
           font-family: var(--font-sans);
-          font-size: var(--text-xs);
-          font-weight: 500;
+          font-size: 11px;
+          font-weight: 600;
           color: var(--text-muted);
-          letter-spacing: 0.08em;
+          letter-spacing: 0.06em;
           text-transform: uppercase;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding-bottom: var(--space-1h);
-          border-bottom: 1px solid var(--border-glass);
+          padding-bottom: var(--space-2);
+          border-bottom: 1px solid var(--border-subtle);
           min-height: 28px;
         }
 
@@ -143,41 +151,44 @@ export function SpeakerPanel({
         .speaker-panel__title-right {
           display: flex;
           align-items: center;
-          gap: var(--space-1h);
+          gap: var(--space-2);
         }
 
         .speaker-panel__count {
           font-family: var(--font-mono);
-          font-size: 0.625rem;
-          color: var(--text-disabled);
+          font-size: 10px;
+          background: rgba(255, 255, 255, 0.05);
+          padding: 1px 6px;
+          border-radius: var(--radius-sm);
+          color: var(--text-secondary);
         }
 
         .speaker-panel__collapse-btn {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          width: 22px;
-          height: 22px;
+          width: 20px;
+          height: 20px;
           border-radius: var(--radius-sm);
-          background: transparent;
-          border: 1px solid var(--border-glass);
+          background: var(--bg-surface-raised);
+          border: 1px solid var(--border-default);
+          box-shadow: var(--shadow-inner-glow);
           color: var(--text-muted);
           cursor: pointer;
           font-family: var(--font-mono);
-          font-size: 11px;
+          font-size: 10px;
           transition: all var(--duration-fast) var(--ease-standard);
         }
 
         .speaker-panel__collapse-btn:hover {
           color: var(--text-primary);
-          background: var(--bg-glass-hover);
-          border-color: var(--border-glass-emphasis);
+          border-color: var(--border-emphasis);
         }
 
         .speaker-panel__roster {
           display: flex;
           flex-direction: column;
-          gap: var(--space-1h);
+          gap: 6px;
         }
 
         .speaker-panel__roster--collapsed {
@@ -190,53 +201,49 @@ export function SpeakerPanel({
           font-family: var(--font-sans);
           font-size: var(--text-xs);
           color: var(--text-muted);
-          font-style: normal;
           padding: var(--space-2) 0;
         }
 
+        /* ─── Sleek Participant Rows ─── */
         .speaker-row {
           display: flex;
           flex-direction: column;
-          gap: var(--space-1);
-          padding: var(--space-2);
-          background: transparent;
-          border-radius: var(--radius-md);
-          border: 1px solid transparent;
-          border-left: 3px solid transparent;
-          transition: border-color var(--duration-fast) var(--ease-standard),
-                      background var(--duration-fast) var(--ease-standard),
-                      box-shadow var(--duration-fast) var(--ease-standard);
+          gap: 4px;
+          padding: 6px 8px;
+          background: var(--bg-surface-raised);
+          border-radius: var(--radius-sm);
+          border: 1px solid var(--border-subtle);
+          box-shadow: var(--shadow-inner-glow);
+          transition: all var(--duration-fast) var(--ease-standard);
         }
 
         .speaker-row:hover {
-          background: var(--bg-glass);
-          border-color: var(--border-glass);
+          background: var(--bg-surface-hover);
+          border-color: var(--border-emphasis);
         }
 
         .speaker-row--speaking {
-          border-left-color: var(--color-fact);
-          background: var(--bg-glass-hover);
-          border-color: var(--border-glass);
+          border-color: rgba(59, 212, 162, 0.4);
+          background: rgba(59, 212, 162, 0.05);
         }
 
         .speaker-row--aura {
-          border: 1px solid rgba(212, 168, 83, 0.2);
-          border-left: 3px solid var(--color-aura);
+          border: 1px solid rgba(212, 168, 83, 0.25);
           background: rgba(212, 168, 83, 0.04);
-          box-shadow: 0 0 10px rgba(212, 168, 83, 0.05);
+          box-shadow: inset 0 1px 0 0 rgba(212, 168, 83, 0.15);
         }
 
         .speaker-row--collapsed {
           padding: 4px;
           align-items: center;
           justify-content: center;
-          border-left: none;
           background: transparent;
+          border-color: transparent;
           box-shadow: none;
         }
 
         .speaker-row--collapsed:hover {
-          background: var(--bg-glass-hover);
+          background: var(--bg-surface-hover);
         }
 
         .speaker-row__header {
@@ -250,7 +257,7 @@ export function SpeakerPanel({
         .speaker-row__meta {
           display: flex;
           align-items: center;
-          gap: var(--space-2);
+          gap: 8px;
           min-width: 0;
           flex: 1;
         }
@@ -271,11 +278,10 @@ export function SpeakerPanel({
 
         @keyframes speaker-ring-pulse {
           0%, 100% {
-            box-shadow: 0 0 0 0px var(--ring-color, var(--color-fact));
+            box-shadow: 0 0 0 0px var(--color-fact);
           }
           50% {
-            box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring-color, var(--color-fact)) 60%, transparent),
-                        0 0 8px 1px color-mix(in srgb, var(--ring-color, var(--color-fact)) 30%, transparent);
+            box-shadow: 0 0 0 2px var(--color-fact), 0 0 8px rgba(59, 212, 162, 0.4);
           }
         }
 
@@ -290,15 +296,16 @@ export function SpeakerPanel({
         .speaker-row__name-row {
           display: flex;
           align-items: center;
-          gap: 4px;
+          gap: 5px;
           min-width: 0;
         }
 
         .speaker-row__name {
           font-family: var(--font-sans);
-          font-size: var(--text-xs);
-          font-weight: 600;
+          font-size: 12px;
+          font-weight: 500;
           color: var(--text-primary);
+          letter-spacing: var(--tracking-tight);
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -306,9 +313,8 @@ export function SpeakerPanel({
 
         .speaker-row__role-tag {
           font-family: var(--font-sans);
-          font-size: var(--text-xs);
+          font-size: 11px;
           color: var(--text-muted);
-          letter-spacing: 0.01em;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -322,13 +328,13 @@ export function SpeakerPanel({
           display: inline-flex;
           align-items: center;
           padding: 1px 4px;
-          background: var(--color-aura-dim);
+          background: rgba(212, 168, 83, 0.12);
           border: 1px solid rgba(212, 168, 83, 0.3);
           border-radius: 2px;
           color: var(--color-aura);
           font-family: var(--font-mono);
-          font-size: 0.5625rem;
-          font-weight: var(--weight-bold);
+          font-size: 9px;
+          font-weight: 700;
           flex-shrink: 0;
         }
 
@@ -341,8 +347,8 @@ export function SpeakerPanel({
 
         .speaker-row__heatbar-track {
           flex: 1;
-          height: 3px;
-          background: var(--bg-surface);
+          height: 2px;
+          background: rgba(255, 255, 255, 0.06);
           border-radius: 99px;
           overflow: hidden;
         }
@@ -355,49 +361,51 @@ export function SpeakerPanel({
 
         .speaker-row__time {
           font-family: var(--font-mono);
-          font-size: 0.625rem;
+          font-size: 10px;
           color: var(--text-muted);
           font-variant-numeric: tabular-nums;
           white-space: nowrap;
           flex-shrink: 0;
         }
 
+        /* ─── AURA Waveform Canvas ─── */
         .speaker-row__waveform-wrap {
           display: flex;
           align-items: center;
           justify-content: center;
           width: 100%;
-          height: 22px;
-          margin-top: 2px;
-          background: rgba(0, 0, 0, 0.25);
+          height: 24px;
+          margin-top: 4px;
+          background: rgba(0, 0, 0, 0.4);
           border-radius: var(--radius-sm);
-          border: 1px solid rgba(212, 168, 83, 0.15);
+          border: 1px solid rgba(212, 168, 83, 0.2);
         }
 
         .speaker-row__waveform {
           display: block;
           width: 100%;
-          height: 22px;
+          height: 24px;
         }
 
+        /* ─── Streamlined Acoustic Telemetry ─── */
         .speaker-panel__bridge-telemetry {
           display: flex;
           align-items: center;
           gap: 6px;
           margin: var(--space-2) 0;
-          padding: 6px var(--space-2);
-          background: var(--bg-glass);
-          border: 1px solid var(--border-glass);
+          padding: 5px 8px;
+          background: var(--bg-surface-raised);
+          border: 1px solid var(--border-default);
+          box-shadow: var(--shadow-inner-glow);
           border-radius: var(--radius-sm);
           font-family: var(--font-mono);
           font-size: 10px;
-          color: var(--text-muted);
-          opacity: 0.85;
+          color: var(--text-secondary);
         }
 
         .bridge-telemetry__dot {
-          width: 5px;
-          height: 5px;
+          width: 6px;
+          height: 6px;
           border-radius: 50%;
           background: var(--color-fact);
           box-shadow: 0 0 6px var(--color-fact);
@@ -410,13 +418,38 @@ export function SpeakerPanel({
           text-overflow: ellipsis;
         }
 
+        /* ─── Consolidated Bridge Vitality Card ─── */
         .speaker-panel__bottom {
           display: flex;
           flex-direction: column;
-          gap: var(--space-3);
-          padding-top: var(--space-3);
-          border-top: 1px solid var(--border-glass);
+          gap: var(--space-2);
+          padding: var(--space-3);
+          background: var(--bg-surface-raised);
+          border: 1px solid var(--border-default);
+          box-shadow: var(--shadow-inner-glow);
+          border-radius: var(--radius-md);
           flex-shrink: 0;
+        }
+
+        .bridge-vitality__header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-family: var(--font-sans);
+          font-size: 11px;
+          font-weight: 600;
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
+          color: var(--text-muted);
+        }
+
+        .bridge-vitality__status-pill {
+          font-family: var(--font-mono);
+          font-size: 10px;
+          font-weight: 600;
+          padding: 1px 6px;
+          border-radius: var(--radius-sm);
+          border: 1px solid var(--border-subtle);
         }
       `}</style>
       <aside
@@ -425,11 +458,11 @@ export function SpeakerPanel({
       >
         <div className="speaker-panel__top">
           <div className={`speaker-panel__title ${collapsed ? 'speaker-panel__title--collapsed' : ''}`}>
-            {!collapsed && <span>Bridge Participants</span>}
+            {!collapsed && <span>Voice Bridge</span>}
             <div className="speaker-panel__title-right">
               {!collapsed && (
                 <span className="speaker-panel__count">
-                  {participantList.length + 1}
+                  {participantList.length + 1} active
                 </span>
               )}
               <button
@@ -480,11 +513,6 @@ export function SpeakerPanel({
                           className={`speaker-row__avatar-wrap ${
                             isSpeaking ? 'speaker-row__avatar-wrap--speaking' : ''
                           }`}
-                          style={
-                            {
-                              '--ring-color': getAvatarColor(p.uid),
-                            } as React.CSSProperties
-                          }
                         >
                           <VoiceBadge
                             displayName={p.displayName}
@@ -543,11 +571,6 @@ export function SpeakerPanel({
                     className={`speaker-row__avatar-wrap ${
                       agentIsSpeaking ? 'speaker-row__avatar-wrap--speaking' : ''
                     }`}
-                    style={
-                      {
-                        '--ring-color': 'var(--color-aura)',
-                      } as React.CSSProperties
-                    }
                   >
                     <VoiceBadge
                       displayName="AURA"
@@ -569,7 +592,7 @@ export function SpeakerPanel({
                         </span>
                       </div>
                       <span className="speaker-row__role-tag speaker-row__role-tag--aura">
-                        AI Commander
+                        AI Incident Commander
                       </span>
                     </div>
                   )}
@@ -582,14 +605,14 @@ export function SpeakerPanel({
                 )}
               </div>
 
-              {/* Golden Voice Waveform (Star 1 Visual Proof) */}
+              {/* Golden Voice Waveform */}
               {!collapsed && (
                 <div className="speaker-row__waveform-wrap">
                   <canvas
                     ref={waveformCanvasRef}
                     className="speaker-row__waveform"
                     width={210}
-                    height={22}
+                    height={24}
                     aria-label="AURA voice activity waveform"
                   />
                 </div>
@@ -598,16 +621,26 @@ export function SpeakerPanel({
           </div>
         </div>
 
-        {/* Compressed Single-Line Acoustic Bridge Telemetry */}
+        {/* Streamlined Acoustic Telemetry */}
         {!collapsed && (
           <div className="speaker-panel__bridge-telemetry" aria-label="Acoustic Bridge Status">
             <span className="bridge-telemetry__dot" aria-hidden="true" />
-            <span className="bridge-telemetry__line">SD-RTN · OPUS 48kHz · AEC</span>
+            <span className="bridge-telemetry__line">Agora SD-RTN™ · 48kHz HD Audio</span>
           </div>
         )}
 
+        {/* Consolidated Bridge Vitality Card */}
         {!collapsed && (
           <div className="speaker-panel__bottom">
+            <div className="bridge-vitality__header">
+              <span>Bridge Vitality</span>
+              <span
+                className="bridge-vitality__status-pill"
+                style={{ color: vitalityStatus.color, borderColor: vitalityStatus.color }}
+              >
+                {vitalityStatus.label}
+              </span>
+            </div>
             <TempoIndicator level={tempoLevel} />
             <CognitiveLoadMeter score={cognitiveLoadScore} />
           </div>
