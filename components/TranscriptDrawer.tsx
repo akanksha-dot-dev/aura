@@ -98,8 +98,8 @@ export function TranscriptDrawer({
           bottom: 0;
           width: min(460px, 94vw);
           height: 100vh;
-          background: #0A0C10;
-          border-left: 1px solid rgba(255, 255, 255, 0.08);
+          background: var(--bg-surface);
+          border-left: 1px solid var(--border-subtle);
           box-shadow: -12px 0 40px rgba(0, 0, 0, 0.7);
           z-index: 901;
           display: flex;
@@ -118,10 +118,10 @@ export function TranscriptDrawer({
         .transcript-header {
           display: flex;
           flex-direction: column;
-          gap: 0.75rem;
-          padding: 1.125rem 1.25rem;
-          background: #0E1015;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+          gap: 10px;
+          padding: 16px 18px;
+          background: var(--bg-surface-raised);
+          border-bottom: 1px solid var(--border-subtle);
           flex-shrink: 0;
         }
 
@@ -129,73 +129,74 @@ export function TranscriptDrawer({
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 0.75rem;
+          gap: 10px;
         }
 
         .transcript-title-group {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
+          gap: 8px;
         }
 
         .transcript-title {
-          font-size: 0.75rem;
+          font-size: 11px;
           font-weight: 700;
-          letter-spacing: 0.06em;
+          letter-spacing: 0.08em;
           text-transform: uppercase;
           color: var(--text-primary);
           margin: 0;
         }
 
         .transcript-count-badge {
-          background: #14171E;
-          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: var(--bg-surface);
+          border: 1px solid var(--border-subtle);
           color: var(--color-aura);
-          padding: 0.15rem 0.5rem;
-          border-radius: var(--radius-full);
+          padding: 2px 7px;
+          border-radius: var(--radius-sm);
           font-family: var(--font-mono);
-          font-size: 0.625rem;
+          font-size: 10px;
           font-weight: 600;
         }
 
         .transcript-close-btn {
-          background: #14171E;
-          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: transparent;
+          border: 1px solid var(--border-subtle);
           color: var(--text-muted);
-          border-radius: var(--radius-md);
-          padding: 0.35rem 0.75rem;
-          font-size: 0.6875rem;
+          border-radius: var(--radius-sm);
+          padding: 4px 10px;
+          font-size: 11px;
           font-weight: 600;
           cursor: pointer;
-          transition: all 140ms ease;
+          transition: all var(--duration-fast) var(--ease-standard);
         }
 
         .transcript-close-btn:hover {
-          background: #1C202B;
+          background: var(--bg-surface-hover);
           color: var(--text-primary);
+          border-color: var(--border-default);
         }
 
         /* Search Filter */
         .transcript-search-wrap {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
-          background: #12151D;
-          border: 1px solid rgba(255, 255, 255, 0.07);
-          border-radius: var(--radius-md);
-          padding: 0.4rem 0.75rem;
-          transition: border-color 140ms ease;
+          gap: 8px;
+          background: var(--bg-surface);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-sm);
+          padding: 6px 10px;
+          transition: border-color var(--duration-fast) var(--ease-standard);
         }
 
         .transcript-search-wrap:focus-within {
-          border-color: var(--color-aura);
+          border-color: var(--border-emphasis);
         }
 
         .transcript-search-input {
           background: transparent;
           border: none;
           color: var(--text-primary);
-          font-size: 0.75rem;
+          font-size: 12px;
           outline: none;
           width: 100%;
         }
@@ -208,10 +209,10 @@ export function TranscriptDrawer({
         .transcript-body {
           flex: 1;
           overflow-y: auto;
-          padding: 1rem 1.25rem;
+          padding: 14px 18px;
           display: flex;
           flex-direction: column;
-          gap: 0.75rem;
+          gap: 10px;
           scrollbar-width: thin;
           scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
         }
@@ -220,24 +221,23 @@ export function TranscriptDrawer({
         .transcript-bubble {
           display: flex;
           flex-direction: column;
-          gap: 0.35rem;
-          padding: 0.75rem 0.875rem;
-          border-radius: var(--radius-lg);
-          background: #0E1117;
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-          transition: all 140ms ease;
+          gap: 5px;
+          padding: 10px 12px;
+          border-radius: var(--radius-sm);
+          background: var(--bg-surface-raised);
+          border: 1px solid var(--border-subtle);
+          transition: all var(--duration-fast) var(--ease-standard);
         }
 
         .transcript-bubble:hover {
-          background: #131620;
-          border-color: rgba(255, 255, 255, 0.1);
+          background: var(--bg-surface-hover);
+          border-color: rgba(255, 255, 255, 0.09);
         }
 
         /* AURA AI Special Card */
         .transcript-bubble--aura {
-          background: linear-gradient(180deg, rgba(212, 168, 83, 0.08) 0%, #0E1117 100%);
-          border-color: rgba(212, 168, 83, 0.3);
+          background: rgba(212, 168, 83, 0.04);
+          border-color: rgba(212, 168, 83, 0.25);
           border-left: 3px solid var(--color-aura);
         }
 

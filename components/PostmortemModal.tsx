@@ -247,16 +247,16 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
             }
 
             .sre-doc-modal {
-              background: #0A0C10;
-              border: 1px solid rgba(255, 255, 255, 0.09);
-              border-radius: var(--radius-xl);
+              background: var(--bg-surface);
+              border: 1px solid var(--border-default);
+              border-radius: var(--radius-lg);
               max-width: 960px;
               width: 95vw;
               max-height: 90vh;
               display: flex;
               flex-direction: column;
               overflow: hidden;
-              box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 24px 64px rgba(0, 0, 0, 0.75);
+              box-shadow: var(--shadow-inner-glow), 0 24px 64px rgba(0, 0, 0, 0.75);
               font-family: var(--font-sans);
               color: var(--text-primary);
             }
@@ -266,22 +266,22 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
               display: flex;
               align-items: flex-start;
               justify-content: space-between;
-              padding: 1.25rem 1.75rem;
-              border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-              background: #0E1015;
+              padding: 18px 24px;
+              border-bottom: 1px solid var(--border-subtle);
+              background: var(--bg-surface-raised);
               flex-shrink: 0;
-              gap: 1rem;
+              gap: 16px;
             }
 
             .sre-header-left {
               display: flex;
               flex-direction: column;
-              gap: 0.35rem;
+              gap: 4px;
             }
 
             .sre-spec-label {
               font-family: var(--font-mono);
-              font-size: 0.6875rem;
+              font-size: 10px;
               font-weight: 700;
               color: var(--color-aura);
               letter-spacing: 0.08em;
@@ -289,7 +289,7 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
             }
 
             .sre-title {
-              font-size: 1.375rem;
+              font-size: 18px;
               font-weight: 700;
               letter-spacing: -0.02em;
               margin: 0;
@@ -299,57 +299,58 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
             .sre-header-actions {
               display: flex;
               align-items: center;
-              gap: 0.5rem;
+              gap: 8px;
               flex-shrink: 0;
             }
 
             .sre-action-btn {
               display: inline-flex;
               align-items: center;
-              gap: 0.375rem;
-              background: #14171E;
-              border: 1px solid rgba(255, 255, 255, 0.08);
+              gap: 6px;
+              background: var(--bg-surface);
+              border: 1px solid var(--border-subtle);
               color: var(--text-secondary);
-              border-radius: var(--radius-md);
-              padding: 0.4rem 0.75rem;
-              font-size: 0.6875rem;
+              border-radius: var(--radius-sm);
+              padding: 6px 10px;
+              font-size: 11px;
               font-weight: 600;
               cursor: pointer;
-              transition: all 140ms ease;
+              transition: all var(--duration-fast) var(--ease-standard);
             }
 
             .sre-action-btn:hover {
-              background: #1B1F2A;
+              background: var(--bg-surface-hover);
               color: var(--text-primary);
-              border-color: rgba(255, 255, 255, 0.15);
+              border-color: var(--border-default);
             }
 
             .sre-close-btn {
-              background: #14171E;
-              border: 1px solid rgba(255, 255, 255, 0.08);
+              background: transparent;
+              border: 1px solid var(--border-subtle);
               color: var(--text-muted);
-              border-radius: var(--radius-md);
-              width: 32px;
-              height: 32px;
+              border-radius: var(--radius-sm);
+              width: 28px;
+              height: 28px;
               display: flex;
               align-items: center;
               justify-content: center;
               cursor: pointer;
-              font-size: 0.8125rem;
-              transition: all 140ms ease;
+              font-size: 12px;
+              transition: all var(--duration-fast) var(--ease-standard);
             }
 
             .sre-close-btn:hover {
-              background: #242936;
+              background: var(--bg-surface-hover);
               color: var(--text-primary);
+              border-color: var(--border-default);
             }
 
-            /* ─── Executive Telemetry Ribbon ─── */
+            /* ─── Executive Telemetry Strip (Borderless) ─── */
             .sre-telemetry-ribbon {
               display: grid;
               grid-template-columns: repeat(6, 1fr);
-              background: #0D0F14;
-              border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+              background: rgba(8, 9, 12, 0.7);
+              border-bottom: 1px solid var(--border-subtle);
               flex-shrink: 0;
             }
 
@@ -360,11 +361,11 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
             }
 
             .sre-telemetry-cell {
-              padding: 0.75rem 1rem;
-              border-right: 1px solid rgba(255, 255, 255, 0.05);
+              padding: 10px 16px;
+              border-right: 1px solid var(--border-subtle);
               display: flex;
               flex-direction: column;
-              gap: 0.15rem;
+              gap: 2px;
             }
 
             .sre-telemetry-cell:last-child {
@@ -372,7 +373,7 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
             }
 
             .sre-telemetry-label {
-              font-size: 0.625rem;
+              font-size: 9.5px;
               font-family: var(--font-mono);
               text-transform: uppercase;
               letter-spacing: 0.06em;
@@ -380,115 +381,120 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
             }
 
             .sre-telemetry-val {
-              font-size: 0.875rem;
-              font-weight: 700;
+              font-size: 13px;
+              font-weight: 600;
               color: var(--text-primary);
             }
 
             /* ─── Scrollable Document Body ─── */
             .sre-body {
-              padding: 1.5rem 1.75rem 2.5rem 1.75rem;
+              padding: 24px 28px;
               overflow-y: auto;
               display: flex;
               flex-direction: column;
-              gap: 1.5rem;
+              gap: 24px;
               scrollbar-width: thin;
-              scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
-              mask-image: linear-gradient(to bottom, black calc(100% - 36px), transparent 100%);
-              -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 36px), transparent 100%);
+              scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
             }
 
             .sre-section {
               display: flex;
               flex-direction: column;
-              gap: 0.625rem;
+              gap: 10px;
             }
 
             .sre-section-title {
-              font-size: 0.75rem;
+              font-size: 11px;
               font-weight: 700;
-              letter-spacing: 0.06em;
+              letter-spacing: 0.08em;
               text-transform: uppercase;
               color: var(--color-aura);
-              border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-              padding-bottom: 0.35rem;
+              border-bottom: 1px solid var(--border-subtle);
+              padding-bottom: 6px;
               margin: 0;
             }
 
-            /* ─── Key-Value Summary & Root Cause ─── */
-            .sre-kv-grid {
-              display: grid;
-              grid-template-columns: repeat(3, 1fr);
-              gap: 0.75rem;
+            /* ─── Executive Summary & Root Cause Card ─── */
+            .sre-summary-prose {
+              font-size: 12.5px;
+              line-height: 1.6;
+              color: var(--text-secondary);
+              margin: 0;
             }
 
-            @media (max-width: 768px) {
-              .sre-kv-grid {
-                grid-template-columns: 1fr;
-              }
-            }
-
-            .sre-kv-card {
-              background: #0E1015;
-              border: 1px solid rgba(255, 255, 255, 0.06);
-              border-radius: var(--radius-lg);
-              padding: 0.875rem 1rem;
+            .sre-metrics-strip {
               display: flex;
-              flex-direction: column;
-              gap: 0.25rem;
-              box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.03);
+              flex-wrap: wrap;
+              gap: 8px;
+              margin-top: 4px;
+            }
+
+            .sre-metric-chip {
+              display: inline-flex;
+              align-items: center;
+              gap: 6px;
+              background: var(--bg-surface-raised);
+              border: 1px solid var(--border-subtle);
+              border-radius: var(--radius-sm);
+              padding: 4px 8px;
+              font-size: 11px;
+              font-weight: 500;
             }
 
             .sre-kv-card--root {
-              grid-column: 1 / -1;
-              background: linear-gradient(180deg, rgba(16, 185, 129, 0.06) 0%, #0E1015 100%);
-              border-color: rgba(16, 185, 129, 0.3);
+              background: rgba(16, 185, 129, 0.04);
+              border: 1px solid rgba(16, 185, 129, 0.25);
               border-left: 3px solid #10B981;
+              border-radius: var(--radius-sm);
+              padding: 12px 16px;
+              display: flex;
+              flex-direction: column;
+              gap: 4px;
+              margin-top: 4px;
             }
 
             .sre-kv-label {
-              font-size: 0.625rem;
+              font-size: 9.5px;
               font-family: var(--font-mono);
               text-transform: uppercase;
-              letter-spacing: 0.05em;
-              color: var(--text-muted);
+              letter-spacing: 0.06em;
+              color: #10B981;
+              font-weight: 600;
             }
 
             .sre-kv-val {
-              font-size: 0.8125rem;
+              font-size: 13px;
               font-weight: 600;
               color: var(--text-primary);
-              line-height: 1.4;
+              line-height: 1.45;
             }
 
             /* ─── Evidence Chain SVG Pipeline ─── */
             .sre-pipeline-container {
-              background: #0E1015;
-              border: 1px solid rgba(255, 255, 255, 0.06);
-              border-radius: var(--radius-lg);
-              padding: 1rem;
+              background: var(--bg-surface-raised);
+              border: 1px solid var(--border-subtle);
+              border-radius: var(--radius-sm);
+              padding: 12px;
               overflow-x: auto;
-              box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.03);
             }
 
             /* ─── Classified Timeline Table ─── */
             .sre-table-wrap {
-              background: #0E1015;
-              border: 1px solid rgba(255, 255, 255, 0.06);
-              border-radius: var(--radius-lg);
+              background: var(--bg-surface-raised);
+              border: 1px solid var(--border-subtle);
+              border-radius: var(--radius-sm);
               overflow: hidden;
-              box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.03);
             }
 
             .sre-table-header {
               display: grid;
               grid-template-columns: 80px 110px 1fr 140px;
-              gap: 0.75rem;
-              padding: 0.625rem 1rem;
-              background: #13161E;
-              border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+              gap: 12px;
+              padding: 8px 14px;
+              background: rgba(255, 255, 255, 0.02);
+              border-bottom: 1px solid var(--border-subtle);
               font-family: var(--font-mono);
-              font-size: 0.625rem;
+              font-size: 9.5px;
               font-weight: 700;
               letter-spacing: 0.06em;
               text-transform: uppercase;
@@ -498,20 +504,16 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
             .sre-table-row {
               display: grid;
               grid-template-columns: 80px 110px 1fr 140px;
-              gap: 0.75rem;
+              gap: 12px;
               align-items: center;
-              padding: 0.625rem 1rem;
-              border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-              font-size: 0.75rem;
-              transition: background 120ms ease;
-            }
-
-            .sre-table-row:nth-child(even) {
-              background: rgba(255, 255, 255, 0.015);
+              padding: 8px 14px;
+              border-bottom: 1px solid rgba(255, 255, 255, 0.025);
+              font-size: 12px;
+              transition: background var(--duration-fast) var(--ease-standard);
             }
 
             .sre-table-row:hover {
-              background: #151821;
+              background: var(--bg-surface-hover);
             }
 
             .sre-table-row:last-child {
@@ -522,56 +524,56 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
               display: inline-flex;
               align-items: center;
               justify-content: center;
-              padding: 0.15rem 0.5rem;
-              border-radius: var(--radius-sm);
+              padding: 2px 7px;
+              border-radius: 2px;
               font-family: var(--font-mono);
-              font-size: 0.625rem;
-              font-weight: 700;
+              font-size: 9.5px;
+              font-weight: 600;
               letter-spacing: 0.04em;
               width: fit-content;
             }
 
             .sre-pill-fact {
-              background: rgba(99, 102, 241, 0.12);
-              border: 1px solid rgba(99, 102, 241, 0.3);
+              background: rgba(99, 102, 241, 0.1);
+              border: 1px solid rgba(99, 102, 241, 0.25);
               color: #818CF8;
             }
 
             .sre-pill-hypothesis {
-              background: rgba(212, 168, 83, 0.12);
-              border: 1px solid rgba(212, 168, 83, 0.3);
+              background: rgba(212, 168, 83, 0.1);
+              border: 1px solid rgba(212, 168, 83, 0.25);
               color: var(--color-aura);
             }
 
             .sre-pill-decision {
-              background: rgba(168, 85, 247, 0.12);
-              border: 1px solid rgba(168, 85, 247, 0.3);
+              background: rgba(168, 85, 247, 0.1);
+              border: 1px solid rgba(168, 85, 247, 0.25);
               color: #C084FC;
             }
 
             .sre-pill-action {
-              background: rgba(16, 185, 129, 0.12);
-              border: 1px solid rgba(16, 185, 129, 0.3);
+              background: rgba(16, 185, 129, 0.1);
+              border: 1px solid rgba(16, 185, 129, 0.25);
               color: #34D399;
             }
 
             /* ─── Disproven Theories Elimination Card ─── */
             .sre-disproven-box {
-              background: #0E1015;
+              background: rgba(239, 68, 68, 0.04);
               border: 1px solid rgba(239, 68, 68, 0.2);
               border-left: 3px solid #EF4444;
-              border-radius: var(--radius-lg);
-              padding: 0.875rem 1.125rem;
+              border-radius: var(--radius-sm);
+              padding: 12px 16px;
               display: flex;
               flex-direction: column;
-              gap: 0.5rem;
+              gap: 8px;
             }
 
             .sre-disproven-item {
               display: flex;
               align-items: flex-start;
-              gap: 0.5rem;
-              font-size: 0.75rem;
+              gap: 8px;
+              font-size: 12px;
               line-height: 1.45;
             }
 
@@ -579,18 +581,18 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
             .sre-actions-grid {
               display: flex;
               flex-direction: column;
-              gap: 0.375rem;
+              gap: 6px;
             }
 
             .sre-action-row {
-              background: #0E1015;
-              border: 1px solid rgba(255, 255, 255, 0.05);
-              border-radius: var(--radius-md);
-              padding: 0.5rem 0.875rem;
+              background: var(--bg-surface-raised);
+              border: 1px solid var(--border-subtle);
+              border-radius: var(--radius-sm);
+              padding: 8px 14px;
               display: flex;
               align-items: center;
               justify-content: space-between;
-              font-size: 0.75rem;
+              font-size: 12px;
             }
 
             .sre-action-done {
@@ -688,7 +690,7 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
               </div>
             </div>
 
-            {/* Operational Telemetry Ribbon */}
+            {/* Operational Telemetry Strip */}
             <div className="sre-telemetry-ribbon">
               <div className="sre-telemetry-cell">
                 <span className="sre-telemetry-label">Incident ID</span>
@@ -723,42 +725,34 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
               {/* Section 1: Executive Summary & Root Cause */}
               <section className="sre-section">
                 <h3 className="sre-section-title">1. Executive Summary & Root Cause Isolation</h3>
-                <div className="sre-kv-grid">
-                  <div className="sre-kv-card">
-                    <span className="sre-kv-label">Incident Status</span>
-                    <span className="sre-kv-val" style={{ color: '#34D399' }}>RESOLVED / MITIGATED</span>
-                  </div>
-                  <div className="sre-kv-card">
-                    <span className="sre-kv-label">Detection Vector</span>
-                    <span className="sre-kv-val">Agora Multi-Speaker Audio Bridge</span>
-                  </div>
-                  <div className="sre-kv-card">
-                    <span className="sre-kv-label">Root Cause Confidence</span>
-                    <span className="sre-kv-val" style={{ color: 'var(--color-aura)' }}>85% (CONFIDENCE CAP)</span>
-                  </div>
+                <p className="sre-summary-prose">
+                  During this incident, error rates spiked across services. AURA voice telemetry monitoring and epistemic contradiction detection prevented prolonged dead-ends, leading to rapid root cause isolation and mitigation.
+                </p>
 
-                  <div className="sre-kv-card">
-                    <span className="sre-kv-label">Verified Facts</span>
-                    <span className="sre-kv-val" style={{ color: '#818CF8' }}>{factsCount} Facts Established</span>
-                  </div>
-                  <div className="sre-kv-card">
-                    <span className="sre-kv-label">Hypotheses Tested</span>
-                    <span className="sre-kv-val" style={{ color: 'var(--color-aura)' }}>
-                      {confirmedCount} Confirmed • {disprovenCount} Disproven
-                    </span>
-                  </div>
-                  <div className="sre-kv-card">
-                    <span className="sre-kv-label">Command Directives</span>
-                    <span className="sre-kv-val" style={{ color: '#C084FC' }}>{decisionCount} Decisions Arbitrated</span>
-                  </div>
+                <div className="sre-metrics-strip">
+                  <span className="sre-metric-chip" style={{ color: '#34D399' }}>
+                    Status: RESOLVED / MITIGATED
+                  </span>
+                  <span className="sre-metric-chip" style={{ color: '#818CF8' }}>
+                    {factsCount} Facts Established
+                  </span>
+                  <span className="sre-metric-chip" style={{ color: 'var(--color-aura)' }}>
+                    {confirmedCount} Confirmed • {disprovenCount} Disproven
+                  </span>
+                  <span className="sre-metric-chip" style={{ color: '#C084FC' }}>
+                    {decisionCount} Decisions Arbitrated
+                  </span>
+                </div>
 
-                  <div className="sre-kv-card sre-kv-card--root">
-                    <span className="sre-kv-label" style={{ color: '#34D399' }}>Confirmed Root Cause</span>
-                    <span className="sre-kv-val">
-                      {confirmedHypothesis?.content ??
-                        'Database connection pool exhaustion caused by unoptimized query in PR #492.'}
-                    </span>
-                  </div>
+                <div className="sre-kv-card--root">
+                  <span className="sre-kv-label">Confirmed Root Cause</span>
+                  <span className="sre-kv-val">
+                    {confirmedHypothesis?.content ??
+                      'Database connection pool exhaustion caused by unoptimized query in PR #492.'}
+                  </span>
+                  <span style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>
+                    Proposed by {confirmedHypothesis ? (incident.participants[confirmedHypothesis.speakerUid]?.displayName || confirmedHypothesis.speakerUid) : 'Marcus Vance'} • Verified via telemetry
+                  </span>
                 </div>
               </section>
 
