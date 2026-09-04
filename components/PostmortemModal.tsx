@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { IncidentState, TopologyEdge } from '@/lib/types';
 import { springs } from '@/lib/springs';
@@ -46,7 +46,8 @@ export function PostmortemModal({
   costRate = 150,
 }: PostmortemModalProps) {
   // Capture snapshot timestamp on mount to keep render calculations pure
-  const [snapshotTimestamp] = React.useState<number>(() => Date.now());
+  const [snapshotTimestamp] = useState<number>(() => Date.now());
+  const [copiedMd, setCopiedMd] = useState(false);
 
   // Close on Escape key
   useEffect(() => {
@@ -65,6 +66,10 @@ export function PostmortemModal({
   // Derived summaries
   const duration = useMemo(() => {
     return formatDuration(incident.openedAt, effectiveEndMs);
+  }, [incident.openedAt, effectiveEndMs]);
+
+  const durationSeconds = useMemo(() => {
+    return Math.max(1, Math.floor((effectiveEndMs - incident.openedAt) / 1000));
   }, [incident.openedAt, effectiveEndMs]);
 
   const confirmedHypothesis = useMemo(() => {
@@ -112,15 +117,11 @@ export function PostmortemModal({
     [actionItems]
   );
 
-  const durationSeconds = useMemo(() => {
-    return Math.max(1, Math.floor((effectiveEndMs - incident.openedAt) / 1000));
-  }, [incident.openedAt, effectiveEndMs]);
-
   const costTotal = incident.costAccrued || Math.round(durationSeconds * (costRate * 0.5));
   const costSavings = Math.round(costTotal * 0.52);
 
-  const handleDownloadMarkdown = () => {
-    const md = `# SRE Incident Postmortem: ${incident.title}
+  const generateMarkdownReport = () => {
+    return `# SRE Incident Postmortem: ${incident.title}
 **Incident ID:** ${incident.incidentId}
 **Severity:** ${incident.severity}
 **Status:** ${incident.status.toUpperCase()}
@@ -152,6 +153,22 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
 ---
 *Report generated automatically by AURA AI Incident Commander on ${new Date().toISOString()}.*
 `;
+  };
+
+  const handleCopyMarkdown = async () => {
+    const md = generateMarkdownReport();
+    try {
+      await navigator.clipboard.writeText(md);
+      setCopiedMd(true);
+      setTimeout(() => setCopiedMd(false), 2000);
+    } catch {
+      // Fallback
+      setCopiedMd(false);
+    }
+  };
+
+  const handleDownloadMarkdown = () => {
+    const md = generateMarkdownReport();
     const blob = new Blob([md], { type: 'text/markdown;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -207,83 +224,110 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
     <AnimatePresence>
       {isOpen && (
         <div
-          className="postmortem-overlay"
+          className="sre-overlay"
           onClick={(e) => {
             if (e.target === e.currentTarget) onClose();
           }}
           role="dialog"
           aria-modal="true"
-          aria-labelledby="postmortem-title"
+          aria-labelledby="sre-postmortem-title"
         >
           <style>{`
-            .postmortem-overlay {
+            .sre-overlay {
               position: fixed;
               inset: 0;
-              background: var(--bg-overlay);
-              backdrop-filter: blur(12px);
-              -webkit-backdrop-filter: blur(12px);
+              background: rgba(4, 5, 8, 0.85);
+              backdrop-filter: blur(20px);
+              -webkit-backdrop-filter: blur(20px);
               display: flex;
               align-items: center;
               justify-content: center;
               z-index: 1000;
-              padding: var(--space-4);
+              padding: 1.5rem;
             }
 
-            .postmortem-modal {
-              background: var(--bg-glass-panel);
-              backdrop-filter: blur(16px);
-              -webkit-backdrop-filter: blur(16px);
-              border: 1px solid var(--border-glass-emphasis);
+            .sre-doc-modal {
+              background: #0A0C10;
+              border: 1px solid rgba(255, 255, 255, 0.09);
               border-radius: var(--radius-xl);
-              max-width: 860px;
-              width: 94vw;
-              max-height: 88vh;
+              max-width: 960px;
+              width: 95vw;
+              max-height: 90vh;
               display: flex;
               flex-direction: column;
               overflow: hidden;
-              box-shadow: var(--shadow-modal), 0 0 60px rgba(0, 0, 0, 0.65);
+              box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 24px 64px rgba(0, 0, 0, 0.75);
               font-family: var(--font-sans);
               color: var(--text-primary);
             }
 
-            .postmortem-header {
+            /* ─── Header & Action Toolbar ─── */
+            .sre-header {
               display: flex;
-              align-items: center;
+              align-items: flex-start;
               justify-content: space-between;
-              padding: var(--space-3) var(--space-5);
-              border-bottom: 1px solid var(--border-glass);
-              background: var(--bg-glass);
-              backdrop-filter: blur(12px);
-              -webkit-backdrop-filter: blur(12px);
+              padding: 1.25rem 1.75rem;
+              border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+              background: #0E1015;
+              flex-shrink: 0;
+              gap: 1rem;
             }
 
-            .postmortem-header__title-wrap {
+            .sre-header-left {
               display: flex;
               flex-direction: column;
-              gap: 2px;
+              gap: 0.35rem;
             }
 
-            .postmortem-header__tag {
-              font-family: var(--font-sans);
-              font-size: var(--text-xs);
+            .sre-spec-label {
+              font-family: var(--font-mono);
+              font-size: 0.6875rem;
+              font-weight: 700;
               color: var(--color-aura);
-              letter-spacing: 0.1em;
+              letter-spacing: 0.08em;
               text-transform: uppercase;
-              font-weight: var(--weight-semibold);
             }
 
-            .postmortem-header__title {
-              font-family: var(--font-sans);
-              font-size: var(--text-lg);
-              font-weight: var(--weight-bold);
-              color: var(--text-primary);
+            .sre-title {
+              font-size: 1.375rem;
+              font-weight: 700;
+              letter-spacing: -0.02em;
               margin: 0;
+              color: var(--text-primary);
             }
 
-            .postmortem-close-btn {
-              background: var(--bg-glass);
-              border: 1px solid var(--border-glass);
+            .sre-header-actions {
+              display: flex;
+              align-items: center;
+              gap: 0.5rem;
+              flex-shrink: 0;
+            }
+
+            .sre-action-btn {
+              display: inline-flex;
+              align-items: center;
+              gap: 0.375rem;
+              background: #14171E;
+              border: 1px solid rgba(255, 255, 255, 0.08);
               color: var(--text-secondary);
+              border-radius: var(--radius-md);
+              padding: 0.4rem 0.75rem;
+              font-size: 0.6875rem;
+              font-weight: 600;
+              cursor: pointer;
+              transition: all 140ms ease;
+            }
+
+            .sre-action-btn:hover {
+              background: #1B1F2A;
+              color: var(--text-primary);
+              border-color: rgba(255, 255, 255, 0.15);
+            }
+
+            .sre-close-btn {
+              background: #14171E;
+              border: 1px solid rgba(255, 255, 255, 0.08);
+              color: var(--text-muted);
               border-radius: var(--radius-md);
               width: 32px;
               height: 32px;
@@ -291,284 +335,273 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
               align-items: center;
               justify-content: center;
               cursor: pointer;
-              font-size: var(--text-sm);
-              backdrop-filter: blur(8px);
-              -webkit-backdrop-filter: blur(8px);
-              transition: all var(--duration-fast);
+              font-size: 0.8125rem;
+              transition: all 140ms ease;
             }
 
-            .postmortem-close-btn:hover {
-              background: var(--bg-glass-hover);
+            .sre-close-btn:hover {
+              background: #242936;
               color: var(--text-primary);
-              border-color: var(--border-glass-emphasis);
             }
 
-            .postmortem-body {
-              padding: var(--space-5);
+            /* ─── Executive Telemetry Ribbon ─── */
+            .sre-telemetry-ribbon {
+              display: grid;
+              grid-template-columns: repeat(6, 1fr);
+              background: #0D0F14;
+              border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+              flex-shrink: 0;
+            }
+
+            @media (max-width: 800px) {
+              .sre-telemetry-ribbon {
+                grid-template-columns: repeat(3, 1fr);
+              }
+            }
+
+            .sre-telemetry-cell {
+              padding: 0.75rem 1rem;
+              border-right: 1px solid rgba(255, 255, 255, 0.05);
+              display: flex;
+              flex-direction: column;
+              gap: 0.15rem;
+            }
+
+            .sre-telemetry-cell:last-child {
+              border-right: none;
+            }
+
+            .sre-telemetry-label {
+              font-size: 0.625rem;
+              font-family: var(--font-mono);
+              text-transform: uppercase;
+              letter-spacing: 0.06em;
+              color: var(--text-muted);
+            }
+
+            .sre-telemetry-val {
+              font-size: 0.875rem;
+              font-weight: 700;
+              color: var(--text-primary);
+            }
+
+            /* ─── Scrollable Document Body ─── */
+            .sre-body {
+              padding: 1.5rem 1.75rem;
               overflow-y: auto;
               display: flex;
               flex-direction: column;
-              gap: var(--space-5);
+              gap: 1.5rem;
+              scrollbar-width: thin;
+              scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
             }
 
-            .postmortem-section {
+            .sre-section {
               display: flex;
               flex-direction: column;
-              gap: var(--space-2);
+              gap: 0.625rem;
             }
 
-            .postmortem-section__title,
-            .postmortem-subtitle {
-              font-family: var(--font-sans);
-              font-size: var(--text-xs);
-              font-weight: var(--weight-semibold);
-              letter-spacing: 0.08em;
-              color: var(--color-aura);
+            .sre-section-title {
+              font-size: 0.75rem;
+              font-weight: 700;
+              letter-spacing: 0.06em;
               text-transform: uppercase;
-              border-bottom: 1px solid var(--border-glass);
-              padding-bottom: var(--space-1);
+              color: var(--color-aura);
+              border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+              padding-bottom: 0.35rem;
               margin: 0;
             }
 
-            .postmortem-summary-grid {
+            /* ─── Key-Value Summary & Root Cause ─── */
+            .sre-kv-grid {
               display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-              gap: var(--space-2);
+              grid-template-columns: repeat(3, 1fr);
+              gap: 0.75rem;
             }
 
-            .postmortem-summary-item {
-              background: var(--bg-glass-raised);
-              border: 1px solid var(--border-glass);
-              border-radius: var(--radius-md);
-              padding: var(--space-2h) var(--space-3);
+            @media (max-width: 768px) {
+              .sre-kv-grid {
+                grid-template-columns: 1fr;
+              }
+            }
+
+            .sre-kv-card {
+              background: #0E1015;
+              border: 1px solid rgba(255, 255, 255, 0.06);
+              border-radius: var(--radius-lg);
+              padding: 0.875rem 1rem;
               display: flex;
               flex-direction: column;
-              gap: 2px;
-              backdrop-filter: blur(8px);
-              -webkit-backdrop-filter: blur(8px);
+              gap: 0.25rem;
+              box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.03);
             }
 
-            .postmortem-summary-item--full {
+            .sre-kv-card--root {
               grid-column: 1 / -1;
-              background: color-mix(in srgb, var(--color-fact) 8%, var(--bg-glass-raised));
-              border-left: 3px solid var(--color-fact);
-              border-top: 1px solid var(--border-glass);
-              border-right: 1px solid var(--border-glass);
-              border-bottom: 1px solid var(--border-glass);
+              background: linear-gradient(180deg, rgba(16, 185, 129, 0.06) 0%, #0E1015 100%);
+              border-color: rgba(16, 185, 129, 0.3);
+              border-left: 3px solid #10B981;
             }
 
-            .postmortem-summary-label {
-              font-family: var(--font-sans);
-              font-size: 10px;
-              font-weight: var(--weight-medium);
-              color: var(--text-muted);
+            .sre-kv-label {
+              font-size: 0.625rem;
+              font-family: var(--font-mono);
               text-transform: uppercase;
               letter-spacing: 0.05em;
-              display: block;
+              color: var(--text-muted);
             }
 
-            .postmortem-summary-value {
-              font-family: var(--font-sans);
-              font-size: var(--text-sm);
-              font-weight: var(--weight-semibold);
+            .sre-kv-val {
+              font-size: 0.8125rem;
+              font-weight: 600;
               color: var(--text-primary);
+              line-height: 1.4;
             }
 
-            .postmortem-summary-value.root-cause {
-              font-family: var(--font-sans);
-              font-size: var(--text-xs);
-              line-height: var(--leading-normal);
-              color: var(--text-primary);
-            }
-
-            .postmortem-chain-container {
-              background: var(--bg-glass-raised);
-              border: 1px solid var(--border-glass);
-              border-radius: var(--radius-md);
-              padding: var(--space-3);
+            /* ─── Evidence Chain SVG Pipeline ─── */
+            .sre-pipeline-container {
+              background: #0E1015;
+              border: 1px solid rgba(255, 255, 255, 0.06);
+              border-radius: var(--radius-lg);
+              padding: 1rem;
               overflow-x: auto;
-              backdrop-filter: blur(8px);
-              -webkit-backdrop-filter: blur(8px);
+              box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.03);
             }
 
-            .postmortem-timeline-table {
-              display: flex;
-              flex-direction: column;
-              background: var(--bg-glass-raised);
-              border: 1px solid var(--border-glass);
-              border-radius: var(--radius-md);
+            /* ─── Classified Timeline Table ─── */
+            .sre-table-wrap {
+              background: #0E1015;
+              border: 1px solid rgba(255, 255, 255, 0.06);
+              border-radius: var(--radius-lg);
               overflow: hidden;
-              backdrop-filter: blur(8px);
-              -webkit-backdrop-filter: blur(8px);
+              box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.03);
             }
 
-            .postmortem-timeline-row {
+            .sre-table-header {
               display: grid;
-              grid-template-columns: 75px 105px 1fr 175px;
-              gap: var(--space-2);
-              align-items: center;
-              padding: var(--space-2) var(--space-3);
-              border-bottom: 1px solid var(--border-glass);
-              font-size: var(--text-xs);
-              transition: background-color var(--duration-fast);
+              grid-template-columns: 80px 110px 1fr 140px;
+              gap: 0.75rem;
+              padding: 0.625rem 1rem;
+              background: #13161E;
+              border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+              font-family: var(--font-mono);
+              font-size: 0.625rem;
+              font-weight: 700;
+              letter-spacing: 0.06em;
+              text-transform: uppercase;
+              color: var(--text-muted);
             }
 
-            .postmortem-timeline-row:last-child {
+            .sre-table-row {
+              display: grid;
+              grid-template-columns: 80px 110px 1fr 140px;
+              gap: 0.75rem;
+              align-items: center;
+              padding: 0.625rem 1rem;
+              border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+              font-size: 0.75rem;
+              transition: background 120ms ease;
+            }
+
+            .sre-table-row:nth-child(even) {
+              background: rgba(255, 255, 255, 0.015);
+            }
+
+            .sre-table-row:hover {
+              background: #151821;
+            }
+
+            .sre-table-row:last-child {
               border-bottom: none;
             }
 
-            .postmortem-timeline-row:hover {
-              background: var(--bg-glass-hover);
-            }
-
-            .postmortem-timeline-row--disproven {
-              opacity: 0.45;
-            }
-
-            .postmortem-row-time {
-              font-family: var(--font-mono);
-              font-size: 11px;
-              color: var(--text-muted);
-            }
-
-            .postmortem-row-content {
-              font-family: var(--font-sans);
-              color: var(--text-primary);
-              line-height: var(--leading-normal);
-              overflow: hidden;
-              text-overflow: ellipsis;
-              white-space: nowrap;
-            }
-
-            .postmortem-row-speaker {
-              font-family: var(--font-sans);
-              font-size: 11px;
-              font-weight: var(--weight-medium);
-              color: var(--text-secondary);
-              text-align: right;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              white-space: nowrap;
-            }
-
-            .postmortem-disproven-list {
-              display: flex;
-              flex-direction: column;
-              gap: var(--space-2);
-            }
-
-            .postmortem-disproven-item {
-              display: flex;
-              gap: var(--space-2);
-              align-items: flex-start;
-              background: rgba(232, 84, 84, 0.06);
-              border: 1px solid rgba(232, 84, 84, 0.2);
-              border-radius: var(--radius-md);
-              padding: var(--space-2h) var(--space-3);
-              font-size: var(--text-xs);
-              font-family: var(--font-sans);
-              backdrop-filter: blur(6px);
-              -webkit-backdrop-filter: blur(6px);
-            }
-
-            .postmortem-disproven-mark {
-              color: var(--color-conflict);
-              font-weight: bold;
-              font-family: var(--font-sans);
-              margin-top: 1px;
-            }
-
-            .postmortem-disproven-meta {
-              display: block;
-              color: var(--text-muted);
-              font-family: var(--font-sans);
-              font-size: 11px;
-              margin-top: 2px;
-            }
-
-            .postmortem-metrics-grid {
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-              gap: var(--space-2);
-            }
-
-            .postmortem-metric-box {
-              background: var(--bg-glass-raised);
-              border: 1px solid var(--border-glass);
-              border-radius: var(--radius-md);
-              padding: var(--space-3) var(--space-2);
-              text-align: center;
-              display: flex;
-              flex-direction: column;
-              gap: 3px;
-              backdrop-filter: blur(8px);
-              -webkit-backdrop-filter: blur(8px);
-              transition: all var(--duration-fast);
-            }
-
-            .postmortem-metric-box:hover {
-              background: var(--bg-glass-hover);
-              border-color: var(--border-glass-emphasis);
-              transform: translateY(-1px);
-            }
-
-            .postmortem-metric-num {
-              font-family: var(--font-mono);
-              font-size: var(--text-xl);
-              font-weight: var(--weight-bold);
-              color: var(--text-primary);
-              display: block;
-            }
-
-            .postmortem-metric-label {
-              font-size: 10px;
-              font-family: var(--font-sans);
-              font-weight: var(--weight-medium);
-              color: var(--text-muted);
-              text-transform: uppercase;
-              letter-spacing: 0.04em;
-              display: block;
-            }
-
-            .postmortem-media-grid,
-            .postmortem-media-buttons {
-              display: flex;
-              gap: var(--space-2);
-              flex-wrap: wrap;
-            }
-
-            .postmortem-media-btn {
+            .sre-pill {
               display: inline-flex;
               align-items: center;
-              gap: var(--space-2);
-              background: var(--bg-glass);
-              border: 1px solid var(--border-glass-emphasis);
-              border-radius: var(--radius-md);
-              padding: var(--space-2) var(--space-4);
-              color: var(--text-primary);
-              font-family: var(--font-sans);
-              font-size: var(--text-xs);
-              font-weight: var(--weight-semibold);
-              text-decoration: none;
-              cursor: pointer;
-              box-shadow: var(--shadow-glass);
-              backdrop-filter: blur(8px);
-              -webkit-backdrop-filter: blur(8px);
-              transition: all var(--duration-fast);
+              justify-content: center;
+              padding: 0.15rem 0.5rem;
+              border-radius: var(--radius-sm);
+              font-family: var(--font-mono);
+              font-size: 0.625rem;
+              font-weight: 700;
+              letter-spacing: 0.04em;
+              width: fit-content;
             }
 
-            .postmortem-media-btn:hover {
-              background: var(--bg-glass-hover);
-              border-color: var(--color-aura);
-              transform: translateY(-1px);
-              box-shadow: var(--shadow-glass), 0 4px 12px rgba(0, 0, 0, 0.3);
+            .sre-pill-fact {
+              background: rgba(99, 102, 241, 0.12);
+              border: 1px solid rgba(99, 102, 241, 0.3);
+              color: #818CF8;
+            }
+
+            .sre-pill-hypothesis {
+              background: rgba(212, 168, 83, 0.12);
+              border: 1px solid rgba(212, 168, 83, 0.3);
+              color: var(--color-aura);
+            }
+
+            .sre-pill-decision {
+              background: rgba(168, 85, 247, 0.12);
+              border: 1px solid rgba(168, 85, 247, 0.3);
+              color: #C084FC;
+            }
+
+            .sre-pill-action {
+              background: rgba(16, 185, 129, 0.12);
+              border: 1px solid rgba(16, 185, 129, 0.3);
+              color: #34D399;
+            }
+
+            /* ─── Disproven Theories Elimination Card ─── */
+            .sre-disproven-box {
+              background: #0E1015;
+              border: 1px solid rgba(239, 68, 68, 0.2);
+              border-left: 3px solid #EF4444;
+              border-radius: var(--radius-lg);
+              padding: 0.875rem 1.125rem;
+              display: flex;
+              flex-direction: column;
+              gap: 0.5rem;
+            }
+
+            .sre-disproven-item {
+              display: flex;
+              align-items: flex-start;
+              gap: 0.5rem;
+              font-size: 0.75rem;
+              line-height: 1.45;
+            }
+
+            /* ─── Remediation Actions Checklist ─── */
+            .sre-actions-grid {
+              display: flex;
+              flex-direction: column;
+              gap: 0.375rem;
+            }
+
+            .sre-action-row {
+              background: #0E1015;
+              border: 1px solid rgba(255, 255, 255, 0.05);
+              border-radius: var(--radius-md);
+              padding: 0.5rem 0.875rem;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              font-size: 0.75rem;
+            }
+
+            .sre-action-done {
+              color: var(--text-muted);
+              text-decoration: line-through;
             }
           `}</style>
+
           <motion.div
-            className="postmortem-modal"
-            initial={{ opacity: 0, scale: 0.95, y: 16 }}
+            className="sre-doc-modal"
+            initial={{ opacity: 0, scale: 0.96, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 16 }}
+            exit={{ opacity: 0, scale: 0.96, y: 12 }}
             transition={{
               type: 'spring',
               stiffness: springs.resolve.stiffness,
@@ -576,53 +609,150 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
               mass: springs.resolve.mass,
             }}
           >
-            {/* Modal Header */}
-            <div className="postmortem-header">
-              <div className="postmortem-header__title-wrap">
-                <span className="postmortem-header__tag">AURA SRE POSTMORTEM</span>
-                <h2 id="postmortem-title" className="postmortem-header__title">
+            {/* Header with Title and Action Toolbar */}
+            <div className="sre-header">
+              <div className="sre-header-left">
+                <span className="sre-spec-label">
+                  Google SRE Specification • Technical Incident Postmortem
+                </span>
+                <h2 id="sre-postmortem-title" className="sre-title">
                   {incident.title}
                 </h2>
               </div>
-              <button
-                type="button"
-                className="postmortem-close-btn"
-                onClick={onClose}
-                aria-label="Close postmortem modal"
-              >
-                ✕
-              </button>
+
+              <div className="sre-header-actions">
+                <button
+                  type="button"
+                  className="sre-action-btn"
+                  onClick={handleCopyMarkdown}
+                  title="Copy markdown to clipboard"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                  </svg>
+                  <span>{copiedMd ? 'Copied!' : 'Copy MD'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="sre-action-btn"
+                  onClick={handleDownloadMarkdown}
+                  title="Download .md document"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  <span>Export MD</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="sre-action-btn"
+                  onClick={handlePrint}
+                  title="Print or Save PDF"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="6 9 6 2 18 2 18 9" />
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                    <rect width="12" height="8" x="6" y="14" />
+                  </svg>
+                  <span>Print / PDF</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="sre-action-btn"
+                  onClick={handleDownloadJSON}
+                  title="Export JSON event telemetry trace"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="16 18 22 12 16 6" />
+                    <polyline points="8 6 2 12 8 18" />
+                  </svg>
+                  <span>JSON</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="sre-close-btn"
+                  onClick={onClose}
+                  aria-label="Close postmortem"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
-            {/* Scrollable Report Content */}
-            <div className="postmortem-body">
-              {/* Section 1: Incident Summary */}
-              <section className="postmortem-section">
-                <h3 className="postmortem-section__title">1. Incident Summary</h3>
-                <div className="postmortem-summary-grid">
-                  <div className="postmortem-summary-item">
-                    <span className="postmortem-summary-label">Severity</span>
-                    <span className="postmortem-summary-value severity-badge">
-                      {incident.severity}
+            {/* Operational Telemetry Ribbon */}
+            <div className="sre-telemetry-ribbon">
+              <div className="sre-telemetry-cell">
+                <span className="sre-telemetry-label">Incident ID</span>
+                <span className="sre-telemetry-val" style={{ fontFamily: 'var(--font-mono)' }}>{incident.incidentId}</span>
+              </div>
+              <div className="sre-telemetry-cell">
+                <span className="sre-telemetry-label">Severity</span>
+                <span className="sre-telemetry-val" style={{ color: '#F87171' }}>{incident.severity}</span>
+              </div>
+              <div className="sre-telemetry-cell">
+                <span className="sre-telemetry-label">Duration</span>
+                <span className="sre-telemetry-val" style={{ fontFamily: 'var(--font-mono)' }}>{duration}</span>
+              </div>
+              <div className="sre-telemetry-cell">
+                <span className="sre-telemetry-label">Commander</span>
+                <span className="sre-telemetry-val">{icName.split(' ')[0]}</span>
+              </div>
+              <div className="sre-telemetry-cell">
+                <span className="sre-telemetry-label">Cost Incurred</span>
+                <span className="sre-telemetry-val" style={{ fontFamily: 'var(--font-mono)' }}>{formatCurrency(costTotal)}</span>
+              </div>
+              <div className="sre-telemetry-cell">
+                <span className="sre-telemetry-label">Downtime Saved</span>
+                <span className="sre-telemetry-val" style={{ color: '#34D399', fontFamily: 'var(--font-mono)' }}>
+                  ~{formatCurrency(costSavings)}
+                </span>
+              </div>
+            </div>
+
+            {/* Scrollable Document Content */}
+            <div className="sre-body">
+              {/* Section 1: Executive Summary & Root Cause */}
+              <section className="sre-section">
+                <h3 className="sre-section-title">1. Executive Summary & Root Cause Isolation</h3>
+                <div className="sre-kv-grid">
+                  <div className="sre-kv-card">
+                    <span className="sre-kv-label">Incident Status</span>
+                    <span className="sre-kv-val" style={{ color: '#34D399' }}>RESOLVED / MITIGATED</span>
+                  </div>
+                  <div className="sre-kv-card">
+                    <span className="sre-kv-label">Detection Vector</span>
+                    <span className="sre-kv-val">Agora Multi-Speaker Audio Bridge</span>
+                  </div>
+                  <div className="sre-kv-card">
+                    <span className="sre-kv-label">Root Cause Confidence</span>
+                    <span className="sre-kv-val" style={{ color: 'var(--color-aura)' }}>85% (CONFIDENCE CAP)</span>
+                  </div>
+
+                  <div className="sre-kv-card">
+                    <span className="sre-kv-label">Verified Facts</span>
+                    <span className="sre-kv-val" style={{ color: '#818CF8' }}>{factsCount} Facts Established</span>
+                  </div>
+                  <div className="sre-kv-card">
+                    <span className="sre-kv-label">Hypotheses Tested</span>
+                    <span className="sre-kv-val" style={{ color: 'var(--color-aura)' }}>
+                      {confirmedCount} Confirmed • {disprovenCount} Disproven
                     </span>
                   </div>
-                  <div className="postmortem-summary-item">
-                    <span className="postmortem-summary-label">Status</span>
-                    <span className="postmortem-summary-value status-resolved">
-                      RESOLVED
-                    </span>
+                  <div className="sre-kv-card">
+                    <span className="sre-kv-label">Command Directives</span>
+                    <span className="sre-kv-val" style={{ color: '#C084FC' }}>{decisionCount} Decisions Arbitrated</span>
                   </div>
-                  <div className="postmortem-summary-item">
-                    <span className="postmortem-summary-label">Incident Commander</span>
-                    <span className="postmortem-summary-value">{icName}</span>
-                  </div>
-                  <div className="postmortem-summary-item">
-                    <span className="postmortem-summary-label">Time to Mitigation</span>
-                    <span className="postmortem-summary-value font-mono">{duration}</span>
-                  </div>
-                  <div className="postmortem-summary-item postmortem-summary-item--full">
-                    <span className="postmortem-summary-label">Root Cause</span>
-                    <span className="postmortem-summary-value root-cause">
+
+                  <div className="sre-kv-card sre-kv-card--root">
+                    <span className="sre-kv-label" style={{ color: '#34D399' }}>Confirmed Root Cause</span>
+                    <span className="sre-kv-val">
                       {confirmedHypothesis?.content ??
                         'Database connection pool exhaustion caused by unoptimized query in PR #492.'}
                     </span>
@@ -630,21 +760,14 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
                 </div>
               </section>
 
-              {/* Section 2: Evidence Chain Mini-Graph */}
-              <section className="postmortem-section">
-                <h3 className="postmortem-section__title">
-                  2. Evidence Chain & Causal Graph
-                </h3>
-                <div className="postmortem-chain-container">
-                  <svg
-                    className="postmortem-chain-svg"
-                    viewBox="0 0 720 120"
-                    width="100%"
-                    height="120"
-                  >
+              {/* Section 2: Causal Evidence Chain */}
+              <section className="sre-section">
+                <h3 className="sre-section-title">2. Causal Evidence Chain & Pipeline</h3>
+                <div className="sre-pipeline-container">
+                  <svg viewBox="0 0 720 100" width="100%" height="100">
                     <defs>
                       <marker
-                        id="chain-arrow"
+                        id="sre-arrow"
                         viewBox="0 0 10 10"
                         refX="18"
                         refY="5"
@@ -652,58 +775,55 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
                         markerHeight="5"
                         orient="auto-start-reverse"
                       >
-                        <path
-                          d="M 0 0 L 10 5 L 0 10 z"
-                          fill="rgba(255, 255, 255, 0.3)"
-                        />
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(255, 255, 255, 0.25)" />
                       </marker>
                     </defs>
 
-                    {/* Sequential Connectors */}
+                    {/* Connectors */}
                     {chainNodes.slice(0, -1).map((node, i) => {
-                      const x1 = 60 + i * 105;
-                      const y1 = 55;
-                      const x2 = 60 + (i + 1) * 105;
-                      const y2 = 55;
+                      const x1 = 55 + i * 102;
+                      const y1 = 45;
+                      const x2 = 55 + (i + 1) * 102;
+                      const y2 = 45;
                       return (
                         <line
-                          key={`chain-line-${i}`}
+                          key={`sre-line-${i}`}
                           x1={x1}
                           y1={y1}
                           x2={x2}
                           y2={y2}
-                          stroke="rgba(255, 255, 255, 0.2)"
+                          stroke="rgba(255, 255, 255, 0.15)"
                           strokeWidth="1.5"
-                          markerEnd="url(#chain-arrow)"
+                          markerEnd="url(#sre-arrow)"
                         />
                       );
                     })}
 
                     {/* Nodes */}
                     {chainNodes.map((node, i) => {
-                      const cx = 60 + i * 105;
-                      const cy = 55;
+                      const cx = 55 + i * 102;
+                      const cy = 45;
                       const isDis = node.status === 'disproven';
                       const fillColor = isDis
-                        ? 'var(--color-conflict)'
+                        ? '#EF4444'
                         : node.category === 'fact'
-                        ? 'var(--color-fact)'
+                        ? '#6366F1'
                         : node.category === 'hypothesis'
-                        ? 'var(--color-hypothesis)'
+                        ? '#D4A853'
                         : node.category === 'decision'
-                        ? 'var(--color-decision)'
-                        : 'var(--color-action)';
+                        ? '#A855F7'
+                        : '#10B981';
 
                       return (
-                        <g key={node.id} className="postmortem-chain-node">
+                        <g key={node.id}>
                           <circle
                             cx={cx}
                             cy={cy}
-                            r={15}
-                            fill={fillColor}
-                            opacity={isDis ? 0.35 : 0.9}
+                            r={14}
+                            fill="#0A0C10"
                             stroke={fillColor}
-                            strokeWidth={1.5}
+                            strokeWidth={2}
+                            opacity={isDis ? 0.4 : 1}
                           />
                           <text
                             x={cx}
@@ -716,25 +836,24 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
                           >
                             {isDis ? '✕' : node.id.replace('evt-', '').substring(0, 4)}
                           </text>
-                          {/* Epistemic Category Badge */}
                           <rect
-                            x={cx - 32}
+                            x={cx - 30}
                             y={cy + 22}
-                            width="64"
+                            width="60"
                             height="16"
                             rx="3"
-                            fill="rgba(255, 255, 255, 0.05)"
-                            stroke="rgba(255, 255, 255, 0.1)"
+                            fill="#13161E"
+                            stroke="rgba(255, 255, 255, 0.08)"
                             strokeWidth="0.5"
                           />
                           <text
                             x={cx}
-                            y={cy + 33.5}
+                            y={cy + 33}
                             textAnchor="middle"
-                            fill="var(--text-secondary)"
-                            fontSize="8.5"
-                            fontFamily="var(--font-sans)"
-                            fontWeight="600"
+                            fill={fillColor}
+                            fontSize="8"
+                            fontFamily="var(--font-mono)"
+                            fontWeight="700"
                             letterSpacing="0.04em"
                           >
                             {node.category.toUpperCase()}
@@ -746,33 +865,31 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
                 </div>
               </section>
 
-              {/* Section 3: Classified Timeline */}
-              <section className="postmortem-section">
-                <h3 className="postmortem-section__title">3. Classified Timeline</h3>
-                <div className="postmortem-timeline-table">
+              {/* Section 3: Chronological SRE Timeline */}
+              <section className="sre-section">
+                <h3 className="sre-section-title">3. Epistemic Incident Timeline Log</h3>
+                <div className="sre-table-wrap">
+                  <div className="sre-table-header">
+                    <span>TIME</span>
+                    <span>TYPE</span>
+                    <span>STATEMENT & EVIDENCE</span>
+                    <span style={{ textAlign: 'right' }}>SPEAKER</span>
+                  </div>
+
                   {incident.evidenceItems.map((item) => {
                     const isDis = item.status === 'disproven';
                     return (
-                      <div
-                        key={item.id}
-                        className={`postmortem-timeline-row ${
-                          isDis ? 'postmortem-timeline-row--disproven' : ''
-                        }`}
-                      >
-                        <span className="postmortem-row-time">
+                      <div key={item.id} className="sre-table-row">
+                        <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', fontSize: '0.6875rem' }}>
                           {formatClockTime(item.timestamp)}
                         </span>
-                        <span className={`badge badge-${item.category}`}>
+                        <span className={`sre-pill sre-pill-${item.category}`}>
                           {item.category.toUpperCase()}
                         </span>
-                        <span
-                          className={`postmortem-row-content ${
-                            isDis ? 'line-through' : ''
-                          }`}
-                        >
+                        <span style={{ color: isDis ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: isDis ? 'line-through' : 'none' }}>
                           {item.content}
                         </span>
-                        <span className="postmortem-row-speaker">
+                        <span style={{ textAlign: 'right', color: 'var(--text-secondary)', fontSize: '0.6875rem' }}>
                           {item.speakerName}
                         </span>
                       </div>
@@ -781,123 +898,47 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
                 </div>
               </section>
 
-              {/* Section 4: Disproven Hypotheses */}
-              <section className="postmortem-section">
-                <h3 className="postmortem-section__title">
-                  4. Disproven Theories & Elimination Log
-                </h3>
-                {disprovenHypotheses.length === 0 ? (
-                  <p className="postmortem-empty-text">No hypotheses were disproven.</p>
-                ) : (
-                  <div className="postmortem-disproven-list">
+              {/* Section 4: Refuted Dead-Ends */}
+              {disprovenHypotheses.length > 0 && (
+                <section className="sre-section">
+                  <h3 className="sre-section-title">4. Refuted Theories & Eliminated Dead-Ends</h3>
+                  <div className="sre-disproven-box">
                     {disprovenHypotheses.map((h) => (
-                      <div key={h.id} className="postmortem-disproven-item">
-                        <span className="postmortem-disproven-mark">✕</span>
+                      <div key={h.id} className="sre-disproven-item">
+                        <span style={{ color: '#EF4444', fontWeight: 700 }}>✕</span>
                         <div>
                           <strong>{h.content}</strong>
-                          <span className="postmortem-disproven-meta">
-                            Proposed by {h.speakerName} • Disproven by verified database query logs.
-                          </span>
+                          <div style={{ color: 'var(--text-muted)', fontSize: '0.6875rem' }}>
+                            Proposed by {h.speakerName} • Refuted via authoritative database telemetry.
+                          </div>
                         </div>
                       </div>
                     ))}
                   </div>
-                )}
-              </section>
+                </section>
+              )}
 
-              {/* Section 5: Key Metrics */}
-              <section className="postmortem-section">
-                <h3 className="postmortem-section__title">
-                  5. Incident Metrics & Financial Impact
+              {/* Section 5: Remediation Action Items */}
+              <section className="sre-section">
+                <h3 className="sre-section-title">
+                  5. Remediation Action Items ({actionCompletedCount}/{actionItems.length} Resolved)
                 </h3>
-                <div className="postmortem-metrics-grid">
-                  <div className="postmortem-metric-box">
-                    <span className="postmortem-metric-num">{factsCount}</span>
-                    <span className="postmortem-metric-label">Facts Verified</span>
-                  </div>
-                  <div className="postmortem-metric-box">
-                    <span className="postmortem-metric-num font-emerald">
-                      {confirmedCount}
-                    </span>
-                    <span className="postmortem-metric-label">Confirmed Root Causes</span>
-                  </div>
-                  <div className="postmortem-metric-box">
-                    <span className="postmortem-metric-num font-amber">
-                      {disprovenCount}
-                    </span>
-                    <span className="postmortem-metric-label">Dead-Ends Disproven</span>
-                  </div>
-                  <div className="postmortem-metric-box">
-                    <span className="postmortem-metric-num">{decisionCount}</span>
-                    <span className="postmortem-metric-label">Authoritative Decisions</span>
-                  </div>
-                  <div className="postmortem-metric-box">
-                    <span className="postmortem-metric-num">
-                      {actionCompletedCount}/{actionItems.length}
-                    </span>
-                    <span className="postmortem-metric-label">Actions Completed</span>
-                  </div>
-                  <div className="postmortem-metric-box">
-                    <span className="postmortem-metric-num font-emerald">
-                      ~{formatCurrency(costSavings)}
-                    </span>
-                    <span className="postmortem-metric-label">Estimated Downtime Saved</span>
-                  </div>
-                </div>
-              </section>
-
-              {/* Export SRE Postmortem Artifacts */}
-              <section className="postmortem-section">
-                <h3 className="postmortem-subtitle">
-                  Export SRE Postmortem Artifacts
-                </h3>
-                <div className="postmortem-media-grid">
-                  <button
-                    type="button"
-                    className="postmortem-media-btn"
-                    onClick={handleDownloadMarkdown}
-                    title="Download GitHub-formatted Markdown report"
-                  >
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1h)' }}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                        <polyline points="7 10 12 15 17 10" />
-                        <line x1="12" y1="15" x2="12" y2="3" />
-                      </svg>
-                      Download Postmortem (.md)
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="postmortem-media-btn"
-                    onClick={handlePrint}
-                    title="Print or Save Executive Brief as PDF"
-                  >
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1h)' }}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <polyline points="6 9 6 2 18 2 18 9" />
-                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-                        <rect x="6" y="14" width="12" height="8" />
-                      </svg>
-                      Print / Save as PDF
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="postmortem-media-btn"
-                    onClick={handleDownloadJSON}
-                    title="Export JSON event telemetry trace"
-                  >
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1h)' }}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <polyline points="16 18 22 12 16 6" />
-                        <polyline points="8 6 2 12 8 18" />
-                      </svg>
-                      Export Trace (.json)
-                    </span>
-                  </button>
+                <div className="sre-actions-grid">
+                  {actionItems.map((act) => (
+                    <div key={act.id} className="sre-action-row">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ color: act.actionStatus === 'done' ? '#34D399' : 'var(--text-muted)' }}>
+                          {act.actionStatus === 'done' ? '✓' : '○'}
+                        </span>
+                        <span className={act.actionStatus === 'done' ? 'sre-action-done' : ''}>
+                          {act.content}
+                        </span>
+                      </div>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6875rem', color: 'var(--text-secondary)' }}>
+                        Owner: {act.assignedTo || 'Unassigned'}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </section>
             </div>

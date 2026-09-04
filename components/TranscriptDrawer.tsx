@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 export interface TranscriptEntry {
   id: string;
@@ -21,6 +21,7 @@ export function TranscriptDrawer({
   entries,
 }: TranscriptDrawerProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Close on Escape key press
   useEffect(() => {
@@ -38,258 +39,308 @@ export function TranscriptDrawer({
     };
   }, [isOpen, onClose]);
 
-  // Auto-scroll to bottom when new entries arrive while open
+  // Filter entries based on search query
+  const filteredEntries = useMemo(() => {
+    if (!searchQuery.trim()) return entries;
+    const q = searchQuery.toLowerCase();
+    return entries.filter(
+      (e) =>
+        e.text.toLowerCase().includes(q) ||
+        e.speakerName.toLowerCase().includes(q)
+    );
+  }, [entries, searchQuery]);
+
+  // Auto-scroll to bottom when new entries arrive while open (and not searching)
   useEffect(() => {
-    if (isOpen && scrollContainerRef.current) {
+    if (isOpen && !searchQuery && scrollContainerRef.current) {
       scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
     }
-  }, [entries, isOpen]);
+  }, [entries, isOpen, searchQuery]);
 
   const formatTime = (ts: number) => {
     const date = new Date(ts);
-    return date.toTimeString().split(' ')[0];
+    return date.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+  };
+
+  const isAuraSpeaker = (name: string) => {
+    const n = name.toLowerCase();
+    return n.includes('aura') || n.includes('ai commander') || n.includes('agent');
   };
 
   return (
     <>
       <style>{`
-        .transcript-drawer-backdrop {
+        .transcript-backdrop {
           position: fixed;
           inset: 0;
-          background: var(--bg-overlay);
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
+          background: rgba(4, 5, 8, 0.7);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
           z-index: 900;
           opacity: 0;
           pointer-events: none;
-          transition: opacity var(--duration-normal) var(--ease-arrive);
+          transition: opacity 220ms ease;
         }
 
-        .transcript-drawer-backdrop.is-open {
+        .transcript-backdrop.is-open {
           opacity: 1;
           pointer-events: auto;
         }
 
-        .transcript-drawer {
+        .transcript-panel {
           position: fixed;
           top: 0;
           right: 0;
           bottom: 0;
-          left: auto;
-          width: min(440px, 92vw);
+          width: min(460px, 94vw);
           height: 100vh;
-          max-height: 100vh;
-          background: var(--bg-glass-panel);
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
-          border-left: 1px solid var(--border-glass);
-          border-top: none;
-          box-shadow: -8px 0 32px rgba(0, 0, 0, 0.5);
+          background: #0A0C10;
+          border-left: 1px solid rgba(255, 255, 255, 0.08);
+          box-shadow: -12px 0 40px rgba(0, 0, 0, 0.7);
           z-index: 901;
           display: flex;
           flex-direction: column;
           transform: translateX(100%);
-          transition: transform 350ms cubic-bezier(0.16, 1, 0.3, 1);
+          transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
           font-family: var(--font-sans);
+          color: var(--text-primary);
         }
 
-        .transcript-drawer.is-open {
+        .transcript-panel.is-open {
           transform: translateX(0);
         }
 
-        .transcript-drawer__header {
+        /* ─── Header ─── */
+        .transcript-header {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+          padding: 1.125rem 1.25rem;
+          background: #0E1015;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+          flex-shrink: 0;
+        }
+
+        .transcript-top-row {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: var(--space-4) var(--space-4);
-          background: var(--bg-glass);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-          border-bottom: 1px solid var(--border-glass);
-          flex-shrink: 0;
-          gap: var(--space-2);
+          gap: 0.75rem;
         }
 
-        .transcript-drawer__title-group {
+        .transcript-title-group {
           display: flex;
           align-items: center;
-          gap: var(--space-2);
-          min-width: 0;
+          gap: 0.5rem;
         }
 
-        .transcript-drawer__icon {
-          display: flex;
-          align-items: center;
-          color: var(--color-aura);
-          flex-shrink: 0;
-        }
-
-        .transcript-drawer__title {
-          font-family: var(--font-sans);
-          font-size: var(--text-xs);
-          font-weight: 500;
-          letter-spacing: 0.08em;
+        .transcript-title {
+          font-size: 0.75rem;
+          font-weight: 700;
+          letter-spacing: 0.06em;
           text-transform: uppercase;
           color: var(--text-primary);
           margin: 0;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
         }
 
-        .transcript-drawer__count {
-          background: var(--bg-glass-raised);
+        .transcript-count-badge {
+          background: #14171E;
+          border: 1px solid rgba(255, 255, 255, 0.08);
           color: var(--color-aura);
-          border: 1px solid var(--border-glass);
-          padding: 1px 7px;
+          padding: 0.15rem 0.5rem;
           border-radius: var(--radius-full);
           font-family: var(--font-mono);
-          font-size: 10px;
-          flex-shrink: 0;
+          font-size: 0.625rem;
+          font-weight: 600;
         }
 
-        .transcript-drawer__close-btn {
-          background: var(--bg-glass);
-          border: 1px solid var(--border-glass);
-          color: var(--text-secondary);
-          border-radius: var(--radius-full);
-          padding: 4px 10px;
-          font-family: var(--font-sans);
-          font-size: var(--text-xs);
-          font-weight: var(--weight-medium);
+        .transcript-close-btn {
+          background: #14171E;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          color: var(--text-muted);
+          border-radius: var(--radius-md);
+          padding: 0.35rem 0.75rem;
+          font-size: 0.6875rem;
+          font-weight: 600;
           cursor: pointer;
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
-          transition: all var(--duration-fast);
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          flex-shrink: 0;
+          transition: all 140ms ease;
         }
 
-        .transcript-drawer__close-btn:hover {
-          background: var(--bg-glass-hover);
+        .transcript-close-btn:hover {
+          background: #1C202B;
           color: var(--text-primary);
-          border-color: var(--border-glass-emphasis);
         }
 
-        .transcript-drawer__body {
+        /* Search Filter */
+        .transcript-search-wrap {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          background: #12151D;
+          border: 1px solid rgba(255, 255, 255, 0.07);
+          border-radius: var(--radius-md);
+          padding: 0.4rem 0.75rem;
+          transition: border-color 140ms ease;
+        }
+
+        .transcript-search-wrap:focus-within {
+          border-color: var(--color-aura);
+        }
+
+        .transcript-search-input {
+          background: transparent;
+          border: none;
+          color: var(--text-primary);
+          font-size: 0.75rem;
+          outline: none;
+          width: 100%;
+        }
+
+        .transcript-search-input::placeholder {
+          color: var(--text-muted);
+        }
+
+        /* ─── Body Stream ─── */
+        .transcript-body {
           flex: 1;
           overflow-y: auto;
-          padding: var(--space-3);
-          scroll-behavior: smooth;
+          padding: 1rem 1.25rem;
           display: flex;
           flex-direction: column;
+          gap: 0.75rem;
+          scrollbar-width: thin;
+          scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
         }
 
-        .transcript-drawer__empty {
+        /* Conversational Bubble */
+        .transcript-bubble {
           display: flex;
           flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          padding: var(--space-8) var(--space-4);
-          text-align: center;
-          color: var(--text-muted);
-          background: var(--bg-glass);
-          border: 1px dashed var(--border-glass);
-          border-radius: var(--radius-md);
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
-          margin: auto var(--space-2);
+          gap: 0.35rem;
+          padding: 0.75rem 0.875rem;
+          border-radius: var(--radius-lg);
+          background: #0E1117;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+          transition: all 140ms ease;
         }
 
-        .transcript-drawer__empty-icon {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin-bottom: var(--space-2);
-          color: var(--color-aura);
-          opacity: 0.6;
+        .transcript-bubble:hover {
+          background: #131620;
+          border-color: rgba(255, 255, 255, 0.1);
         }
 
-        .transcript-drawer__empty p {
-          font-family: var(--font-sans);
-          font-size: var(--text-sm);
-          color: var(--text-secondary);
-          margin: 0 0 var(--space-1) 0;
+        /* AURA AI Special Card */
+        .transcript-bubble--aura {
+          background: linear-gradient(180deg, rgba(212, 168, 83, 0.08) 0%, #0E1117 100%);
+          border-color: rgba(212, 168, 83, 0.3);
+          border-left: 3px solid var(--color-aura);
         }
 
-        .transcript-drawer__empty-sub {
-          font-family: var(--font-sans);
-          font-size: var(--text-xs);
-          color: var(--text-muted);
-          line-height: var(--leading-normal);
-        }
-
-        .transcript-drawer__list {
-          display: flex;
-          flex-direction: column;
-          gap: var(--space-2);
-        }
-
-        .transcript-drawer__item {
-          background: var(--bg-glass-raised);
-          border: 1px solid var(--border-glass);
-          border-radius: var(--radius-md);
-          padding: var(--space-2h) var(--space-3);
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
-          box-shadow: var(--shadow-card);
-          transition: all var(--duration-fast);
-        }
-
-        .transcript-drawer__item:hover {
-          background: var(--bg-glass-hover);
-          border-color: var(--border-glass-emphasis);
-          transform: translateY(-1px);
-        }
-
-        .transcript-drawer__meta {
+        .transcript-bubble-top {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 3px;
+          gap: 0.5rem;
         }
 
-        .transcript-drawer__speaker {
-          font-family: var(--font-sans);
-          font-size: var(--text-xs);
-          font-weight: var(--weight-semibold);
+        .transcript-speaker-row {
+          display: flex;
+          align-items: center;
+          gap: 0.375rem;
+        }
+
+        .transcript-speaker-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #6366F1;
+        }
+
+        .transcript-speaker-dot--aura {
+          background: var(--color-aura);
+          box-shadow: 0 0 6px var(--color-aura);
+        }
+
+        .transcript-speaker-name {
+          font-size: 0.75rem;
+          font-weight: 700;
+          color: var(--text-primary);
+        }
+
+        .transcript-speaker-name--aura {
           color: var(--color-aura);
         }
 
-        .transcript-drawer__time {
+        .transcript-aura-badge {
           font-family: var(--font-mono);
-          font-size: 10px;
+          font-size: 0.5625rem;
+          font-weight: 700;
+          padding: 0.1rem 0.35rem;
+          border-radius: var(--radius-sm);
+          background: rgba(212, 168, 83, 0.15);
+          border: 1px solid rgba(212, 168, 83, 0.3);
+          color: var(--color-aura);
+          letter-spacing: 0.04em;
+        }
+
+        .transcript-timestamp {
+          font-family: var(--font-mono);
+          font-size: 0.625rem;
           color: var(--text-muted);
         }
 
-        .transcript-drawer__text {
-          font-family: var(--font-sans);
-          font-size: var(--text-sm);
+        .transcript-message-text {
+          font-size: 0.8125rem;
           color: var(--text-primary);
-          line-height: var(--leading-normal);
+          line-height: 1.45;
+          margin: 0;
+        }
+
+        .transcript-empty {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 3rem 1.5rem;
+          text-align: center;
+          gap: 0.75rem;
+          color: var(--text-muted);
+          background: rgba(255, 255, 255, 0.015);
+          border: 1px dashed rgba(255, 255, 255, 0.08);
+          border-radius: var(--radius-lg);
+          margin: auto 0;
+        }
+
+        .transcript-empty-desc {
+          font-size: 0.75rem;
+          line-height: 1.45;
+          max-width: 260px;
           margin: 0;
         }
       `}</style>
 
       {/* Backdrop */}
       <div
-        className={`transcript-drawer-backdrop ${isOpen ? 'is-open' : ''}`}
+        className={`transcript-backdrop ${isOpen ? 'is-open' : ''}`}
         onClick={onClose}
         aria-hidden="true"
       />
 
       {/* Drawer Panel */}
       <section
-        className={`transcript-drawer ${isOpen ? 'is-open' : ''}`}
+        className={`transcript-panel ${isOpen ? 'is-open' : ''}`}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="transcript-drawer-title"
+        aria-labelledby="transcript-panel-title"
       >
-        <header className="transcript-drawer__header">
-          <div className="transcript-drawer__title-group">
-            <span className="transcript-drawer__icon">
+        <header className="transcript-header">
+          <div className="transcript-top-row">
+            <div className="transcript-title-group">
               <svg
                 width="14"
                 height="14"
@@ -299,75 +350,134 @@ export function TranscriptDrawer({
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                style={{ color: 'var(--color-aura)' }}
                 aria-hidden="true"
               >
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                 <polyline points="14 2 14 8 20 8" />
                 <line x1="16" y1="13" x2="8" y2="13" />
                 <line x1="16" y1="17" x2="8" y2="17" />
-                <polyline points="10 9 9 9 8 9" />
               </svg>
-            </span>
-            <h2 id="transcript-drawer-title" className="transcript-drawer__title">
-              VOICE TRANSCRIPT LOG
-            </h2>
-            <span className="transcript-drawer__count">
-              {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
-            </span>
+              <h2 id="transcript-panel-title" className="transcript-title">
+                Voice Transcript Log
+              </h2>
+              <span className="transcript-count-badge">
+                {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              className="transcript-close-btn"
+              onClick={onClose}
+              aria-label="Close transcript drawer"
+            >
+              ✕ Close
+            </button>
           </div>
-          <button
-            type="button"
-            className="transcript-drawer__close-btn"
-            onClick={onClose}
-            aria-label="Close transcript drawer"
-          >
-            ✕ Close
-          </button>
+
+          {/* Search Filter Input */}
+          <div className="transcript-search-wrap">
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ color: 'var(--text-muted)' }}
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Filter by speaker or text..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="transcript-search-input"
+              aria-label="Filter transcript entries"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                  padding: 0,
+                }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </header>
 
-        <div className="transcript-drawer__body" ref={scrollContainerRef}>
-          {entries.length === 0 ? (
-            <div className="transcript-drawer__empty">
-              <span className="transcript-drawer__empty-icon">
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M4.93 19.07a10 10 0 0 1 0-14.14" />
-                  <path d="M7.76 16.24a6 6 0 0 1 0-8.48" />
-                  <circle cx="12" cy="12" r="2" />
-                  <path d="M16.24 7.76a6 6 0 0 1 0 8.48" />
-                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-                </svg>
-              </span>
-              <p>No voice transmissions recorded yet.</p>
-              <span className="transcript-drawer__empty-sub">
-                Transcripts will populate automatically as incident responders transmit over the voice bridge.
-              </span>
+        <div className="transcript-body" ref={scrollContainerRef}>
+          {filteredEntries.length === 0 ? (
+            <div className="transcript-empty">
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ color: 'var(--color-aura)', opacity: 0.6 }}
+                aria-hidden="true"
+              >
+                <path d="M4.93 19.07a10 10 0 0 1 0-14.14" />
+                <path d="M7.76 16.24a6 6 0 0 1 0-8.48" />
+                <circle cx="12" cy="12" r="2" />
+                <path d="M16.24 7.76a6 6 0 0 1 0 8.48" />
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+              </svg>
+              <p style={{ margin: 0, fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.8125rem' }}>
+                {searchQuery ? 'No matching transmissions' : 'No transmissions recorded yet'}
+              </p>
+              <p className="transcript-empty-desc">
+                {searchQuery
+                  ? `No transmissions match "${searchQuery}". Clear query to view all.`
+                  : 'Transcripts populate automatically as responders transmit over the Agora voice channel.'}
+              </p>
             </div>
           ) : (
-            <div className="transcript-drawer__list">
-              {entries.map((entry) => (
-                <div key={entry.id} className="transcript-drawer__item">
-                  <div className="transcript-drawer__meta">
-                    <span className="transcript-drawer__speaker">
-                      {entry.speakerName}
-                    </span>
-                    <span className="transcript-drawer__time">
-                      {formatTime(entry.timestamp)}
-                    </span>
+            filteredEntries.map((entry) => {
+              const isAura = isAuraSpeaker(entry.speakerName);
+
+              return (
+                <div
+                  key={entry.id}
+                  className={`transcript-bubble ${isAura ? 'transcript-bubble--aura' : ''}`}
+                >
+                  <div className="transcript-bubble-top">
+                    <div className="transcript-speaker-row">
+                      <span
+                        className={`transcript-speaker-dot ${isAura ? 'transcript-speaker-dot--aura' : ''}`}
+                        aria-hidden="true"
+                      />
+                      <span
+                        className={`transcript-speaker-name ${isAura ? 'transcript-speaker-name--aura' : ''}`}
+                      >
+                        {entry.speakerName}
+                      </span>
+                      {isAura && <span className="transcript-aura-badge">AI COMMANDER</span>}
+                    </div>
+                    <span className="transcript-timestamp">{formatTime(entry.timestamp)}</span>
                   </div>
-                  <p className="transcript-drawer__text">{entry.text}</p>
+                  <p className="transcript-message-text">{entry.text}</p>
                 </div>
-              ))}
-            </div>
+              );
+            })
           )}
         </div>
       </section>
