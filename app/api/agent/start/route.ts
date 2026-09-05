@@ -3,7 +3,7 @@ import { RtcTokenBuilder, RtcRole } from 'agora-token';
 import { getIncidentState, buildDynamicContext, initializeLiveIncident } from '@/lib/incidentStore';
 import { PRESET_SCENARIOS } from '@/lib/scenarios';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 const AURA_SYSTEM_PROMPT = `You are AURA, an elite AI Incident Commander embedded as a real-time voice participant in a live IT incident war room via Agora RTC.
 Your persona: calm, sharp, authoritative, warm, and highly capable — like a seasoned Staff SRE who has managed hundreds of critical SEV-1 incidents.

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { addEvidenceToIncident } from '@/lib/incidentStore';
 import { EvidenceItem } from '@/lib/types';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {

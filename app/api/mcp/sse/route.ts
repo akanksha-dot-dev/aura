@@ -4,7 +4,7 @@ import { createDashboardEvent, publishDashboardEvent } from '@/lib/rtmPublisher'
 import { addEvidenceToIncident, getSpeakerDisplayName } from '@/lib/incidentStore';
 import { EvidenceItem, RTMDashboardEvent } from '@/lib/types';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 function getSpeakerName(uid?: string, channelName?: string): string {
   if (!uid) return 'Unknown';
