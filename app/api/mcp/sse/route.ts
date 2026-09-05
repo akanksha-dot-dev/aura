@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { CONFIDENCE_CAP, AGENT_UID, PERSONAS } from '@/lib/constants';
+import { CONFIDENCE_CAP, AGENT_UID, PERSONAS, PERSONA_ALIASES } from '@/lib/constants';
 import { createDashboardEvent, publishDashboardEvent } from '@/lib/rtmPublisher';
 import { addEvidenceToIncident, getSpeakerDisplayName } from '@/lib/incidentStore';
 import { EvidenceItem, RTMDashboardEvent } from '@/lib/types';
@@ -13,8 +13,13 @@ function getSpeakerName(uid?: string, channelName?: string): string {
     const resolved = getSpeakerDisplayName(channelName, uid);
     if (resolved && resolved !== uid) return resolved;
   }
-  const found = PERSONAS.find((p) => p.uid === uid);
-  return found ? found.displayName : uid;
+  const canonicalUid = PERSONA_ALIASES[uid] || uid;
+  const found = PERSONAS.find((p) => p.uid === canonicalUid || p.uid === uid);
+  if (found) return found.displayName;
+  if (uid.toLowerCase().includes('sarah')) return 'Sarah';
+  if (uid.toLowerCase().includes('marcus')) return 'Marcus';
+  if (uid.toLowerCase().includes('priya')) return 'Priya';
+  return uid;
 }
 
 const TOOL_DEFINITIONS = [

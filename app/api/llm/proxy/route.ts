@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     delete cleanBody.turn_id;
     delete cleanBody.timestamp;
     const isStream = body.stream !== false;
-    const modelToUse = body.model || 'gpt-4.1-mini';
+    const modelToUse = body.model || 'gpt-4o-mini';
 
     const upstreamPayload = {
       ...cleanBody,
@@ -489,7 +489,7 @@ function handleAutonomousIncidentResponse(
       id: completionId,
       object: 'chat.completion',
       created: Math.floor(Date.now() / 1000),
-      model: 'gpt-4.1-mini',
+      model: 'gpt-4o-mini',
       choices: [
         {
           index: 0,
@@ -508,7 +508,7 @@ function handleAutonomousIncidentResponse(
         id: completionId,
         object: 'chat.completion.chunk',
         created: Math.floor(Date.now() / 1000),
-        model: 'gpt-4.1-mini',
+        model: 'gpt-4o-mini',
         choices: [
           {
             index: 0,
@@ -523,7 +523,7 @@ function handleAutonomousIncidentResponse(
         id: completionId,
         object: 'chat.completion.chunk',
         created: Math.floor(Date.now() / 1000),
-        model: 'gpt-4.1-mini',
+        model: 'gpt-4o-mini',
         choices: [{ index: 0, delta: {}, finish_reason: 'stop' }],
       });
       controller.enqueue(encoder.encode(`data: ${doneChunk}\n\n`));

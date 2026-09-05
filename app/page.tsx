@@ -239,8 +239,6 @@ function DashboardContent() {
   const volumeLevelsRef = useRef(volumeLevels);
   volumeLevelsRef.current = volumeLevels;
 
-  const lastInterruptRef = useRef<number>(0);
-
   useEffect(() => {
     if (isMockReplay || typeof window === 'undefined') return;
 
@@ -279,25 +277,11 @@ function DashboardContent() {
             interimText += transcript;
           }
         }
-        if (interimText.trim()) {
+        const isAgentSpeaking = (volumeLevelsRef.current['aura_agent'] ?? 0) > 15;
+        if (interimText.trim() && !isAgentSpeaking) {
           const trimmed = interimText.trim();
           setLiveTranscriptText(trimmed);
           setLiveTranscriptSpeaker(name || 'Operator');
-
-          // Interruption Guard: Only trigger interruption if actual human speech is recognized while AURA is vocalizing
-          if (trimmed.length > 3) {
-            const agentSpeaking = (volumeLevelsRef.current['aura_agent'] ?? 0) > 15;
-            const agentId = activeAgentIdRef.current;
-            if (agentSpeaking && agentId && Date.now() - lastInterruptRef.current > 3000) {
-              lastInterruptRef.current = Date.now();
-              console.info('[AIVAD] Real user speech recognized while agent speaking. Halting AURA speech...');
-              fetch('/api/agent/interrupt', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ agentId }),
-              }).catch(() => {});
-            }
-          }
         }
       };
 

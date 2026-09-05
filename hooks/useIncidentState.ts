@@ -91,7 +91,7 @@ function incidentReducer(
       if (update.resolveConflict) {
         const id = String(update.resolveConflict);
         nextEvidence = nextEvidence.map((item) =>
-          item.id === id ? { ...item, status: 'resolved' as HypothesisStatus } : item
+          item.id === id ? { ...item, status: 'disproven' as HypothesisStatus } : item
         );
       }
 

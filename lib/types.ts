@@ -102,8 +102,8 @@ export function getDisplayConfidence(item: EvidenceItem): number {
     return item.confidence;
   }
   const ageMinutes = (Date.now() - item.timestamp) / 60_000;
-  // Asymptotic decay: floors at ~30% of original confidence after 20+ minutes
-  const decayFactor = Math.max(0.3, 1 - (ageMinutes / (ageMinutes + 10)));
+  // Linear decay over 10 minutes (D-026)
+  const decayFactor = Math.max(0, 1 - (ageMinutes / 10));
   return Math.round(item.confidence * decayFactor);
 }
 

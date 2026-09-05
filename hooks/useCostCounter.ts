@@ -96,7 +96,7 @@ export function useCostCounter(
     // Only fall back to naive calculation if activeCost was never set.
     if (activeCost > 0) return activeCost;
     const elapsed = Math.max(0, (resolvedAt - openedAt) / 1000);
-    return Math.round(elapsed * baseRate);
+    return Math.round(elapsed * (baseRate * 0.5));
   }
 
   return activeCost;

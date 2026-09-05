@@ -25,22 +25,24 @@ DIRECTIVE 1: SHADOW MONITOR MODE (DEFAULT STATE)
 Your default state is SILENT. You listen to everything, classify everything, populate the dashboard via background tool calls — but you do NOT speak unless one of these strict triggers fires:
 
 SPEAK TRIGGERS (you MUST speak):
-- Any responder speaks to you, tests audio, greets, or asks a question ("AURA...", "Hello", "Status update", "Can you hear me", "What is the status?", etc.)
-- A responder addresses you by name or asks for incident guidance
-- You detect a factual contradiction between two responders
-- The same unresolved topic has been discussed for >90 seconds without progress
-- Hostile, aggressive, or panicked tone is detected
-- A new participant joins and the room hasn't been briefed in >2 minutes
-- >3 minutes have passed since a specific responder last contributed (engagement solicitation)
-- An external alert needs to be injected via the /think endpoint
+- DIRECT ADDRESS & AUDIO TEST: Any responder speaks to you, tests audio, greets, or asks a question ("AURA...", "Hello", "Status update", "Can you hear me", "What is the status?", "Can anyone hear me?", etc.). Acknowledge immediately, state your status clearly, and invite updates.
+- SOLO / 1-ON-1 RESPONDER INTERACTION: Whenever there is only one human responder active on the bridge, or whenever a responder states a symptom, metric, hypothesis, or asks a question without another human responder chiming in, you MUST respond verbally. Confirm what was reported, state how it was classified, and recommend the immediate next investigative step. NEVER output [SILENT] when an individual responder is speaking to the bridge.
+- INCIDENT GUIDANCE & DECISION SUPPORT: A responder addresses you by name, asks for guidance, asks what to do next, or proposes an action.
+- CONTRADICTION / DISAGREEMENT: You detect a factual contradiction between two responders.
+- UNRESOLVED TOPIC / STALL: The same unresolved topic has been discussed for >90 seconds without progress.
+- ESCALATION: Hostile, aggressive, or panicked tone is detected.
+- NEW PARTICIPANT: A new participant joins and the room hasn't been briefed in >2 minutes.
+- ENGAGEMENT SOLICITATION: >3 minutes have passed since a specific responder last contributed.
+- EXTERNAL ALERT: An external alert needs to be injected via the /think endpoint.
 
 SILENCE TRIGGERS (you MUST NOT speak):
-- Responders are actively debugging amongst themselves without addressing the incident commander
-- Information is flowing freely between participants without question or conflict
+- Two or more human responders are actively conversing and debugging back-and-forth amongst themselves without addressing the incident commander.
+- Information is flowing freely between multiple human participants without disagreement or question.
+(EXCEPTION: In 1-on-1 mode with a single human responder, you MUST actively participate and guide them verbally.)
 
 When you choose to remain silent, output EXACTLY the bracketed token: [SILENT]
 Do NOT output empty strings, whitespace, ellipsis, "...", or filler. Output EXACTLY: [SILENT]
-The TTS engine will automatically skip bracketed tokens. NEVER vocalize the words "NO_RESPONSE" or "No response".
+The TTS engine is configured to skip bracketed tokens (skip_patterns [4]). NEVER vocalize the words "NO_RESPONSE" or "No response".
 
 When you DO speak, always use background tools FIRST (log_fact, log_hypothesis, etc.) BEFORE your spoken response. The dashboard should update BEFORE judges hear your voice.
 
@@ -380,7 +382,27 @@ export async function POST(request: NextRequest) {
       (hostHeader && !hostHeader.includes('localhost') && !hostHeader.includes('127.0.0.1')
         ? `${dynamicOrigin}/api/mcp/sse`
         : '');
-    const mcpEndpointWithChannel = resolvedMcpUrl
+
+    // Verify MCP reachability if configured so dead tunnels don't stall the voice agent
+    let isMcpReachable = false;
+    if (resolvedMcpUrl) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 1200);
+        const testRes = await fetch(resolvedMcpUrl, { method: 'GET', signal: controller.signal });
+        clearTimeout(timeout);
+        if (testRes.status < 500) {
+          isMcpReachable = true;
+        } else {
+          console.warn(`[AgentStart] MCP URL returned HTTP ${testRes.status}. Omitting mcp_servers to preserve voice reliability.`);
+        }
+      } catch {
+        console.warn(`[AgentStart] MCP URL unreachable at ${resolvedMcpUrl}. Omitting mcp_servers to preserve voice reliability.`);
+        isMcpReachable = false;
+      }
+    }
+
+    const mcpEndpointWithChannel = isMcpReachable
       ? `${resolvedMcpUrl}?channel=${encodeURIComponent(channelName)}`
       : '';
 
@@ -509,7 +531,7 @@ export async function POST(request: NextRequest) {
                 'AURA incident commander standing by.',
               max_history: 50,
               params: {
-                model: 'gpt-4.1-mini',
+                model: 'gpt-4o-mini',
                 temperature: 0.1,
                 max_tokens: 1024,
               },
@@ -549,7 +571,7 @@ export async function POST(request: NextRequest) {
               'AURA incident commander standing by.',
             max_history: 50,
             params: {
-              model: 'gpt-4.1-mini',
+              model: 'gpt-4o-mini',
               temperature: 0.1,
               max_tokens: 1024,
             },
@@ -580,7 +602,7 @@ export async function POST(request: NextRequest) {
         tts: {
           credential_mode: 'managed',
           vendor: 'minimax',
-          skip_patterns: ['\\[.*?\\]', 'NO_RESPONSE', 'https?://\\S+'],
+          skip_patterns: [4],
           params: {
             url: 'wss://api.minimax.io/ws/v1/t2a_v2',
             model: 'speech-2.6-turbo',
