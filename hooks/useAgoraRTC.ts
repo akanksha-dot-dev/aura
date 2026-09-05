@@ -105,12 +105,33 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
           }
         });
 
+        AgoraRTC.on('autoplay-failed', () => {
+          console.info('[useAgoraRTC] Audio autoplay held by browser policy. Click anywhere on page to enable audio.');
+          const unlock = () => {
+            document.removeEventListener('click', unlock);
+            document.removeEventListener('keydown', unlock);
+            if (clientRef.current) {
+              clientRef.current.remoteUsers.forEach((u) => {
+                try {
+                  u.audioTrack?.play();
+                } catch {}
+              });
+            }
+          };
+          document.addEventListener('click', unlock, { once: true });
+          document.addEventListener('keydown', unlock, { once: true });
+        });
+
         client.on('user-published', async (user, mediaType) => {
           if (mediaType === 'audio') {
             try {
               await client.subscribe(user, 'audio');
               if (!isMountedRef.current) return;
-              user.audioTrack?.play();
+              try {
+                user.audioTrack?.play();
+              } catch (playErr) {
+                console.warn('[useAgoraRTC] Audio track play waiting for user gesture:', playErr);
+              }
               setRemoteUsers((prev) => {
                 if (prev.some((u) => u.uid === user.uid)) return prev;
                 return [...prev, user];

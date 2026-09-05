@@ -198,6 +198,7 @@ function DashboardContent() {
 
   // Automatically launch Agora Conversational AI Agent into RTC channel when live bridge is active
   const activeAgentIdRef = useRef<string | null>(null);
+  const isStartingAgentRef = useRef<boolean>(false);
 
   useEffect(() => {
     if (isMockReplay || !channel) return;
@@ -205,6 +206,8 @@ function DashboardContent() {
     let isMounted = true;
 
     async function summonAgent() {
+      if (isStartingAgentRef.current || activeAgentIdRef.current) return;
+      isStartingAgentRef.current = true;
       try {
         const res = await fetch('/api/agent/start', {
           method: 'POST',
@@ -223,6 +226,8 @@ function DashboardContent() {
         }
       } catch (err) {
         console.warn('[Dashboard] AURA agent launch network notice:', err);
+      } finally {
+        isStartingAgentRef.current = false;
       }
     }
 

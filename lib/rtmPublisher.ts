@@ -76,7 +76,7 @@ export async function publishDashboardEvent(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        destination: channelName,
+        channel_name: channelName,
         payload: messagePayload,
       }),
     });

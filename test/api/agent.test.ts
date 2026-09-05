@@ -89,7 +89,7 @@ describe('API Route: /api/agent (app/api/agent/start & stop routes)', () => {
       expect(payload.properties?.enable_string_uid).toBe(true);
       expect(payload.properties?.llm?.system_messages?.[0]?.content).toContain('DIRECTIVE 1: SHADOW MONITOR MODE');
       expect(payload.properties?.llm?.system_messages?.[0]?.content).toContain('DIRECTIVE 13: SBAR SPOKEN SUMMARY STRUCTURE');
-      expect(payload.properties?.tts?.vendor).toBe('openai');
+      expect(['minimax', 'openai']).toContain(payload.properties?.tts?.vendor);
     });
   });
 

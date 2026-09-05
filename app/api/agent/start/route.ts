@@ -340,6 +340,8 @@ export async function POST(request: NextRequest) {
       expireTimeInSeconds
     );
 
+    const sessionName = `aura-${channelName.replace(/[^a-zA-Z0-9-]/g, '-')}-${Date.now().toString(36)}`;
+
     const hostHeader =
       request.headers.get('x-forwarded-host') ||
       request.headers.get('host') ||
@@ -350,8 +352,17 @@ export async function POST(request: NextRequest) {
       ? `${protoHeader}://${hostHeader}`
       : 'https://aura.akanksha.dev';
 
+    const resolvedMcpUrl =
+      process.env.MCP_URL ||
+      (hostHeader && !hostHeader.includes('localhost') && !hostHeader.includes('127.0.0.1')
+        ? `${dynamicOrigin}/api/mcp/sse`
+        : '');
+    const mcpEndpointWithChannel = resolvedMcpUrl
+      ? `${resolvedMcpUrl}?channel=${encodeURIComponent(channelName)}`
+      : '';
+
     const payload = {
-      name: 'aura-incident-commander-v2',
+      name: sessionName,
       properties: {
         channel: channelName,
         token: agentToken,
@@ -377,18 +388,7 @@ export async function POST(request: NextRequest) {
           params: {
             model: 'nova-3',
             url: 'wss://api.deepgram.com/v1/listen',
-            keywords: [
-              'AURA',
-              'rollback',
-              'connection pool',
-              'p99 latency',
-              'SEV-1',
-              'readback',
-              'confirm',
-              'Kubernetes',
-              'Datadog',
-              'Postgres',
-            ],
+            keyterm: 'AURA',
           },
         },
         llm: (() => {
@@ -409,12 +409,13 @@ export async function POST(request: NextRequest) {
             openAIKey.startsWith('sk-') &&
             !openAIKey.includes('your_openai_api_key');
 
-          // If running locally with a valid OpenAI key, point Agora Cloud directly to OpenAI
-          if (isLocalhost && hasValidKey) {
+          // If running with a valid OpenAI key and custom proxy, use custom proxy
+          if (hasValidKey && rawProxyUrl) {
             return {
+              vendor: 'custom',
               style: 'openai',
-              url: 'https://api.openai.com/v1/chat/completions',
-              api_key: openAIKey,
+              url: rawProxyUrl,
+              api_key: process.env.INTERNAL_PROXY_SECRET || '',
               system_messages: [
                 {
                   role: 'system',
@@ -424,55 +425,37 @@ export async function POST(request: NextRequest) {
               greeting_message:
                 'AURA online. Incident bridge monitoring active.',
               failure_message:
-                'AURA experiencing connectivity issues. Standing by.',
+                'AURA incident commander standing by.',
               max_history: 50,
               params: {
-                model: 'gpt-4o-mini',
+                model: 'gpt-4.1-mini',
                 temperature: 0.1,
                 max_tokens: 1024,
               },
+              ...(mcpEndpointWithChannel
+                ? {
+                    mcp_servers: [
+                      {
+                        name: 'aura-incident-mcp',
+                        endpoint: mcpEndpointWithChannel,
+                        transport: 'streamable_http',
+                        allowed_tools: ['*'],
+                        timeout_ms: 4000,
+                      },
+                    ],
+                  }
+                : {}),
             };
           }
 
-          // If running locally without an OpenAI key, use Agora Managed Mode ($0 Agora trial tier):
+          // Default: Agora Managed Mode ($0 Agora trial tier):
           // Agora Cloud manages authentication to OpenAI directly on Agora's infrastructure.
-          // Requires ZERO external API keys and ZERO localhost network tunnels!
-          if (isLocalhost && !hasValidKey) {
-            return {
-              credential_mode: 'managed',
-              vendor: 'openai',
-              style: 'openai',
-              url: 'https://api.openai.com/v1/chat/completions',
-              system_messages: [
-                {
-                  role: 'system',
-                  content: AURA_SYSTEM_PROMPT,
-                },
-              ],
-              greeting_message:
-                'AURA online. Incident bridge monitoring active.',
-              failure_message:
-                'AURA experiencing connectivity issues. Standing by.',
-              max_history: 50,
-              params: {
-                model: 'gpt-4o-mini',
-                temperature: 0.1,
-                max_tokens: 1024,
-              },
-            };
-          }
-
-          const resolvedMcpUrl =
-            process.env.MCP_URL ||
-            (hostHeader && !hostHeader.includes('localhost') && !hostHeader.includes('127.0.0.1')
-              ? `${dynamicOrigin}/api/mcp/sse`
-              : '');
-
+          // Requires ZERO external API keys!
           return {
-            vendor: 'custom',
+            credential_mode: 'managed',
+            vendor: 'openai',
             style: 'openai',
-            url: rawProxyUrl || `${dynamicOrigin}/api/llm/proxy`,
-            api_key: process.env.INTERNAL_PROXY_SECRET || '',
+            url: 'https://api.openai.com/v1/chat/completions',
             system_messages: [
               {
                 role: 'system',
@@ -482,19 +465,19 @@ export async function POST(request: NextRequest) {
             greeting_message:
               'AURA online. Incident bridge monitoring active.',
             failure_message:
-              'AURA experiencing connectivity issues. Standing by.',
+              'AURA incident commander standing by.',
             max_history: 50,
             params: {
               model: 'gpt-4.1-mini',
               temperature: 0.1,
               max_tokens: 1024,
             },
-            ...(!isLocalhost && resolvedMcpUrl
+            ...(mcpEndpointWithChannel
               ? {
                   mcp_servers: [
                     {
                       name: 'aura-incident-mcp',
-                      endpoint: resolvedMcpUrl,
+                      endpoint: mcpEndpointWithChannel,
                       transport: 'streamable_http',
                       allowed_tools: ['*'],
                       timeout_ms: 4000,
@@ -506,12 +489,15 @@ export async function POST(request: NextRequest) {
         })(),
         tts: {
           credential_mode: 'managed',
-          vendor: 'openai',
-          skip_patterns: [4],
+          vendor: 'minimax',
+          skip_patterns: [1, 2, 3, 4, 5],
           params: {
-            model: 'tts-1',
-            voice: 'alloy',
-            url: 'https://api.openai.com/v1/audio/speech',
+            url: 'wss://api.minimax.io/ws/v1/t2a_v2',
+            model: 'speech-2.6-turbo',
+            voice_setting: {
+              voice_id: 'English_captivating_female1',
+              speed: 0.95,
+            },
           },
         },
         turn_detection: {
