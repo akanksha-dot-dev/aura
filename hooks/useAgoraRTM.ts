@@ -85,6 +85,8 @@ const connectionStateListeners = new Set<(connected: boolean) => void>();
 const errorListeners = new Set<(err: string | null) => void>();
 let monotonicClientSeq = 800;
 const processedEpistemicKeys = new Set<string>();
+let activeAgentTurnId: string | null = null;
+let activeUserTurnId: string | null = null;
 
 function dispatchTranscriptToSubscribers(entry: RTMTranscriptEntry) {
   activeTranscriptSubscribers.forEach((handler) => {
@@ -328,7 +330,8 @@ export function useAgoraRTM({
             const publisher = String(eventData?.publisher || '').trim();
 
             const resolveSpeakerInfo = (
-              item: Record<string, unknown>
+              item: Record<string, unknown>,
+              rawText?: string
             ): { speakerUid: string; speakerName: string; isAgent: boolean } => {
               const role = String(
                 item?.role ||
@@ -336,6 +339,7 @@ export function useAgoraRTM({
                 item?.speaker_type ||
                 item?.type ||
                 item?.speaker ||
+                parsed?.type ||
                 ''
               ).toLowerCase().trim();
 
@@ -346,56 +350,88 @@ export function useAgoraRTM({
                 item?.agent_user_id ??
                 item?.agent_id ??
                 item?.speaker_uid ??
+                parsed?.uid ??
                 ''
               ).trim();
 
+              const streamId = item?.stream_id ?? item?.streamId ?? parsed?.stream_id ?? parsed?.streamId;
               const localUid = activeSession?.uid || uid;
               const localName = activeSession?.userName || userName;
 
-              // 1. Explicit role check: Agora ConvAI tags user speech as 'user'
+              // Text content signature check (phrases that are exclusively uttered by AURA)
+              const textLower = (rawText || '').toLowerCase().trim();
+              const isAgentByText =
+                textLower.includes('aura online') ||
+                textLower.includes('incident bridge monitoring active') ||
+                textLower.includes("i'm focused on the active incident") ||
+                textLower.includes('what is the next data point') ||
+                textLower.includes("what's the next data point") ||
+                textLower.includes('logging hypothesis') ||
+                textLower.includes('logging fact') ||
+                textLower.includes('logging decision') ||
+                textLower.includes('the hypothesis has been recorded') ||
+                textLower.includes('situation: sev-') ||
+                textLower.includes('flagging contradiction') ||
+                textLower.includes("here's what we know for certain") ||
+                textLower.includes('ai incident commander') ||
+                textLower.includes('standing by');
+
+              // 1. Check if this is the ConvAI agent:
+              // - In Agora ConvAI, stream_id: 0 is ALWAYS the agent bot
+              // - uid: 'aura_agent', '0', 0, or includes 'agent' / 'aura'
+              // - role: 'assistant', 'agent', 'bot', 'ai'
+              const isAgentByStream = streamId === 0 || streamId === '0';
+              const isAgentByRole =
+                role === 'assistant' ||
+                role === 'agent' ||
+                role === 'bot' ||
+                role === 'ai' ||
+                role.includes('assistant') ||
+                role.includes('agent');
+              const isAgentByUid =
+                rawUid === 'aura_agent' ||
+                rawUid === '0' ||
+                rawUid.toLowerCase().includes('agent') ||
+                rawUid.toLowerCase().includes('aura');
+
+              if (isAgentByStream || isAgentByRole || isAgentByUid || isAgentByText) {
+                return {
+                  speakerUid: 'aura_agent',
+                  speakerName: 'AURA',
+                  isAgent: true,
+                };
+              }
+
+              // 2. Explicit User checks
               if (
                 role === 'user' ||
                 role === 'human' ||
                 role === 'caller' ||
                 role === 'client' ||
-                role === 'operator'
+                role === 'operator' ||
+                (typeof streamId === 'number' && streamId > 0) ||
+                (typeof streamId === 'string' && streamId !== '0' && streamId !== '')
               ) {
-                const finalUid = (rawUid && rawUid !== 'aura_agent' && rawUid !== '0')
-                  ? rawUid
-                  : (localUid || 'operator');
+                const finalUid = (rawUid && rawUid !== '0' && rawUid !== 'aura_agent') ? rawUid : (localUid || 'operator');
+                if (finalUid === localUid || finalUid === uid) {
+                  return {
+                    speakerUid: localUid,
+                    speakerName: localName || 'Responder',
+                    isAgent: false,
+                  };
+                }
+                const persona = PERSONAS.find((p) => p.uid === finalUid);
+                if (persona) {
+                  return { speakerUid: finalUid, speakerName: persona.displayName, isAgent: false };
+                }
                 return {
                   speakerUid: finalUid,
-                  speakerName: localName || 'Kai',
+                  speakerName: localName || finalUid || 'Responder',
                   isAgent: false,
                 };
               }
 
-              if (
-                role === 'assistant' ||
-                role === 'agent' ||
-                role === 'bot' ||
-                role === 'ai'
-              ) {
-                return {
-                  speakerUid: 'aura_agent',
-                  speakerName: 'AURA',
-                  isAgent: true,
-                };
-              }
-
-              // 2. UID checks when role is omitted
-              if (
-                rawUid === 'aura_agent' ||
-                rawUid.toLowerCase().includes('agent') ||
-                rawUid.toLowerCase().includes('aura')
-              ) {
-                return {
-                  speakerUid: 'aura_agent',
-                  speakerName: 'AURA',
-                  isAgent: true,
-                };
-              }
-
+              // 3. User UID matching
               if (rawUid && (rawUid === localUid || rawUid === uid)) {
                 return {
                   speakerUid: localUid,
@@ -404,7 +440,7 @@ export function useAgoraRTM({
                 };
               }
 
-              if (rawUid && rawUid !== '0' && rawUid !== 'undefined' && rawUid !== 'null') {
+              if (rawUid && rawUid !== '0' && rawUid !== 'aura_agent' && rawUid !== 'undefined' && rawUid !== 'null') {
                 const persona = PERSONAS.find((p) => p.uid === rawUid);
                 if (persona) {
                   return { speakerUid: rawUid, speakerName: persona.displayName, isAgent: false };
@@ -412,10 +448,9 @@ export function useAgoraRTM({
                 return { speakerUid: rawUid, speakerName: rawUid, isAgent: false };
               }
 
-              // 3. Fallback: Default to local operator (NOT agent)
               return {
                 speakerUid: localUid || 'operator',
-                speakerName: localName || 'Kai',
+                speakerName: localName || 'Responder',
                 isAgent: false,
               };
             };
@@ -558,19 +593,45 @@ export function useAgoraRTM({
                   item?.content ||
                   item?.words?.map((w: { word?: string; text?: string }) => w?.word || w?.text || '').join(' ');
                 if (typeof text === 'string' && text.trim() && text.trim() !== '[SILENT]') {
-                  const speaker = resolveSpeakerInfo(item as Record<string, unknown>);
+                  const speaker = resolveSpeakerInfo(item as Record<string, unknown>, text);
                   if (speaker.isAgent) {
                     extractAndDispatchEpistemicEvents(text);
                   }
                   const cleanText = text.replace(/\[(?:LOG_[A-Z]+|SILENT)[^\]]*\]/gi, '').trim();
                   if (cleanText) {
-                    const turnId = item?.turn_id ?? item?.turnID ?? item?.message_id ?? item?.msg_id ?? Date.now();
+                    const isFinal = item?.status === 1 || item?.status === 'end' || item?.is_final === true;
+                    const explicitTurn =
+                      item?.turn_id ??
+                      item?.turnID ??
+                      item?.turn ??
+                      item?.message_id ??
+                      item?.msg_id ??
+                      item?.id ??
+                      parsed?.turn_id ??
+                      parsed?.turnID ??
+                      parsed?.message_id;
+
+                    let turnKey: string;
+                    if (explicitTurn !== undefined && explicitTurn !== null) {
+                      turnKey = `tr-${explicitTurn}-${speaker.speakerUid}`;
+                    } else if (speaker.isAgent) {
+                      activeUserTurnId = null;
+                      if (!activeAgentTurnId) activeAgentTurnId = `agent-${Date.now()}`;
+                      turnKey = `tr-${activeAgentTurnId}`;
+                      if (isFinal) activeAgentTurnId = null;
+                    } else {
+                      activeAgentTurnId = null;
+                      if (!activeUserTurnId) activeUserTurnId = `user-${Date.now()}`;
+                      turnKey = `tr-${activeUserTurnId}`;
+                      if (isFinal) activeUserTurnId = null;
+                    }
+
                     dispatchTranscriptToSubscribers({
-                      id: `tr-${turnId}-${speaker.speakerUid}`,
+                      id: turnKey,
                       speakerName: speaker.speakerName,
                       timestamp: Number(item?._time || item?.timestamp || item?.ts || Date.now()),
                       text: cleanText,
-                      isFinal: item?.status === 1 || item?.status === 'end' || item?.is_final === true,
+                      isFinal,
                     });
                   }
                 }
@@ -587,19 +648,42 @@ export function useAgoraRTM({
               parsed?.data?.transcript;
 
             if (typeof singleText === 'string' && singleText.trim() && singleText.trim() !== '[SILENT]') {
-              const speaker = resolveSpeakerInfo(parsed as Record<string, unknown>);
+              const speaker = resolveSpeakerInfo(parsed as Record<string, unknown>, singleText);
               if (speaker.isAgent) {
                 extractAndDispatchEpistemicEvents(singleText);
               }
               const cleanText = singleText.replace(/\[(?:LOG_[A-Z]+|SILENT)[^\]]*\]/gi, '').trim();
               if (cleanText) {
-                const turnId = parsed?.turn_id ?? parsed?.turnID ?? parsed?.message_id ?? parsed?.msg_id ?? Date.now();
+                const isFinal = parsed?.status === 1 || parsed?.is_final === true || parsed?.status === 'end';
+                const explicitTurn =
+                  parsed?.turn_id ??
+                  parsed?.turnID ??
+                  parsed?.turn ??
+                  parsed?.message_id ??
+                  parsed?.msg_id ??
+                  parsed?.id;
+
+                let turnKey: string;
+                if (explicitTurn !== undefined && explicitTurn !== null) {
+                  turnKey = `tr-${explicitTurn}-${speaker.speakerUid}`;
+                } else if (speaker.isAgent) {
+                  activeUserTurnId = null;
+                  if (!activeAgentTurnId) activeAgentTurnId = `agent-${Date.now()}`;
+                  turnKey = `tr-${activeAgentTurnId}`;
+                  if (isFinal) activeAgentTurnId = null;
+                } else {
+                  activeAgentTurnId = null;
+                  if (!activeUserTurnId) activeUserTurnId = `user-${Date.now()}`;
+                  turnKey = `tr-${activeUserTurnId}`;
+                  if (isFinal) activeUserTurnId = null;
+                }
+
                 dispatchTranscriptToSubscribers({
-                  id: `tr-${turnId}-${speaker.speakerUid}`,
+                  id: turnKey,
                   speakerName: speaker.speakerName,
                   timestamp: Number(parsed?._time || parsed?.timestamp || parsed?.ts || Date.now()),
                   text: cleanText,
-                  isFinal: parsed?.status === 1 || parsed?.is_final === true || parsed?.status === 'end',
+                  isFinal,
                 });
               }
               return;

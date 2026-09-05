@@ -167,12 +167,39 @@ function DashboardContent() {
     userName: name,
     onEvent: processEvent,
     onTranscript: (entry) => {
-      const isAgent = entry.speakerName === 'AURA' || entry.id.includes('aura_agent');
+      const textLower = (entry.text || '').toLowerCase().trim();
+      const isAgentText =
+        textLower.includes('aura online') ||
+        textLower.includes('incident bridge monitoring active') ||
+        textLower.includes("i'm focused on the active incident") ||
+        textLower.includes('what is the next data point') ||
+        textLower.includes("what's the next data point") ||
+        textLower.includes('logging hypothesis') ||
+        textLower.includes('logging fact') ||
+        textLower.includes('logging decision') ||
+        textLower.includes('the hypothesis has been recorded') ||
+        textLower.includes('situation: sev-') ||
+        textLower.includes('flagging contradiction') ||
+        textLower.includes("here's what we know for certain") ||
+        textLower.includes('ai incident commander') ||
+        textLower.includes('standing by');
+
+      const isAgent =
+        entry.speakerName === 'AURA' ||
+        entry.speakerName?.toLowerCase().includes('aura') ||
+        entry.id.includes('aura_agent') ||
+        entry.id.includes('agent-') ||
+        isAgentText;
+
       const isSelf =
-        entry.speakerName === uid ||
-        entry.speakerName === name ||
-        (!isAgent && (entry.speakerName === 'Operator' || entry.speakerName === 'Kai'));
-      const speakerDisplay = isAgent ? 'AURA' : isSelf ? (name || 'Kai') : entry.speakerName;
+        !isAgent &&
+        (entry.speakerName === uid ||
+          entry.speakerName === name ||
+          entry.speakerName === 'Operator' ||
+          entry.speakerName === 'Kai' ||
+          entry.speakerName === 'Responder');
+
+      const speakerDisplay = isAgent ? 'AURA' : isSelf ? (name || 'Responder') : (entry.speakerName || 'Responder');
 
       setLiveTranscriptText(entry.text);
       setLiveTranscriptSpeaker(speakerDisplay);
@@ -208,39 +235,7 @@ function DashboardContent() {
           return updated;
         }
 
-        // Check if there is a recent entry from the exact same speaker within 4 seconds that this extends
-        const lastIndex = prev.length - 1;
-        if (lastIndex >= 0) {
-          const lastEntry = prev[lastIndex];
-          const isSameSpeaker = lastEntry.speakerName === speakerDisplay;
-          const isRecent = Math.abs(entry.timestamp - lastEntry.timestamp) < 4000;
-
-          if (isSameSpeaker && isRecent) {
-            let mergedText = entry.text;
-            const cleanLast = lastEntry.text.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '');
-            const cleanNew = entry.text.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '');
-
-            if (
-              cleanNew.startsWith(cleanLast) ||
-              cleanLast.startsWith(cleanNew) ||
-              cleanNew.includes(cleanLast) ||
-              cleanLast.includes(cleanNew)
-            ) {
-              mergedText = entry.text.length >= lastEntry.text.length ? entry.text : lastEntry.text;
-            } else {
-              mergedText = `${lastEntry.text.trim()} ${entry.text.trim()}`;
-            }
-
-            const updated = [...prev];
-            updated[lastIndex] = {
-              ...lastEntry,
-              text: mergedText,
-              timestamp: entry.timestamp || lastEntry.timestamp,
-            };
-            return updated;
-          }
-        }
-
+        // Each distinct turn gets its own clean, isolated transcript bubble
         return [
           ...prev,
           {
