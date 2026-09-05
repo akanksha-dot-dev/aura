@@ -211,8 +211,24 @@ function DashboardContent() {
           }
         }
         if (interimText.trim()) {
-          setLiveTranscriptText(interimText.trim());
+          const trimmed = interimText.trim();
+          setLiveTranscriptText(trimmed);
           setLiveTranscriptSpeaker(name || 'Operator');
+
+          // Interruption Guard: Only trigger interruption if actual human speech is recognized while AURA is vocalizing
+          if (trimmed.length > 3) {
+            const agentSpeaking = (volumeLevels['aura_agent'] ?? 0) > 15;
+            const agentId = activeAgentIdRef.current;
+            if (agentSpeaking && agentId && Date.now() - lastInterruptRef.current > 3000) {
+              lastInterruptRef.current = Date.now();
+              console.info('[AIVAD] Real user speech recognized while agent speaking. Halting AURA speech...');
+              fetch('/api/agent/interrupt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ agentId }),
+              }).catch(() => {});
+            }
+          }
         }
       };
 
@@ -242,25 +258,9 @@ function DashboardContent() {
         recognition?.stop();
       } catch {}
     };
-  }, [isMockReplay, isJoined, name]);
+  }, [isMockReplay, isJoined, name, volumeLevels]);
 
-  // 3c. Active Voice Interruption: Halt AURA immediately when responder speaks
   const lastInterruptRef = useRef<number>(0);
-  useEffect(() => {
-    const userSpeaking = (volumeLevels[uid] ?? 0) > 18;
-    const agentSpeaking = (volumeLevels['aura_agent'] ?? 0) > 15;
-    const agentId = activeAgentIdRef.current;
-
-    if (userSpeaking && agentSpeaking && agentId && Date.now() - lastInterruptRef.current > 1500) {
-      lastInterruptRef.current = Date.now();
-      console.info('[AIVAD] User interruption detected! Halting AURA speech...');
-      fetch('/api/agent/interrupt', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ agentId }),
-      }).catch(() => {});
-    }
-  }, [volumeLevels, uid]);
 
   // 4. Mock Replay Stream (when ?__AURA_REPLAY_MOCK_STREAM is present)
   const [mockTranscript, setMockTranscript] = useState<string | null>(null);

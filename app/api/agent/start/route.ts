@@ -397,7 +397,7 @@ export async function POST(request: NextRequest) {
               mode: 'vad',
               vad_config: {
                 interrupt_duration_ms: 160,
-                speaking_interrupt_duration_ms: 160,
+                speaking_interrupt_duration_ms: 320,
                 prefix_padding_ms: 800,
               },
             },

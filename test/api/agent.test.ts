@@ -92,7 +92,7 @@ describe('API Route: /api/agent (app/api/agent/start, stop & interrupt routes)',
       expect(payload.properties?.enable_string_uid).toBe(true);
       expect(payload.properties?.interruption?.enable).toBe(true);
       expect(payload.properties?.interruption?.mode).toBe('start_of_speech');
-      expect(payload.properties?.turn_detection?.config?.start_of_speech?.vad_config?.speaking_interrupt_duration_ms).toBe(160);
+      expect(payload.properties?.turn_detection?.config?.start_of_speech?.vad_config?.speaking_interrupt_duration_ms).toBe(320);
       expect(payload.properties?.llm?.system_messages?.[0]?.content).toContain('DIRECTIVE 1: SHADOW MONITOR MODE');
       expect(payload.properties?.llm?.system_messages?.[0]?.content).toContain('DIRECTIVE 13: SBAR SPOKEN SUMMARY STRUCTURE');
       expect(payload.properties?.llm?.system_messages?.[0]?.content).toContain('CURRENT INCIDENT SITUATION');
