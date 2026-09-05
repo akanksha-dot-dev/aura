@@ -393,10 +393,14 @@ export async function POST(request: NextRequest) {
       ? `${protoHeader}://${hostHeader}`
       : 'https://aura.akanksha.dev';
 
-    const resolvedMcpUrl =
-      process.env.MCP_URL ||
-      (hostHeader && !hostHeader.includes('localhost') && !hostHeader.includes('127.0.0.1')
-        ? `${dynamicOrigin}/api/mcp/sse`
+    const isLocalhostRequest =
+      !hostHeader || hostHeader.includes('localhost') || hostHeader.includes('127.0.0.1');
+
+    // In production deployments, always prefer the live public origin so stale tunnels from .env never break production!
+    const resolvedMcpUrl = !isLocalhostRequest
+      ? `${dynamicOrigin}/api/mcp/sse`
+      : (process.env.MCP_URL && !process.env.MCP_URL.includes('your_mcp_url')
+        ? process.env.MCP_URL
         : '');
 
     // Verify MCP reachability if configured so dead tunnels don't stall the voice agent
@@ -511,11 +515,9 @@ export async function POST(request: NextRequest) {
           },
         },
         llm: (() => {
-          const rawProxyUrl =
-            process.env.PROXY_URL ||
-            (hostHeader && !hostHeader.includes('localhost') && !hostHeader.includes('127.0.0.1')
-              ? `${dynamicOrigin}/api/llm/proxy`
-              : '');
+          const rawProxyUrl = !isLocalhostRequest
+            ? `${dynamicOrigin}/api/llm/proxy`
+            : (process.env.PROXY_URL || '');
 
           const isLocalhost =
             !rawProxyUrl ||
