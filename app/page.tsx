@@ -143,12 +143,60 @@ function DashboardContent() {
       setLiveTranscriptText(entry.text);
       setLiveTranscriptSpeaker(entry.speakerName);
       setTranscriptHistory((prev) => {
-        const exists = prev.some(
-          (p) =>
-            p.id === entry.id ||
-            (p.text === entry.text && Math.abs(p.timestamp - entry.timestamp) < 3000)
-        );
-        if (exists) return prev;
+        const turnKey = entry.id;
+        const existingIndex = prev.findIndex((p) => p.id === turnKey);
+
+        if (existingIndex >= 0) {
+          const oldEntry = prev[existingIndex];
+          let mergedText = entry.text;
+
+          if (entry.text.includes(oldEntry.text)) {
+            mergedText = entry.text;
+          } else if (oldEntry.text.includes(entry.text)) {
+            mergedText = oldEntry.text;
+          } else {
+            mergedText = `${oldEntry.text.trim()} ${entry.text.trim()}`;
+          }
+
+          const updated = [...prev];
+          updated[existingIndex] = {
+            ...oldEntry,
+            text: mergedText,
+            speakerName: entry.speakerName && entry.speakerName !== 'Responder' ? entry.speakerName : oldEntry.speakerName,
+            timestamp: entry.timestamp || oldEntry.timestamp,
+          };
+          return updated;
+        }
+
+        // Check if there is a recent entry from the same speaker within 5 seconds that this extends
+        const lastIndex = prev.length - 1;
+        if (lastIndex >= 0) {
+          const lastEntry = prev[lastIndex];
+          const isSameSpeaker =
+            lastEntry.speakerName === entry.speakerName ||
+            (lastEntry.speakerName === 'AURA' && entry.speakerName === 'AURA');
+          const isRecent = Math.abs(entry.timestamp - lastEntry.timestamp) < 5000;
+
+          if (isSameSpeaker && isRecent) {
+            let mergedText = entry.text;
+            if (entry.text.includes(lastEntry.text)) {
+              mergedText = entry.text;
+            } else if (lastEntry.text.includes(entry.text)) {
+              mergedText = lastEntry.text;
+            } else {
+              mergedText = `${lastEntry.text.trim()} ${entry.text.trim()}`;
+            }
+
+            const updated = [...prev];
+            updated[lastIndex] = {
+              ...lastEntry,
+              text: mergedText,
+              timestamp: entry.timestamp || lastEntry.timestamp,
+            };
+            return updated;
+          }
+        }
+
         return [
           ...prev,
           {
@@ -193,18 +241,40 @@ function DashboardContent() {
           const transcript = res[0]?.transcript || '';
           if (res.isFinal) {
             const trimmed = transcript.trim();
-            if (trimmed) {
-              setTranscriptHistory((prev) => [
-                ...prev,
-                {
-                  id: `local-speech-${Date.now()}-${prev.length}`,
-                  speakerName: name || 'Operator',
-                  timestamp: Date.now(),
-                  text: trimmed,
-                },
-              ]);
+            const isAgentSpeaking = (volumeLevels['aura_agent'] ?? 0) > 15;
+            if (trimmed && !isAgentSpeaking) {
+              setTranscriptHistory((prev) => {
+                const lastIndex = prev.length - 1;
+                if (lastIndex >= 0) {
+                  const lastEntry = prev[lastIndex];
+                  const isSameUser = lastEntry.speakerName === (name || 'Commander Sarah');
+                  const isRecent = Date.now() - lastEntry.timestamp < 3500;
+                  if (isSameUser && isRecent) {
+                    let merged = trimmed;
+                    if (trimmed.includes(lastEntry.text)) {
+                      merged = trimmed;
+                    } else if (lastEntry.text.includes(trimmed)) {
+                      merged = lastEntry.text;
+                    } else {
+                      merged = `${lastEntry.text.trim()} ${trimmed}`;
+                    }
+                    const updated = [...prev];
+                    updated[lastIndex] = { ...lastEntry, text: merged, timestamp: Date.now() };
+                    return updated;
+                  }
+                }
+                return [
+                  ...prev,
+                  {
+                    id: `local-speech-${Date.now()}-${prev.length}`,
+                    speakerName: name || 'Commander Sarah',
+                    timestamp: Date.now(),
+                    text: trimmed,
+                  },
+                ];
+              });
               setLiveTranscriptText(trimmed);
-              setLiveTranscriptSpeaker(name || 'Operator');
+              setLiveTranscriptSpeaker(name || 'Commander Sarah');
             }
           } else {
             interimText += transcript;
@@ -213,7 +283,7 @@ function DashboardContent() {
         if (interimText.trim()) {
           const trimmed = interimText.trim();
           setLiveTranscriptText(trimmed);
-          setLiveTranscriptSpeaker(name || 'Operator');
+          setLiveTranscriptSpeaker(name || 'Commander Sarah');
 
           // Interruption Guard: Only trigger interruption if actual human speech is recognized while AURA is vocalizing
           if (trimmed.length > 3) {

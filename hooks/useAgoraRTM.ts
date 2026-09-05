@@ -316,6 +316,50 @@ export function useAgoraRTM({
             }
 
             // 2. Agora ConvAI Transcript Handling
+            const resolveSpeakerInfo = (
+              item: Record<string, unknown>,
+              fallbackUid?: string
+            ): { speakerUid: string; speakerName: string } => {
+              const role = String(
+                item?.role ||
+                item?.user_type ||
+                item?.speaker_type ||
+                item?.type ||
+                ''
+              ).toLowerCase();
+
+              const rawUid = String(
+                item?.uid ??
+                item?.user_id ??
+                item?.userId ??
+                item?.agent_user_id ??
+                item?.agent_id ??
+                item?.speaker_uid ??
+                item?.speaker ??
+                item?.stream_id ??
+                fallbackUid ??
+                ''
+              );
+
+              const isAgent =
+                role === 'assistant' ||
+                role === 'agent' ||
+                rawUid === 'aura_agent' ||
+                rawUid === '0' ||
+                rawUid.toLowerCase().includes('agent') ||
+                rawUid.toLowerCase().includes('aura');
+
+              if (isAgent) {
+                return { speakerUid: 'aura_agent', speakerName: 'AURA' };
+              }
+
+              if (rawUid && rawUid !== 'undefined' && rawUid !== 'null' && rawUid !== 'Responder' && rawUid !== 'user') {
+                return { speakerUid: rawUid, speakerName: rawUid };
+              }
+
+              return { speakerUid: 'operator_1', speakerName: 'Commander Sarah' };
+            };
+
             // Case A: Array of transcription items
             const transcriptionList = Array.isArray(parsed?.transcription)
               ? parsed.transcription
@@ -328,20 +372,19 @@ export function useAgoraRTM({
             if (transcriptionList) {
               for (const item of transcriptionList) {
                 const text =
-                  item.text ||
-                  item.words?.map((w: { word?: string; text?: string }) => w.word || w.text).join(' ');
+                  item?.text ||
+                  item?.transcript ||
+                  item?.content ||
+                  item?.words?.map((w: { word?: string; text?: string }) => w?.word || w?.text || '').join(' ');
                 if (typeof text === 'string' && text.trim()) {
-                  const speakerUid = String(item.uid ?? 'user');
-                  const speakerName =
-                    speakerUid === 'aura_agent' || speakerUid === '0'
-                      ? 'AURA'
-                      : speakerUid;
+                  const speaker = resolveSpeakerInfo(item as Record<string, unknown>);
+                  const turnId = item?.turn_id ?? item?.turnID ?? item?.message_id ?? item?.msg_id ?? Date.now();
                   dispatchTranscriptToSubscribers({
-                    id: `tr-${item.turn_id ?? Date.now()}-${speakerUid}`,
-                    speakerName,
-                    timestamp: Number(item._time || item.timestamp || Date.now()),
+                    id: `tr-${turnId}-${speaker.speakerUid}`,
+                    speakerName: speaker.speakerName,
+                    timestamp: Number(item?._time || item?.timestamp || item?.ts || Date.now()),
                     text: text.trim(),
-                    isFinal: item.status === 1 || item.status === 'end',
+                    isFinal: item?.status === 1 || item?.status === 'end' || item?.is_final === true,
                   });
                 }
               }
@@ -353,22 +396,18 @@ export function useAgoraRTM({
               parsed?.text ||
               parsed?.transcript ||
               parsed?.content ||
-              parsed?.data?.text;
+              parsed?.data?.text ||
+              parsed?.data?.transcript;
 
             if (typeof singleText === 'string' && singleText.trim()) {
-              const speakerUid = String(
-                parsed.uid || parsed.speaker_uid || parsed.speaker || 'Responder'
-              );
-              const speakerName =
-                speakerUid === 'aura_agent' || speakerUid === '0'
-                  ? 'AURA'
-                  : speakerUid;
+              const speaker = resolveSpeakerInfo(parsed as Record<string, unknown>);
+              const turnId = parsed?.turn_id ?? parsed?.turnID ?? parsed?.message_id ?? parsed?.msg_id ?? Date.now();
               dispatchTranscriptToSubscribers({
-                id: `tr-${parsed.turn_id ?? Date.now()}-${speakerUid}`,
-                speakerName,
-                timestamp: Number(parsed._time || parsed.timestamp || Date.now()),
+                id: `tr-${turnId}-${speaker.speakerUid}`,
+                speakerName: speaker.speakerName,
+                timestamp: Number(parsed?._time || parsed?.timestamp || parsed?.ts || Date.now()),
                 text: singleText.trim(),
-                isFinal: parsed.status === 1 || parsed.is_final === true,
+                isFinal: parsed?.status === 1 || parsed?.is_final === true || parsed?.status === 'end',
               });
               return;
             }
