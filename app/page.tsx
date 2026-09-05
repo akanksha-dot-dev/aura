@@ -196,6 +196,52 @@ function DashboardContent() {
     }
   }, [isMockReplay, isJoined, channel, uid, joinChannel]);
 
+  // Automatically launch Agora Conversational AI Agent into RTC channel when live bridge is active
+  const activeAgentIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (isMockReplay || !channel) return;
+
+    let isMounted = true;
+
+    async function summonAgent() {
+      try {
+        const res = await fetch('/api/agent/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ channelName: channel }),
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          console.info('[Dashboard] AURA live agent standby (requires Agora REST credentials & live proxy):', errData);
+          return;
+        }
+        const data = await res.json();
+        if (isMounted && data?.agentId) {
+          activeAgentIdRef.current = data.agentId;
+          console.info('[Dashboard] AURA agent active in channel:', data.agentId);
+        }
+      } catch (err) {
+        console.warn('[Dashboard] AURA agent launch network notice:', err);
+      }
+    }
+
+    void summonAgent();
+
+    return () => {
+      isMounted = false;
+      const agentId = activeAgentIdRef.current;
+      if (agentId) {
+        activeAgentIdRef.current = null;
+        fetch('/api/agent/stop', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ agentId }),
+        }).catch(() => {});
+      }
+    };
+  }, [isMockReplay, channel]);
+
   // Merge local user into participant list if not yet dispatched via RTM
   const effectiveParticipants: Record<string, Participant> = useMemo(() => {
     const list: Record<string, Participant> = { ...state.participants };
