@@ -154,6 +154,12 @@ function DashboardContent() {
   // 3. Agora RTM (Intelligence Telemetry Stream & Live ConvAI Transcripts)
   const [liveTranscriptText, setLiveTranscriptText] = useState<string | null>(null);
   const [liveTranscriptSpeaker, setLiveTranscriptSpeaker] = useState<string | null>(null);
+  const [voiceLang, setVoiceLang] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('aura_voice_lang') || 'en-IN';
+    }
+    return 'en-IN';
+  });
 
   useAgoraRTM({
     channelName: channel,
@@ -162,8 +168,11 @@ function DashboardContent() {
     onEvent: processEvent,
     onTranscript: (entry) => {
       const isAgent = entry.speakerName === 'AURA' || entry.id.includes('aura_agent');
-      const isSelf = entry.speakerName === uid || entry.speakerName === name;
-      const speakerDisplay = isAgent ? 'AURA' : isSelf ? (name || 'Operator') : entry.speakerName;
+      const isSelf =
+        entry.speakerName === uid ||
+        entry.speakerName === name ||
+        (!isAgent && (entry.speakerName === 'Operator' || entry.speakerName === 'Kai'));
+      const speakerDisplay = isAgent ? 'AURA' : isSelf ? (name || 'Kai') : entry.speakerName;
 
       setLiveTranscriptText(entry.text);
       setLiveTranscriptSpeaker(speakerDisplay);
@@ -175,10 +184,16 @@ function DashboardContent() {
           const oldEntry = prev[existingIndex];
           let mergedText = entry.text;
 
-          if (entry.text.includes(oldEntry.text)) {
-            mergedText = entry.text;
-          } else if (oldEntry.text.includes(entry.text)) {
-            mergedText = oldEntry.text;
+          const cleanOld = oldEntry.text.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '');
+          const cleanNew = entry.text.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '');
+
+          if (
+            cleanNew.startsWith(cleanOld) ||
+            cleanOld.startsWith(cleanNew) ||
+            cleanNew.includes(cleanOld) ||
+            cleanOld.includes(cleanNew)
+          ) {
+            mergedText = entry.text.length >= oldEntry.text.length ? entry.text : oldEntry.text;
           } else {
             mergedText = `${oldEntry.text.trim()} ${entry.text.trim()}`;
           }
@@ -193,19 +208,25 @@ function DashboardContent() {
           return updated;
         }
 
-        // Check if there is a recent entry from the same speaker within 5 seconds that this extends
+        // Check if there is a recent entry from the exact same speaker within 4 seconds that this extends
         const lastIndex = prev.length - 1;
         if (lastIndex >= 0) {
           const lastEntry = prev[lastIndex];
           const isSameSpeaker = lastEntry.speakerName === speakerDisplay;
-          const isRecent = Math.abs(entry.timestamp - lastEntry.timestamp) < 5000;
+          const isRecent = Math.abs(entry.timestamp - lastEntry.timestamp) < 4000;
 
           if (isSameSpeaker && isRecent) {
             let mergedText = entry.text;
-            if (entry.text.includes(lastEntry.text)) {
-              mergedText = entry.text;
-            } else if (lastEntry.text.includes(entry.text)) {
-              mergedText = lastEntry.text;
+            const cleanLast = lastEntry.text.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '');
+            const cleanNew = entry.text.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '');
+
+            if (
+              cleanNew.startsWith(cleanLast) ||
+              cleanLast.startsWith(cleanNew) ||
+              cleanNew.includes(cleanLast) ||
+              cleanLast.includes(cleanNew)
+            ) {
+              mergedText = entry.text.length >= lastEntry.text.length ? entry.text : lastEntry.text;
             } else {
               mergedText = `${lastEntry.text.trim()} ${entry.text.trim()}`;
             }
@@ -258,7 +279,7 @@ function DashboardContent() {
       recognition = new SpeechRec();
       recognition.continuous = true;
       recognition.interimResults = true;
-      recognition.lang = 'en-US';
+      recognition.lang = voiceLang || 'en-IN';
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       recognition.onresult = (event: any) => {
@@ -388,6 +409,7 @@ function DashboardContent() {
           userUid: uid,
           userName: name,
           userRole: role,
+          language: voiceLang || 'en-IN',
         };
         // Pass scenario config so the system prompt is dynamically contextualized
         if (scenarioConfig) {
@@ -722,6 +744,13 @@ function DashboardContent() {
         onRateChange={setCostRate}
         isCostPaused={isCostPaused}
         onToggleCostPause={() => setIsCostPaused((prev) => !prev)}
+        voiceLang={voiceLang}
+        onVoiceLangChange={(newLang) => {
+          setVoiceLang(newLang);
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('aura_voice_lang', newLang);
+          }
+        }}
       />
 
       {/* 2. Speaker Panel */}
@@ -775,6 +804,8 @@ function DashboardContent() {
       {/* 5. Action Tracker */}
       <ActionTracker
         actions={actions}
+        hypotheses={state.evidenceItems.filter((e) => e.category === 'hypothesis')}
+        suspectedCause={scenarioConfig?.suspectedCause}
         onStatusChange={updateActionStatus}
         isCollapsed={isActionsCollapsed}
         onToggleCollapse={() => setIsActionsCollapsed((prev) => !prev)}

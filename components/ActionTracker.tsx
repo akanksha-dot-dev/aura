@@ -5,6 +5,8 @@ import { EvidenceItem, ActionStatus } from '@/lib/types';
 
 export interface ActionTrackerProps {
   actions: EvidenceItem[];
+  hypotheses?: EvidenceItem[];
+  suspectedCause?: string;
   onStatusChange: (actionId: string, newStatus: ActionStatus) => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -12,6 +14,8 @@ export interface ActionTrackerProps {
 
 export function ActionTracker({
   actions,
+  hypotheses = [],
+  suspectedCause,
   onStatusChange,
   isCollapsed: externalIsCollapsed,
   onToggleCollapse: externalOnToggleCollapse,
@@ -745,21 +749,59 @@ export function ActionTracker({
             <div className="hypothesis-board">
               <div className="hypothesis-board__header">
                 <span>Active Hypotheses &amp; Findings</span>
-                <span className="hypothesis-board__badge">3 tracked</span>
+                <span className="hypothesis-board__badge">
+                  {hypotheses.length > 0
+                    ? `${hypotheses.length} tracked`
+                    : suspectedCause
+                    ? '1 tracked'
+                    : '0 tracked'}
+                </span>
               </div>
               <div className="hypothesis-board__list">
-                <div className="hypothesis-item hypothesis-item--confirmed">
-                  <span className="hypothesis-item__icon">✓</span>
-                  <span>Redis connection pool starvation at 99.8% capacity</span>
-                </div>
-                <div className="hypothesis-item hypothesis-item--disproven">
-                  <span className="hypothesis-item__icon">✕</span>
-                  <span>Stripe webhook signature mismatch (Refuted by 200 OKs)</span>
-                </div>
-                <div className="hypothesis-item hypothesis-item--active">
-                  <span className="hypothesis-item__icon">●</span>
-                  <span>Checkout queue worker thread exhaustion</span>
-                </div>
+                {hypotheses.length > 0 ? (
+                  hypotheses.map((hyp) => {
+                    const statusClass =
+                      hyp.status === 'confirmed'
+                        ? 'hypothesis-item--confirmed'
+                        : hyp.status === 'disproven'
+                        ? 'hypothesis-item--disproven'
+                        : 'hypothesis-item--active';
+                    const icon =
+                      hyp.status === 'confirmed'
+                        ? '✓'
+                        : hyp.status === 'disproven'
+                        ? '✕'
+                        : '●';
+                    return (
+                      <div key={hyp.id} className={`hypothesis-item ${statusClass}`}>
+                        <span className="hypothesis-item__icon">{icon}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+                          <span>{hyp.content}</span>
+                          {hyp.decidingMetric && (
+                            <span style={{ fontSize: '9px', opacity: 0.7, fontFamily: 'var(--font-mono)' }}>
+                              Metric: {hyp.decidingMetric}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : suspectedCause ? (
+                  <div className="hypothesis-item hypothesis-item--active">
+                    <span className="hypothesis-item__icon">●</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+                      <span>{suspectedCause}</span>
+                      <span style={{ fontSize: '9px', opacity: 0.7, fontFamily: 'var(--font-mono)' }}>
+                        Initial suspected cause from incident briefing
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="hypothesis-item" style={{ opacity: 0.6, fontStyle: 'italic' }}>
+                    <span className="hypothesis-item__icon">○</span>
+                    <span>Awaiting hypothesis formulation from bridge responders...</span>
+                  </div>
+                )}
               </div>
             </div>
           </>

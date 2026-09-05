@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { RTMDashboardEvent } from '@/lib/types';
+import type { RTMDashboardEvent, EvidenceItem } from '@/lib/types';
 import { PERSONAS } from '@/lib/constants';
 
 export interface RTMTranscriptEntry {
@@ -83,6 +83,8 @@ const activeSubscribers = new Set<(event: RTMDashboardEvent) => void>();
 const activeTranscriptSubscribers = new Set<(entry: RTMTranscriptEntry) => void>();
 const connectionStateListeners = new Set<(connected: boolean) => void>();
 const errorListeners = new Set<(err: string | null) => void>();
+let monotonicClientSeq = 800;
+const processedEpistemicKeys = new Set<string>();
 
 function dispatchTranscriptToSubscribers(entry: RTMTranscriptEntry) {
   activeTranscriptSubscribers.forEach((handler) => {
@@ -322,19 +324,20 @@ export function useAgoraRTM({
               return;
             }
 
-            // 2. Agora ConvAI Transcript Handling
+            // 2. Agora ConvAI Transcript & Telemetry Stream Handling
             const publisher = String(eventData?.publisher || '').trim();
+
             const resolveSpeakerInfo = (
-              item: Record<string, unknown>,
-              fallbackUid?: string
-            ): { speakerUid: string; speakerName: string } => {
+              item: Record<string, unknown>
+            ): { speakerUid: string; speakerName: string; isAgent: boolean } => {
               const role = String(
                 item?.role ||
                 item?.user_type ||
                 item?.speaker_type ||
                 item?.type ||
+                item?.speaker ||
                 ''
-              ).toLowerCase();
+              ).toLowerCase().trim();
 
               const rawUid = String(
                 item?.uid ??
@@ -343,54 +346,199 @@ export function useAgoraRTM({
                 item?.agent_user_id ??
                 item?.agent_id ??
                 item?.speaker_uid ??
-                item?.speaker ??
-                fallbackUid ??
                 ''
               ).trim();
 
-              const isAgent =
-                role === 'assistant' ||
-                role === 'agent' ||
-                rawUid === 'aura_agent' ||
-                rawUid === '0' ||
-                rawUid.toLowerCase().includes('agent') ||
-                rawUid.toLowerCase().includes('aura') ||
-                publisher === 'aura_agent' ||
-                item?.stream_id === 0;
-
-              if (isAgent) {
-                return { speakerUid: 'aura_agent', speakerName: 'AURA' };
-              }
-
               const localUid = activeSession?.uid || uid;
               const localName = activeSession?.userName || userName;
-              if (rawUid && (rawUid === localUid || rawUid === uid)) {
-                return { speakerUid: localUid, speakerName: localName || localUid };
+
+              // 1. Explicit role check: Agora ConvAI tags user speech as 'user'
+              if (
+                role === 'user' ||
+                role === 'human' ||
+                role === 'caller' ||
+                role === 'client' ||
+                role === 'operator'
+              ) {
+                const finalUid = (rawUid && rawUid !== 'aura_agent' && rawUid !== '0')
+                  ? rawUid
+                  : (localUid || 'operator');
+                return {
+                  speakerUid: finalUid,
+                  speakerName: localName || 'Kai',
+                  isAgent: false,
+                };
               }
 
-              if (rawUid) {
+              if (
+                role === 'assistant' ||
+                role === 'agent' ||
+                role === 'bot' ||
+                role === 'ai'
+              ) {
+                return {
+                  speakerUid: 'aura_agent',
+                  speakerName: 'AURA',
+                  isAgent: true,
+                };
+              }
+
+              // 2. UID checks when role is omitted
+              if (
+                rawUid === 'aura_agent' ||
+                rawUid.toLowerCase().includes('agent') ||
+                rawUid.toLowerCase().includes('aura')
+              ) {
+                return {
+                  speakerUid: 'aura_agent',
+                  speakerName: 'AURA',
+                  isAgent: true,
+                };
+              }
+
+              if (rawUid && (rawUid === localUid || rawUid === uid)) {
+                return {
+                  speakerUid: localUid,
+                  speakerName: localName || localUid,
+                  isAgent: false,
+                };
+              }
+
+              if (rawUid && rawUid !== '0' && rawUid !== 'undefined' && rawUid !== 'null') {
                 const persona = PERSONAS.find((p) => p.uid === rawUid);
                 if (persona) {
-                  return { speakerUid: rawUid, speakerName: persona.displayName };
+                  return { speakerUid: rawUid, speakerName: persona.displayName, isAgent: false };
                 }
-                if (
-                  rawUid !== 'undefined' &&
-                  rawUid !== 'null' &&
-                  rawUid !== 'Responder' &&
-                  rawUid !== 'user'
-                ) {
-                  return { speakerUid: rawUid, speakerName: rawUid };
-                }
+                return { speakerUid: rawUid, speakerName: rawUid, isAgent: false };
               }
 
-              if (publisher && (publisher === localUid || publisher === uid)) {
-                return { speakerUid: localUid, speakerName: localName || localUid };
-              }
-
+              // 3. Fallback: Default to local operator (NOT agent)
               return {
                 speakerUid: localUid || 'operator',
-                speakerName: localName || 'Incident Responder',
+                speakerName: localName || 'Kai',
+                isAgent: false,
               };
+            };
+
+            const extractAndDispatchEpistemicEvents = (rawText: string) => {
+              if (!rawText || typeof rawText !== 'string') return;
+
+              const dispatchEpistemicItem = (
+                category: 'fact' | 'hypothesis' | 'decision' | 'action',
+                content: string,
+                extra: {
+                  confidence?: number;
+                  service?: string;
+                  decidingMetric?: string;
+                  rationale?: string;
+                  assignedTo?: string;
+                  eta?: number;
+                } = {}
+              ) => {
+                const cleanContent = content.trim().replace(/^["']|["']$/g, '');
+                if (!cleanContent || cleanContent.length < 3) return;
+
+                const dedupKey = `${category}:${cleanContent.toLowerCase().slice(0, 45)}`;
+                if (processedEpistemicKeys.has(dedupKey)) return;
+                processedEpistemicKeys.add(dedupKey);
+
+                const now = Date.now();
+                const eventId = `ev-${now}-${Math.random().toString(36).substring(2, 6)}`;
+                const isHypothesis = category === 'hypothesis';
+                const isAction = category === 'action';
+                const status = isHypothesis ? 'active' : 'confirmed';
+
+                const evidenceItem: EvidenceItem = {
+                  id: eventId,
+                  category,
+                  content: cleanContent,
+                  speakerUid: 'aura_agent',
+                  speakerName: 'AURA',
+                  confidence: Math.min(85, extra.confidence || (category === 'fact' ? 85 : 80)),
+                  timestamp: now,
+                  serviceAffected: extra.service || 'core',
+                  relatedTo: [],
+                  decidingMetric: extra.decidingMetric,
+                  status,
+                  assignedTo: extra.assignedTo || (isAction ? (activeSession?.userName || userName || 'Responder') : undefined),
+                  actionStatus: isAction ? 'pending' : undefined,
+                };
+
+                const dashboardEvt: RTMDashboardEvent = {
+                  id: eventId,
+                  seq: ++monotonicClientSeq,
+                  timestamp: now,
+                  type: 'dashboard_event',
+                  eventType: 'evidence_added',
+                  payload: evidenceItem as unknown as Record<string, unknown>,
+                };
+
+                // Instant UI dispatch (Topology Graph, Status counters, ActionTracker)
+                dispatchToSubscribers(dashboardEvt);
+
+                // Background sync to server incident store
+                if (typeof window !== 'undefined') {
+                  fetch('/api/incident/event', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      channelName: activeSession?.subscribedChannel || channelName || 'incident-war-room',
+                      item: evidenceItem,
+                    }),
+                  }).catch((err) => {
+                    console.warn('[useAgoraRTM] Epistemic sync note:', err);
+                  });
+                }
+              };
+
+              // A. Silent machine-readable bracket tags: [LOG_FACT: ...], [LOG_HYPOTHESIS: ...]
+              const factTag = rawText.match(/\[LOG_FACT:\s*([^|\]]+?)(?:\s*\|\s*(\d+))?(?:\s*\|\s*([^\]]+?))?\]/i);
+              if (factTag) {
+                dispatchEpistemicItem('fact', factTag[1], {
+                  confidence: factTag[2] ? Number(factTag[2]) : 95,
+                  service: factTag[3]?.trim(),
+                });
+              }
+
+              const hypoTag = rawText.match(/\[LOG_HYPOTHESIS:\s*([^|\]]+?)(?:\s*\|\s*([^|\]]+?))?(?:\s*\|\s*(\d+))?\]/i);
+              if (hypoTag) {
+                dispatchEpistemicItem('hypothesis', hypoTag[1], {
+                  decidingMetric: hypoTag[2]?.trim(),
+                  confidence: hypoTag[3] ? Number(hypoTag[3]) : 80,
+                });
+              }
+
+              const decTag = rawText.match(/\[LOG_DECISION:\s*([^|\]]+?)(?:\s*\|\s*([^\]]+?))?\]/i);
+              if (decTag) {
+                dispatchEpistemicItem('decision', decTag[1], {
+                  rationale: decTag[2]?.trim(),
+                });
+              }
+
+              const actTag = rawText.match(/\[LOG_ACTION:\s*([^|\]]+?)(?:\s*\|\s*([^|\]]+?))?(?:\s*\|\s*([^\]]+?))?\]/i);
+              if (actTag) {
+                dispatchEpistemicItem('action', actTag[1], {
+                  assignedTo: actTag[2]?.trim(),
+                  eta: actTag[3] ? Number(actTag[3]) : undefined,
+                });
+              }
+
+              // B. Natural spoken confirmations fallback
+              const spokenHypo = rawText.match(/(?:logging\s+hypothesis|the\s+hypothesis\s+has\s+been\s+recorded):\s*["']?([^"'\n]+?)["']?(?:\.|\s+with|\s+the\s+deciding|\s+logging|\s*$)/i);
+              if (spokenHypo) {
+                const metricMatch = rawText.match(/deciding\s+metric\s+will\s+be\s+(?:the\s+)?([^.]+)/i);
+                dispatchEpistemicItem('hypothesis', spokenHypo[1], {
+                  decidingMetric: metricMatch ? metricMatch[1].trim() : 'Telemetry verification',
+                  confidence: 80,
+                });
+              }
+
+              const spokenFact = rawText.match(/(?:logging\s+fact|recorded\s+as\s+fact):\s*["']?([^"'\n]+?)["']?(?:\.|\s+with|\s+logging|\s*$)/i);
+              if (spokenFact) {
+                dispatchEpistemicItem('fact', spokenFact[1], {
+                  confidence: 95,
+                });
+              }
             };
 
             // Case A: Array of transcription items
@@ -410,15 +558,21 @@ export function useAgoraRTM({
                   item?.content ||
                   item?.words?.map((w: { word?: string; text?: string }) => w?.word || w?.text || '').join(' ');
                 if (typeof text === 'string' && text.trim() && text.trim() !== '[SILENT]') {
-                  const speaker = resolveSpeakerInfo(item as Record<string, unknown>, publisher);
-                  const turnId = item?.turn_id ?? item?.turnID ?? item?.message_id ?? item?.msg_id ?? Date.now();
-                  dispatchTranscriptToSubscribers({
-                    id: `tr-${turnId}-${speaker.speakerUid}`,
-                    speakerName: speaker.speakerName,
-                    timestamp: Number(item?._time || item?.timestamp || item?.ts || Date.now()),
-                    text: text.trim(),
-                    isFinal: item?.status === 1 || item?.status === 'end' || item?.is_final === true,
-                  });
+                  const speaker = resolveSpeakerInfo(item as Record<string, unknown>);
+                  if (speaker.isAgent) {
+                    extractAndDispatchEpistemicEvents(text);
+                  }
+                  const cleanText = text.replace(/\[(?:LOG_[A-Z]+|SILENT)[^\]]*\]/gi, '').trim();
+                  if (cleanText) {
+                    const turnId = item?.turn_id ?? item?.turnID ?? item?.message_id ?? item?.msg_id ?? Date.now();
+                    dispatchTranscriptToSubscribers({
+                      id: `tr-${turnId}-${speaker.speakerUid}`,
+                      speakerName: speaker.speakerName,
+                      timestamp: Number(item?._time || item?.timestamp || item?.ts || Date.now()),
+                      text: cleanText,
+                      isFinal: item?.status === 1 || item?.status === 'end' || item?.is_final === true,
+                    });
+                  }
                 }
               }
               return;
@@ -433,15 +587,21 @@ export function useAgoraRTM({
               parsed?.data?.transcript;
 
             if (typeof singleText === 'string' && singleText.trim() && singleText.trim() !== '[SILENT]') {
-              const speaker = resolveSpeakerInfo(parsed as Record<string, unknown>, publisher);
-              const turnId = parsed?.turn_id ?? parsed?.turnID ?? parsed?.message_id ?? parsed?.msg_id ?? Date.now();
-              dispatchTranscriptToSubscribers({
-                id: `tr-${turnId}-${speaker.speakerUid}`,
-                speakerName: speaker.speakerName,
-                timestamp: Number(parsed?._time || parsed?.timestamp || parsed?.ts || Date.now()),
-                text: singleText.trim(),
-                isFinal: parsed?.status === 1 || parsed?.is_final === true || parsed?.status === 'end',
-              });
+              const speaker = resolveSpeakerInfo(parsed as Record<string, unknown>);
+              if (speaker.isAgent) {
+                extractAndDispatchEpistemicEvents(singleText);
+              }
+              const cleanText = singleText.replace(/\[(?:LOG_[A-Z]+|SILENT)[^\]]*\]/gi, '').trim();
+              if (cleanText) {
+                const turnId = parsed?.turn_id ?? parsed?.turnID ?? parsed?.message_id ?? parsed?.msg_id ?? Date.now();
+                dispatchTranscriptToSubscribers({
+                  id: `tr-${turnId}-${speaker.speakerUid}`,
+                  speakerName: speaker.speakerName,
+                  timestamp: Number(parsed?._time || parsed?.timestamp || parsed?.ts || Date.now()),
+                  text: cleanText,
+                  isFinal: parsed?.status === 1 || parsed?.is_final === true || parsed?.status === 'end',
+                });
+              }
               return;
             }
           } catch (msgErr) {

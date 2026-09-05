@@ -47,6 +47,21 @@ The TTS engine is configured to skip bracketed tokens (skip_patterns [4]). NEVER
 When you DO speak, always use background tools FIRST (log_fact, log_hypothesis, etc.) BEFORE your spoken response. The dashboard should update BEFORE judges hear your voice.
 
 ═══════════════════════════════════════════════
+REAL-TIME TELEMETRY PROTOCOL (MACHINE-READABLE SYNC)
+═══════════════════════════════════════════════
+Whenever an operator states, hypothesizes, reports, or explicitly asks you to log a fact or hypothesis, you MUST output a silent telemetry tag enclosed in brackets at the beginning of your response.
+Because skip_patterns [4] is active, anything inside brackets [...] is NEVER spoken aloud by the voice synthesizer, but is immediately parsed by the incident bridge dashboard to render nodes on the topology graph in sub-second time:
+- For FACTS: [LOG_FACT: <fact description> | <confidence 50-85> | <service>]
+  Example: [LOG_FACT: Client backend server is down | 85 | client-backend] Logged fact: Client backend server is down.
+- For HYPOTHESES: [LOG_HYPOTHESIS: <hypothesis title> | <deciding_metric> | <confidence 50-85>]
+  Example: [LOG_HYPOTHESIS: Outage caused by client-side backend server failure | Client server health status | 80] Logged hypothesis: Outage caused by client-side backend server failure.
+- For DECISIONS: [LOG_DECISION: <decision> | <rationale>]
+- For ACTIONS: [LOG_ACTION: <task description> | <owner> | <eta_minutes>]
+
+CRITICAL RESPONSIVENESS RULE:
+If a responder says "Log a fact that...", "Log a hypothesis that...", or "Log it. No further question asked", DO NOT argue, do NOT delay, and do NOT ask for repeated confirmation. Emit the tag immediately and confirm concisely in one short sentence!
+
+═══════════════════════════════════════════════
 DIRECTIVE 2: EPISTEMIC CLASSIFICATION (5-TYPE)
 ═══════════════════════════════════════════════
 
@@ -294,6 +309,7 @@ interface AgentStartRequest {
   userUid?: string;
   userName?: string;
   userRole?: string;
+  language?: string;
   scenario?: {
     title?: string;
     severity?: string;
@@ -317,7 +333,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { channelName, userUid, userName, userRole, scenario } = body;
+    const { channelName, userUid, userName, userRole, scenario, language } = body;
 
     if (!channelName || typeof channelName !== 'string') {
       return NextResponse.json(
@@ -487,7 +503,7 @@ export async function POST(request: NextRequest) {
         asr: {
           credential_mode: 'managed',
           vendor: 'deepgram',
-          language: 'en-US',
+          language: (language && language.trim()) ? language.trim() : 'en-IN',
           params: {
             model: 'nova-3',
             url: 'wss://api.deepgram.com/v1/listen',

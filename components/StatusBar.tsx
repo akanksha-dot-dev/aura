@@ -32,6 +32,8 @@ export interface StatusBarProps {
   onRateChange?: (newRate: number) => void;
   isCostPaused?: boolean;
   onToggleCostPause?: () => void;
+  voiceLang?: string;
+  onVoiceLangChange?: (newLang: string) => void;
 }
 
 function formatTimer(totalSeconds: number): string {
@@ -59,6 +61,8 @@ export function StatusBar({
   onRateChange,
   isCostPaused,
   onToggleCostPause,
+  voiceLang = 'en-IN',
+  onVoiceLangChange,
 }: StatusBarProps) {
   const [activeElapsed, setActiveElapsed] = useState<number>(0);
   const theme = useSyncExternalStore(subscribeTheme, getThemeSnapshot, getServerThemeSnapshot);
@@ -493,6 +497,19 @@ export function StatusBar({
               </svg>
             )}
           </button>
+
+          {onVoiceLangChange && (
+            <button
+              type="button"
+              className="precision-bar__ghost-btn"
+              style={{ width: 'auto', padding: '0 6px', fontSize: '10px', gap: '4px', fontFamily: 'var(--font-mono)' }}
+              onClick={() => onVoiceLangChange(voiceLang === 'en-IN' ? 'en-US' : 'en-IN')}
+              title={`Voice Model: ${voiceLang === 'en-IN' ? 'Indian English (en-IN)' : 'US English (en-US)'}. Click to toggle.`}
+              aria-label="Toggle voice model language"
+            >
+              <span>{voiceLang === 'en-IN' ? '🇮🇳 IN' : '🇺🇸 US'}</span>
+            </button>
+          )}
 
           {icName ? (
             <div

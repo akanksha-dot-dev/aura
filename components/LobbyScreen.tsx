@@ -59,6 +59,19 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
   const [customName, setCustomName] = React.useState<string>('');
   const [customRole, setCustomRole] = React.useState<string>('');
   const [demoMode, setDemoMode] = React.useState<'simulation' | 'live'>('simulation');
+  const [voiceLang, setVoiceLang] = React.useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('aura_voice_lang') || 'en-IN';
+    }
+    return 'en-IN';
+  });
+
+  const handleVoiceLangToggle = (lang: string) => {
+    setVoiceLang(lang);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('aura_voice_lang', lang);
+    }
+  };
 
   // All scenarios (presets + custom)
   const allScenarios = React.useMemo(() => [...PRESET_SCENARIOS, ...customScenarios], [customScenarios]);
@@ -1557,27 +1570,52 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
           <div className="flightdeck-section-bar">
             <span className="flightdeck-section-title">Select Responder Callsign:</span>
 
-            <div className="flightdeck-mode-toggle" role="radiogroup" aria-label="Operational Mode">
-              <button
-                type="button"
-                role="radio"
-                aria-checked={demoMode === 'simulation'}
-                className={`flightdeck-mode-btn ${demoMode === 'simulation' ? 'flightdeck-mode-btn--active' : ''}`}
-                onClick={() => setDemoMode('simulation')}
-                title="Streams realistic 12-event multi-responder incident timeline with voice transcripts and postmortem"
-              >
-                <span>⚡ Interactive Simulation</span>
-              </button>
-              <button
-                type="button"
-                role="radio"
-                aria-checked={demoMode === 'live'}
-                className={`flightdeck-mode-btn ${demoMode === 'live' ? 'flightdeck-mode-btn--active' : ''}`}
-                onClick={() => setDemoMode('live')}
-                title="Connects to Agora RTC channel for live microphone streaming"
-              >
-                <span>🎙 Live Microphone</span>
-              </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <div className="flightdeck-mode-toggle" role="radiogroup" aria-label="Voice Accent">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={voiceLang === 'en-IN'}
+                  className={`flightdeck-mode-btn ${voiceLang === 'en-IN' ? 'flightdeck-mode-btn--active' : ''}`}
+                  onClick={() => handleVoiceLangToggle('en-IN')}
+                  title="Optimized for Indian English accents with Deepgram Nova-3"
+                >
+                  <span>🇮🇳 Indian English</span>
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={voiceLang === 'en-US'}
+                  className={`flightdeck-mode-btn ${voiceLang === 'en-US' ? 'flightdeck-mode-btn--active' : ''}`}
+                  onClick={() => handleVoiceLangToggle('en-US')}
+                  title="Standard US English ASR model"
+                >
+                  <span>🇺🇸 US English</span>
+                </button>
+              </div>
+
+              <div className="flightdeck-mode-toggle" role="radiogroup" aria-label="Operational Mode">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={demoMode === 'simulation'}
+                  className={`flightdeck-mode-btn ${demoMode === 'simulation' ? 'flightdeck-mode-btn--active' : ''}`}
+                  onClick={() => setDemoMode('simulation')}
+                  title="Streams realistic 12-event multi-responder incident timeline with voice transcripts and postmortem"
+                >
+                  <span>⚡ Interactive Simulation</span>
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={demoMode === 'live'}
+                  className={`flightdeck-mode-btn ${demoMode === 'live' ? 'flightdeck-mode-btn--active' : ''}`}
+                  onClick={() => setDemoMode('live')}
+                  title="Connects to Agora RTC channel for live microphone streaming"
+                >
+                  <span>🎙 Live Microphone</span>
+                </button>
+              </div>
             </div>
           </div>
 
