@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { IncidentState, calculateCognitiveLoad } from '@/lib/types';
 import { createDashboardEvent, publishDashboardEvent } from '@/lib/rtmPublisher';
+import { getIncidentState, buildDynamicContext } from '@/lib/incidentStore';
 
+export { buildDynamicContext } from '@/lib/incidentStore';
 export const runtime = 'nodejs';
 
 /**
@@ -132,74 +134,6 @@ const DEFAULT_INCIDENT_STATE: IncidentState = {
   lastReadbackAt: Date.now() - 90_000,
 };
 
-/**
- * Builds the dynamic incident context string injected per-turn before every LLM call (D-028).
- */
-export function buildDynamicContext(state: IncidentState): string {
-  const elapsed = formatElapsedTime(Date.now() - state.openedAt);
-  const ic = state.incidentCommanderUid
-    ? state.participants[state.incidentCommanderUid]?.displayName ?? 'Unassigned'
-    : 'Unassigned';
-
-  const participants = Object.values(state.participants)
-    .map((p) => {
-      const silentFor = Math.round((Date.now() - p.lastSpokeAt) / 1000);
-      return `${p.displayName} (${p.role}, silent ${silentFor}s)`;
-    })
-    .join(', ');
-
-  const recentEvents =
-    state.evidenceItems
-      .slice(-5)
-      .map(
-        (e) =>
-          `  [${e.id}] ${e.category.toUpperCase()}: "${e.content}" (by ${e.speakerName}, confidence ${e.confidence})`
-      )
-      .join('\n') || '  None';
-
-  const conflicts =
-    state.evidenceItems
-      .filter((e) => e.category === 'conflict' && e.status === 'active')
-      .map(
-        (e) =>
-          `  ${e.hypothesisA ?? 'Unknown'} vs ${e.hypothesisB ?? 'Unknown'} — deciding metric: ${e.decidingMetric ?? 'None'}`
-      )
-      .join('\n') || '  None';
-
-  const pendingActions =
-    state.evidenceItems
-      .filter(
-        (e) =>
-          e.category === 'action' &&
-          (e.actionStatus === 'pending' || e.actionStatus === 'in_progress')
-      )
-      .map(
-        (e) =>
-          `  ${e.content} → ${e.assignedTo ?? 'unassigned'} (${e.actionStatus ?? 'pending'})`
-      )
-      .join('\n') || '  None';
-
-  const secsSinceReadback = Math.round((Date.now() - state.lastReadbackAt) / 1000);
-
-  return `[INCIDENT CONTEXT — INJECTED AT ${new Date().toISOString()}]
-Incident: ${state.title} | Severity: ${state.severity} | Status: ${state.status} | Elapsed: ${elapsed}
-IC: ${ic} (${state.incidentCommanderUid ?? 'none'}) | OODA Phase: ${state.currentOODAPhase}
-Active Participants: ${participants || 'None'}
-Facts: ${state.evidenceItems.filter((e) => e.category === 'fact').length} | Hypotheses: ${state.evidenceItems.filter((e) => e.category === 'hypothesis' && e.status === 'active').length} | Decisions: ${state.evidenceItems.filter((e) => e.category === 'decision').length} | Pending Actions: ${state.evidenceItems.filter((e) => e.category === 'action' && (e.actionStatus === 'pending' || e.actionStatus === 'in_progress')).length} | Conflicts: ${state.evidenceItems.filter((e) => e.category === 'conflict' && e.status === 'active').length}
-Last readback: ${secsSinceReadback}s ago
-Cognitive Load: ${calculateCognitiveLoad(state)}/100
-
-Recent evidence (last 5):
-${recentEvents}
-
-Active conflicts:
-${conflicts}
-
-Pending actions:
-${pendingActions}
-[END INCIDENT CONTEXT]`;
-}
-
 interface ProxyRequest {
   model?: string;
   messages: Array<{ role: string; content: string }>;
@@ -242,7 +176,8 @@ export async function POST(request: NextRequest) {
     const messages = Array.isArray(body.messages) ? [...body.messages] : [];
 
     // 3. Inject dynamic incident context into system messages
-    const dynamicContext = buildDynamicContext(DEFAULT_INCIDENT_STATE);
+    const channelName = request.nextUrl.searchParams.get('channel') || 'incident-war-room';
+    const dynamicContext = buildDynamicContext(getIncidentState(channelName));
     messages.unshift({
       role: 'system',
       content: dynamicContext,

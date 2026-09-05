@@ -3,10 +3,19 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { RTMDashboardEvent } from '@/lib/types';
 
+export interface RTMTranscriptEntry {
+  id: string;
+  speakerName: string;
+  timestamp: number;
+  text: string;
+  isFinal?: boolean;
+}
+
 export interface UseAgoraRTMOptions {
   uid: string;
   channelName: string; // e.g., "incident-sev1-4821"
   onEvent: (event: RTMDashboardEvent) => void;
+  onTranscript?: (entry: RTMTranscriptEntry) => void;
   enabled?: boolean; // default true, allows lazy connection
 }
 
@@ -68,8 +77,19 @@ let teardownTimer: ReturnType<typeof setTimeout> | null = null;
 
 // Registry of active subscribers across React hook instances
 const activeSubscribers = new Set<(event: RTMDashboardEvent) => void>();
+const activeTranscriptSubscribers = new Set<(entry: RTMTranscriptEntry) => void>();
 const connectionStateListeners = new Set<(connected: boolean) => void>();
 const errorListeners = new Set<(err: string | null) => void>();
+
+function dispatchTranscriptToSubscribers(entry: RTMTranscriptEntry) {
+  activeTranscriptSubscribers.forEach((handler) => {
+    try {
+      handler(entry);
+    } catch (err) {
+      console.warn('[useAgoraRTM] Transcript subscriber error:', err);
+    }
+  });
+}
 
 // Deduplication cache shared across session
 const seenEventIds = new Set<string>();
@@ -125,6 +145,7 @@ export function useAgoraRTM({
   uid,
   channelName,
   onEvent,
+  onTranscript,
   enabled = true,
 }: UseAgoraRTMOptions): UseAgoraRTMReturn {
   const [isConnected, setIsConnected] = useState<boolean>(() => {
@@ -138,10 +159,15 @@ export function useAgoraRTM({
 
   const isMountedRef = useRef(true);
   const onEventRef = useRef(onEvent);
+  const onTranscriptRef = useRef(onTranscript);
 
   useEffect(() => {
     onEventRef.current = onEvent;
   }, [onEvent]);
+
+  useEffect(() => {
+    onTranscriptRef.current = onTranscript;
+  }, [onTranscript]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -273,6 +299,7 @@ export function useAgoraRTM({
 
             const parsed = JSON.parse(rawData);
 
+            // 1. Dashboard Event Handling
             const isDashboardEvent =
               eventData?.customType === 'dashboard_event' ||
               parsed?.customType === 'dashboard_event' ||
@@ -285,6 +312,65 @@ export function useAgoraRTM({
               parsed?.eventType
             ) {
               dispatchToSubscribers(parsed as RTMDashboardEvent);
+              return;
+            }
+
+            // 2. Agora ConvAI Transcript Handling
+            // Case A: Array of transcription items
+            const transcriptionList = Array.isArray(parsed?.transcription)
+              ? parsed.transcription
+              : Array.isArray(parsed?.data?.transcription)
+              ? parsed.data.transcription
+              : Array.isArray(parsed)
+              ? parsed
+              : null;
+
+            if (transcriptionList) {
+              for (const item of transcriptionList) {
+                const text =
+                  item.text ||
+                  item.words?.map((w: { word?: string; text?: string }) => w.word || w.text).join(' ');
+                if (typeof text === 'string' && text.trim()) {
+                  const speakerUid = String(item.uid ?? 'user');
+                  const speakerName =
+                    speakerUid === 'aura_agent' || speakerUid === '0'
+                      ? 'AURA'
+                      : speakerUid;
+                  dispatchTranscriptToSubscribers({
+                    id: `tr-${item.turn_id ?? Date.now()}-${speakerUid}`,
+                    speakerName,
+                    timestamp: Number(item._time || item.timestamp || Date.now()),
+                    text: text.trim(),
+                    isFinal: item.status === 1 || item.status === 'end',
+                  });
+                }
+              }
+              return;
+            }
+
+            // Case B: Single transcript payload
+            const singleText =
+              parsed?.text ||
+              parsed?.transcript ||
+              parsed?.content ||
+              parsed?.data?.text;
+
+            if (typeof singleText === 'string' && singleText.trim()) {
+              const speakerUid = String(
+                parsed.uid || parsed.speaker_uid || parsed.speaker || 'Responder'
+              );
+              const speakerName =
+                speakerUid === 'aura_agent' || speakerUid === '0'
+                  ? 'AURA'
+                  : speakerUid;
+              dispatchTranscriptToSubscribers({
+                id: `tr-${parsed.turn_id ?? Date.now()}-${speakerUid}`,
+                speakerName,
+                timestamp: Number(parsed._time || parsed.timestamp || Date.now()),
+                text: singleText.trim(),
+                isFinal: parsed.status === 1 || parsed.is_final === true,
+              });
+              return;
             }
           } catch (msgErr) {
             console.warn('[useAgoraRTM] Message parsing error:', msgErr);
@@ -358,13 +444,20 @@ export function useAgoraRTM({
   useEffect(() => {
     if (!enabled || !channelName || !uid) return;
 
-    // Register this instance's event handler into the subscriber set
+    // Register this instance's event handlers into subscriber sets
     const subscriberHandler = (event: RTMDashboardEvent) => {
       if (onEventRef.current) {
         onEventRef.current(event);
       }
     };
     activeSubscribers.add(subscriberHandler);
+
+    const transcriptHandler = (entry: RTMTranscriptEntry) => {
+      if (onTranscriptRef.current) {
+        onTranscriptRef.current(entry);
+      }
+    };
+    activeTranscriptSubscribers.add(transcriptHandler);
 
     // Cancel any pending teardown
     if (teardownTimer) {
@@ -376,6 +469,7 @@ export function useAgoraRTM({
 
     return () => {
       activeSubscribers.delete(subscriberHandler);
+      activeTranscriptSubscribers.delete(transcriptHandler);
 
       // In React 18/19 (Strict Mode, fast refreshes), unmounts happen before immediate remounts.
       // We debounce teardown by 2500ms to allow remounts to reuse the active RTM connection

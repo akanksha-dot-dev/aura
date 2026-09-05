@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { RtcTokenBuilder, RtcRole } from 'agora-token';
+import { getIncidentState, buildDynamicContext } from '@/lib/incidentStore';
 
 export const runtime = 'nodejs';
 
@@ -361,6 +362,9 @@ export async function POST(request: NextRequest) {
       ? `${resolvedMcpUrl}?channel=${encodeURIComponent(channelName)}`
       : '';
 
+    const initialIncidentContext = buildDynamicContext(getIncidentState(channelName));
+    const effectiveSystemPrompt = `${AURA_SYSTEM_PROMPT}\n\n═══════════════════════════════════════════════\nCURRENT INCIDENT SITUATION & REAL-TIME CONTEXT\n═══════════════════════════════════════════════\n${initialIncidentContext}`;
+
     const payload = {
       name: sessionName,
       properties: {
@@ -380,6 +384,32 @@ export async function POST(request: NextRequest) {
           enable_metrics: true,
           enable_error_message: true,
           audio_scenario: 'chorus',
+        },
+        interruption: {
+          enable: true,
+          mode: 'start_of_speech',
+        },
+        turn_detection: {
+          mode: 'default',
+          config: {
+            speech_threshold: 0.5,
+            start_of_speech: {
+              mode: 'vad',
+              vad_config: {
+                interrupt_duration_ms: 160,
+                speaking_interrupt_duration_ms: 160,
+                prefix_padding_ms: 800,
+              },
+            },
+            end_of_speech: {
+              mode: 'semantic',
+              semantic_config: {
+                silence_duration_ms: 320,
+                max_wait_ms: 3000,
+                pause_state_enabled: true,
+              },
+            },
+          },
         },
         asr: {
           credential_mode: 'managed',
@@ -419,7 +449,7 @@ export async function POST(request: NextRequest) {
               system_messages: [
                 {
                   role: 'system',
-                  content: AURA_SYSTEM_PROMPT,
+                  content: effectiveSystemPrompt,
                 },
               ],
               greeting_message:
@@ -459,7 +489,7 @@ export async function POST(request: NextRequest) {
             system_messages: [
               {
                 role: 'system',
-                content: AURA_SYSTEM_PROMPT,
+                content: effectiveSystemPrompt,
               },
             ],
             greeting_message:
@@ -498,14 +528,6 @@ export async function POST(request: NextRequest) {
               voice_id: 'English_captivating_female1',
               speed: 0.95,
             },
-          },
-        },
-        turn_detection: {
-          type: 'agora_vad',
-          interrupt_mode: 'append',
-          config: {
-            silence_duration_ms: 800,
-            interrupt_duration_ms: 250,
           },
         },
         filler_words: {

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CONFIDENCE_CAP, AGENT_UID, PERSONAS } from '@/lib/constants';
 import { createDashboardEvent, publishDashboardEvent } from '@/lib/rtmPublisher';
+import { addEvidenceToIncident } from '@/lib/incidentStore';
+import { EvidenceItem } from '@/lib/types';
 
 export const runtime = 'nodejs';
 
@@ -433,6 +435,20 @@ export async function POST(request: NextRequest) {
             status: 'confirmed',
           });
 
+          // Update server-side incident state
+          addEvidenceToIncident(channelName, {
+            id: event.id,
+            category: 'fact',
+            content,
+            speakerUid,
+            speakerName: getSpeakerName(speakerUid),
+            confidence,
+            serviceAffected,
+            relatedTo,
+            status: 'confirmed',
+            timestamp: event.timestamp,
+          });
+
           // Non-blocking publish to RTM channel
           publishDashboardEvent(channelName, event).catch((err) => {
             console.warn('[MCP Server] Error publishing log_fact:', err);
@@ -479,6 +495,20 @@ export async function POST(request: NextRequest) {
             decidingMetric,
             relatedTo,
             status: 'active',
+          });
+
+          // Update server-side incident state
+          addEvidenceToIncident(channelName, {
+            id: event.id,
+            category: 'hypothesis',
+            content: title,
+            speakerUid: proposedByUid,
+            speakerName: getSpeakerName(proposedByUid),
+            confidence: Math.min(CONFIDENCE_CAP, 75),
+            decidingMetric,
+            relatedTo,
+            status: 'active',
+            timestamp: event.timestamp,
           });
 
           publishDashboardEvent(channelName, event).catch((err) => {
@@ -529,6 +559,19 @@ export async function POST(request: NextRequest) {
             status: 'confirmed',
           });
 
+          // Update server-side incident state
+          addEvidenceToIncident(channelName, {
+            id: event.id,
+            category: 'decision',
+            content: decision,
+            speakerUid: authorizedByUid,
+            speakerName: getSpeakerName(authorizedByUid),
+            confidence: CONFIDENCE_CAP,
+            relatedTo,
+            status: 'confirmed',
+            timestamp: event.timestamp,
+          });
+
           publishDashboardEvent(channelName, event).catch((err) => {
             console.warn('[MCP Server] Error publishing log_decision:', err);
           });
@@ -574,6 +617,22 @@ export async function POST(request: NextRequest) {
             actionStatus: 'pending',
             relatedTo,
             status: 'active',
+          });
+
+          // Update server-side incident state
+          addEvidenceToIncident(channelName, {
+            id: event.id,
+            category: 'action',
+            content: task,
+            speakerUid: AGENT_UID,
+            speakerName: 'AURA',
+            confidence: CONFIDENCE_CAP,
+            assignedTo: getSpeakerName(assignedToUid),
+            eta: Date.now() + etaMinutes * 60_000,
+            actionStatus: 'pending',
+            relatedTo,
+            status: 'active',
+            timestamp: event.timestamp,
           });
 
           publishDashboardEvent(channelName, event).catch((err) => {
@@ -625,6 +684,24 @@ export async function POST(request: NextRequest) {
             decidingMetric,
             relatedTo,
             status: 'active',
+          });
+
+          // Update server-side incident state
+          addEvidenceToIncident(channelName, {
+            id: event.id,
+            category: 'conflict',
+            content: `${hypothesisA} vs ${hypothesisB}`,
+            speakerUid: AGENT_UID,
+            speakerName: 'AURA',
+            confidence: 80,
+            hypothesisA,
+            speakerAUid,
+            hypothesisB,
+            speakerBUid,
+            decidingMetric,
+            relatedTo,
+            status: 'active',
+            timestamp: event.timestamp,
           });
 
           publishDashboardEvent(channelName, event).catch((err) => {

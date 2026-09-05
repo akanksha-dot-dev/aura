@@ -131,13 +131,136 @@ function DashboardContent() {
     uid,
   });
 
-  // 3. Agora RTM (Intelligence Telemetry Stream) - disabled during mock replay
+  // 3. Agora RTM (Intelligence Telemetry Stream & Live ConvAI Transcripts)
+  const [liveTranscriptText, setLiveTranscriptText] = useState<string | null>(null);
+  const [liveTranscriptSpeaker, setLiveTranscriptSpeaker] = useState<string | null>(null);
+
   useAgoraRTM({
     channelName: channel,
     uid,
     onEvent: processEvent,
+    onTranscript: (entry) => {
+      setLiveTranscriptText(entry.text);
+      setLiveTranscriptSpeaker(entry.speakerName);
+      setTranscriptHistory((prev) => {
+        const exists = prev.some(
+          (p) =>
+            p.id === entry.id ||
+            (p.text === entry.text && Math.abs(p.timestamp - entry.timestamp) < 3000)
+        );
+        if (exists) return prev;
+        return [
+          ...prev,
+          {
+            id: entry.id,
+            speakerName: entry.speakerName,
+            timestamp: entry.timestamp,
+            text: entry.text,
+          },
+        ];
+      });
+    },
     enabled: !isMockReplay,
   });
+
+  // 3b. Client-Side Speech Recognition (Instant Zero-Latency Local Captions)
+  useEffect(() => {
+    if (isMockReplay || typeof window === 'undefined') return;
+
+    interface IWindowWithSpeech extends Window {
+      SpeechRecognition?: new () => any; // eslint-disable-line @typescript-eslint/no-explicit-any
+      webkitSpeechRecognition?: new () => any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    }
+
+    const win = window as unknown as IWindowWithSpeech;
+    const SpeechRec = win.SpeechRecognition || win.webkitSpeechRecognition;
+    if (!SpeechRec || !isJoined) return;
+
+    let recognition: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
+    let isAlive = true;
+
+    try {
+      recognition = new SpeechRec();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      recognition.onresult = (event: any) => {
+        let interimText = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const res = event.results[i];
+          const transcript = res[0]?.transcript || '';
+          if (res.isFinal) {
+            const trimmed = transcript.trim();
+            if (trimmed) {
+              setTranscriptHistory((prev) => [
+                ...prev,
+                {
+                  id: `local-speech-${Date.now()}-${prev.length}`,
+                  speakerName: name || 'Operator',
+                  timestamp: Date.now(),
+                  text: trimmed,
+                },
+              ]);
+              setLiveTranscriptText(trimmed);
+              setLiveTranscriptSpeaker(name || 'Operator');
+            }
+          } else {
+            interimText += transcript;
+          }
+        }
+        if (interimText.trim()) {
+          setLiveTranscriptText(interimText.trim());
+          setLiveTranscriptSpeaker(name || 'Operator');
+        }
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      recognition.onerror = (err: any) => {
+        if (err.error !== 'no-speech') {
+          console.info('[LiveCaptions] Speech recognition notice:', err.error);
+        }
+      };
+
+      recognition.onend = () => {
+        if (isAlive && isJoined) {
+          try {
+            recognition?.start();
+          } catch {}
+        }
+      };
+
+      recognition.start();
+    } catch (e) {
+      console.info('[LiveCaptions] Local speech recognition standby:', e);
+    }
+
+    return () => {
+      isAlive = false;
+      try {
+        recognition?.stop();
+      } catch {}
+    };
+  }, [isMockReplay, isJoined, name]);
+
+  // 3c. Active Voice Interruption: Halt AURA immediately when responder speaks
+  const lastInterruptRef = useRef<number>(0);
+  useEffect(() => {
+    const userSpeaking = (volumeLevels[uid] ?? 0) > 18;
+    const agentSpeaking = (volumeLevels['aura_agent'] ?? 0) > 15;
+    const agentId = activeAgentIdRef.current;
+
+    if (userSpeaking && agentSpeaking && agentId && Date.now() - lastInterruptRef.current > 1500) {
+      lastInterruptRef.current = Date.now();
+      console.info('[AIVAD] User interruption detected! Halting AURA speech...');
+      fetch('/api/agent/interrupt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentId }),
+      }).catch(() => {});
+    }
+  }, [volumeLevels, uid]);
 
   // 4. Mock Replay Stream (when ?__AURA_REPLAY_MOCK_STREAM is present)
   const [mockTranscript, setMockTranscript] = useState<string | null>(null);
@@ -459,13 +582,17 @@ function DashboardContent() {
     ? effectiveParticipants[speakingUid]?.displayName ?? speakingUid
     : null;
 
-  const captionSpeakerName = mockSpeaker ?? activeSpeakerName;
+  const captionSpeakerName =
+    mockSpeaker ??
+    liveTranscriptSpeaker ??
+    activeSpeakerName;
 
-  const currentTranscript = mockTranscript
-    ? mockTranscript
-    : activeSpeakerName
-    ? `${activeSpeakerName} is transmitting telemetry and situational updates...`
-    : 'Voice channel active — monitoring real-time communications...';
+  const currentTranscript =
+    mockTranscript ??
+    liveTranscriptText ??
+    (activeSpeakerName
+      ? `${activeSpeakerName} is transmitting telemetry and situational updates...`
+      : 'Voice channel active — monitoring real-time communications...');
 
   // Tempo calculation based on recent evidence volume
   const tempoLevel = useMemo(() => {
