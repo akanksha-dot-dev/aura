@@ -341,6 +341,16 @@ export async function POST(request: NextRequest) {
       expireTimeInSeconds
     );
 
+    const hostHeader =
+      request.headers.get('x-forwarded-host') ||
+      request.headers.get('host') ||
+      '';
+    const protoHeader =
+      request.headers.get('x-forwarded-proto') || 'https';
+    const dynamicOrigin = hostHeader
+      ? `${protoHeader}://${hostHeader}`
+      : 'https://aura.akanksha.dev';
+
     const payload = {
       name: 'aura-incident-commander-v2',
       properties: {
@@ -383,7 +393,12 @@ export async function POST(request: NextRequest) {
           },
         },
         llm: (() => {
-          const rawProxyUrl = process.env.PROXY_URL || '';
+          const rawProxyUrl =
+            process.env.PROXY_URL ||
+            (hostHeader && !hostHeader.includes('localhost') && !hostHeader.includes('127.0.0.1')
+              ? `${dynamicOrigin}/api/llm/proxy`
+              : '');
+
           const isLocalhost =
             !rawProxyUrl ||
             rawProxyUrl.includes('localhost') ||
@@ -420,10 +435,16 @@ export async function POST(request: NextRequest) {
             };
           }
 
+          const resolvedMcpUrl =
+            process.env.MCP_URL ||
+            (hostHeader && !hostHeader.includes('localhost') && !hostHeader.includes('127.0.0.1')
+              ? `${dynamicOrigin}/api/mcp/sse`
+              : '');
+
           return {
             vendor: 'custom',
             style: 'openai',
-            url: rawProxyUrl || 'https://aura.akanksha.dev/api/llm/proxy',
+            url: rawProxyUrl || `${dynamicOrigin}/api/llm/proxy`,
             api_key: process.env.INTERNAL_PROXY_SECRET || '',
             system_messages: [
               {
@@ -441,12 +462,12 @@ export async function POST(request: NextRequest) {
               temperature: 0.1,
               max_tokens: 1024,
             },
-            ...(!isLocalhost && process.env.MCP_URL
+            ...(!isLocalhost && resolvedMcpUrl
               ? {
                   mcp_servers: [
                     {
                       name: 'aura-incident-mcp',
-                      endpoint: process.env.MCP_URL,
+                      endpoint: resolvedMcpUrl,
                       transport: 'streamable_http',
                       allowed_tools: ['*'],
                       timeout_ms: 4000,
