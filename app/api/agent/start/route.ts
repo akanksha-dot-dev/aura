@@ -466,7 +466,7 @@ export async function POST(request: NextRequest) {
                 ? {
                     mcp_servers: [
                       {
-                        name: 'aura-incident-mcp',
+                        name: 'auramcp',
                         endpoint: mcpEndpointWithChannel,
                         transport: 'streamable_http',
                         allowed_tools: ['*'],
@@ -506,10 +506,19 @@ export async function POST(request: NextRequest) {
               ? {
                   mcp_servers: [
                     {
-                      name: 'aura-incident-mcp',
+                      name: 'auramcp',
                       endpoint: mcpEndpointWithChannel,
                       transport: 'streamable_http',
-                      allowed_tools: ['*'],
+                      allowed_tools: [
+                        'log_fact',
+                        'log_hypothesis',
+                        'log_decision',
+                        'log_action_item',
+                        'flag_conflict',
+                        'create_jira_ticket',
+                        'post_slack_update',
+                        'page_oncall_team',
+                      ],
                       timeout_ms: 4000,
                     },
                   ],

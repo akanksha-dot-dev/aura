@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { CONFIDENCE_CAP, AGENT_UID, PERSONAS } from '@/lib/constants';
 import { createDashboardEvent, publishDashboardEvent } from '@/lib/rtmPublisher';
 import { addEvidenceToIncident } from '@/lib/incidentStore';
-import { EvidenceItem } from '@/lib/types';
+import { EvidenceItem, RTMDashboardEvent } from '@/lib/types';
 
 export const runtime = 'nodejs';
 
@@ -381,9 +381,20 @@ export async function POST(request: NextRequest) {
   if (method === 'tools/call') {
     const toolName = params?.name;
     const args = params?.arguments || {};
+    const queryChannel = request.nextUrl.searchParams.get('channel');
     const channelName =
-      request.nextUrl.searchParams.get('channel') ||
-      (typeof args.channelName === 'string' ? args.channelName : 'incident-sev1-4821');
+      queryChannel ||
+      (typeof args.channelName === 'string' ? args.channelName : undefined) ||
+      'incident-war-room';
+
+    const broadcastDashboardEvent = (targetChannel: string, ev: RTMDashboardEvent) => {
+      publishDashboardEvent(targetChannel, ev).catch((err) => {
+        console.warn(`[MCP Server] Error publishing event to ${targetChannel}:`, err);
+      });
+      if (targetChannel !== 'incident-war-room') {
+        publishDashboardEvent('incident-war-room', ev).catch(() => {});
+      }
+    };
 
     if (!toolName) {
       return NextResponse.json({
@@ -449,10 +460,8 @@ export async function POST(request: NextRequest) {
             timestamp: event.timestamp,
           });
 
-          // Non-blocking publish to RTM channel
-          publishDashboardEvent(channelName, event).catch((err) => {
-            console.warn('[MCP Server] Error publishing log_fact:', err);
-          });
+          // Non-blocking broadcast to RTM channel
+          broadcastDashboardEvent(channelName, event);
 
           resultData = {
             success: true,
@@ -511,9 +520,7 @@ export async function POST(request: NextRequest) {
             timestamp: event.timestamp,
           });
 
-          publishDashboardEvent(channelName, event).catch((err) => {
-            console.warn('[MCP Server] Error publishing log_hypothesis:', err);
-          });
+          broadcastDashboardEvent(channelName, event);
 
           resultData = {
             success: true,
@@ -572,9 +579,7 @@ export async function POST(request: NextRequest) {
             timestamp: event.timestamp,
           });
 
-          publishDashboardEvent(channelName, event).catch((err) => {
-            console.warn('[MCP Server] Error publishing log_decision:', err);
-          });
+          broadcastDashboardEvent(channelName, event);
 
           resultData = {
             success: true,
@@ -635,9 +640,7 @@ export async function POST(request: NextRequest) {
             timestamp: event.timestamp,
           });
 
-          publishDashboardEvent(channelName, event).catch((err) => {
-            console.warn('[MCP Server] Error publishing log_action_item:', err);
-          });
+          broadcastDashboardEvent(channelName, event);
 
           resultData = {
             success: true,
@@ -704,9 +707,7 @@ export async function POST(request: NextRequest) {
             timestamp: event.timestamp,
           });
 
-          publishDashboardEvent(channelName, event).catch((err) => {
-            console.warn('[MCP Server] Error publishing flag_conflict:', err);
-          });
+          broadcastDashboardEvent(channelName, event);
 
           resultData = {
             success: true,
@@ -747,9 +748,7 @@ export async function POST(request: NextRequest) {
             createdAt,
           });
 
-          publishDashboardEvent(channelName, event).catch((err) => {
-            console.warn('[MCP Server] Error publishing create_jira_ticket:', err);
-          });
+          broadcastDashboardEvent(channelName, event);
 
           resultData = {
             id: ticketId,
@@ -814,9 +813,7 @@ export async function POST(request: NextRequest) {
             timestamp: Date.now(),
           });
 
-          publishDashboardEvent(channelName, event).catch((err) => {
-            console.warn('[MCP Server] Error publishing post_slack_update:', err);
-          });
+          broadcastDashboardEvent(channelName, event);
 
           resultData = {
             success: true,
@@ -845,9 +842,7 @@ export async function POST(request: NextRequest) {
             timestamp: Date.now(),
           });
 
-          publishDashboardEvent(channelName, event).catch((err) => {
-            console.warn('[MCP Server] Error publishing page_oncall_team:', err);
-          });
+          broadcastDashboardEvent(channelName, event);
 
           resultData = {
             success: true,

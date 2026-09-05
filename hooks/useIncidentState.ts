@@ -342,18 +342,44 @@ function incidentReducer(
             payload.status ||
             'done') as ActionStatus;
 
-          nextEvidence = nextEvidence.map((item) => {
-            if (
-              item.id === targetId ||
-              (targetId && item.content.includes(targetId))
-            ) {
-              return {
-                ...item,
-                actionStatus: newStatus,
-              };
-            }
-            return item;
-          });
+          const existingIdx = nextEvidence.findIndex(
+            (item) => item.id === targetId || (targetId && item.content.includes(targetId))
+          );
+
+          if (existingIdx >= 0) {
+            nextEvidence = nextEvidence.map((item, idx) =>
+              idx === existingIdx
+                ? {
+                    ...item,
+                    actionStatus: newStatus,
+                  }
+                : item
+            );
+          } else {
+            // Automatically add new Action card (e.g. Jira Ticket, Slack broadcast, PagerDuty)
+            const summary = String(
+              payload.summary ||
+              payload.statusMessage ||
+              payload.escalationNote ||
+              (payload.ticketId ? `Jira Ticket ${payload.ticketId}` : 'Incident Action')
+            );
+            nextEvidence = [
+              ...nextEvidence,
+              {
+                id: targetId || event.id,
+                category: 'action',
+                content: summary,
+                speakerUid: 'aura_agent',
+                speakerName: 'AURA',
+                confidence: 85,
+                timestamp: Date.now(),
+                status: 'confirmed',
+                actionStatus: (newStatus as string) === 'created' ? 'in_progress' : newStatus,
+                assignedTo: String(payload.assignedTeam || payload.channel || 'Core SRE'),
+                relatedTo: [],
+              },
+            ];
+          }
           break;
         }
 
