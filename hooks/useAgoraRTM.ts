@@ -47,229 +47,346 @@ function isAbortOrCancelError(err: unknown): boolean {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Module-level Singleton RTM Session Manager
+// Agora RTM 2.x mandates a single RTM instance globally per user session.
+// In React 18/19 (Strict Mode, fast refreshes, hot reload), unmanaged
+// instantiations create "Ins#2" which causes mutual client kickouts.
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface GlobalRtmSession {
+  client: RtmClientInstance;
+  appId: string;
+  uid: string;
+  subscribedChannel: string | null;
+  isLoggedIn: boolean;
+}
+
+let activeSession: GlobalRtmSession | null = null;
+let connectingPromise: Promise<void> | null = null;
+let teardownTimer: ReturnType<typeof setTimeout> | null = null;
+
+// Registry of active subscribers across React hook instances
+const activeSubscribers = new Set<(event: RTMDashboardEvent) => void>();
+const connectionStateListeners = new Set<(connected: boolean) => void>();
+const errorListeners = new Set<(err: string | null) => void>();
+
+// Deduplication cache shared across session
+const seenEventIds = new Set<string>();
+const eventBuffer: RTMDashboardEvent[] = [];
+
+function dispatchToSubscribers(event: RTMDashboardEvent) {
+  if (seenEventIds.has(event.id)) return;
+  seenEventIds.add(event.id);
+
+  if (seenEventIds.size > MAX_DEDUP_SET_SIZE) {
+    const firstVal = seenEventIds.values().next().value;
+    if (firstVal) seenEventIds.delete(firstVal);
+  }
+
+  eventBuffer.push(event);
+  eventBuffer.sort((a, b) => a.seq - b.seq);
+
+  while (eventBuffer.length > 0) {
+    const nextEvt = eventBuffer.shift();
+    if (nextEvt) {
+      activeSubscribers.forEach((handler) => {
+        try {
+          handler(nextEvt);
+        } catch (handlerErr) {
+          console.warn('[useAgoraRTM] Subscriber handler error:', handlerErr);
+        }
+      });
+    }
+  }
+}
+
+function updateAllConnectionStates(connected: boolean) {
+  connectionStateListeners.forEach((fn) => {
+    try {
+      fn(connected);
+    } catch {
+      // ignore
+    }
+  });
+}
+
+function broadcastError(err: string | null) {
+  errorListeners.forEach((fn) => {
+    try {
+      fn(err);
+    } catch {
+      // ignore
+    }
+  });
+}
+
 export function useAgoraRTM({
   uid,
   channelName,
   onEvent,
   enabled = true,
 }: UseAgoraRTMOptions): UseAgoraRTMReturn {
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState<boolean>(() => {
+    return Boolean(
+      activeSession?.isLoggedIn &&
+      activeSession?.uid === uid &&
+      activeSession?.subscribedChannel === channelName
+    );
+  });
   const [error, setError] = useState<string | null>(null);
 
-  const clientRef = useRef<RtmClientInstance | null>(null);
-  const isConnectingRef = useRef(false);
   const isMountedRef = useRef(true);
   const onEventRef = useRef(onEvent);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
 
   useEffect(() => {
     onEventRef.current = onEvent;
   }, [onEvent]);
 
-  const seenEventIdsRef = useRef<Set<string>>(new Set());
-  const eventBufferRef = useRef<RTMDashboardEvent[]>([]);
+  useEffect(() => {
+    isMountedRef.current = true;
+    const handleConnectionChange = (connected: boolean) => {
+      if (isMountedRef.current) {
+        setIsConnected(connected);
+      }
+    };
+    const handleErrorChange = (err: string | null) => {
+      if (isMountedRef.current) {
+        setError(err);
+      }
+    };
 
-  const processAndDispatchEvent = useCallback((event: RTMDashboardEvent) => {
-    if (!isMountedRef.current) return;
-    // 1. Deduplication check
-    if (seenEventIdsRef.current.has(event.id)) {
-      return;
+    connectionStateListeners.add(handleConnectionChange);
+    errorListeners.add(handleErrorChange);
+
+    return () => {
+      isMountedRef.current = false;
+      connectionStateListeners.delete(handleConnectionChange);
+      errorListeners.delete(handleErrorChange);
+    };
+  }, []);
+
+  const connect = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+    if (!channelName || !uid) return;
+
+    // Cancel any scheduled teardown from a previous unmount
+    if (teardownTimer) {
+      clearTimeout(teardownTimer);
+      teardownTimer = null;
     }
-    seenEventIdsRef.current.add(event.id);
 
-    // Limit deduplication cache size to prevent memory leak
-    if (seenEventIdsRef.current.size > MAX_DEDUP_SET_SIZE) {
-      const firstVal = seenEventIdsRef.current.values().next().value;
-      if (firstVal) {
-        seenEventIdsRef.current.delete(firstVal);
+    // 1. If an active session exists for this exact UID
+    if (activeSession && activeSession.uid === uid) {
+      if (activeSession.isLoggedIn) {
+        updateAllConnectionStates(true);
+        broadcastError(null);
+
+        // Check if channel subscription matches
+        if (activeSession.subscribedChannel !== channelName) {
+          try {
+            if (activeSession.subscribedChannel) {
+              await activeSession.client.unsubscribe(activeSession.subscribedChannel);
+            }
+            await activeSession.client.subscribe(channelName);
+            activeSession.subscribedChannel = channelName;
+          } catch (subErr) {
+            console.warn('[useAgoraRTM] Channel resubscribe warning:', subErr);
+          }
+        }
+        return;
       }
     }
 
-    // 2. Buffer and sort by monotonic seq
-    eventBufferRef.current.push(event);
-    eventBufferRef.current.sort((a, b) => a.seq - b.seq);
+    // 2. If a connection is already in progress, await it
+    if (connectingPromise) {
+      try {
+        await connectingPromise;
+        if (activeSession?.isLoggedIn) {
+          updateAllConnectionStates(true);
+          broadcastError(null);
+        }
+        return;
+      } catch {
+        // Fall through to retry if in-progress attempt failed
+      }
+    }
 
-    // 3. Dispatch ordered events
-    while (eventBufferRef.current.length > 0) {
-      const nextEvt = eventBufferRef.current.shift();
-      if (nextEvt && isMountedRef.current) {
-        onEventRef.current(nextEvt);
+    // 3. Initiate single connection pipeline
+    connectingPromise = (async () => {
+      try {
+        // If an old session with a different UID exists, cleanly log it out first
+        if (activeSession && activeSession.uid !== uid) {
+          try {
+            if (activeSession.subscribedChannel) {
+              await activeSession.client.unsubscribe(activeSession.subscribedChannel);
+            }
+            await activeSession.client.logout();
+          } catch {
+            // Ignore previous logout errors
+          } finally {
+            activeSession = null;
+          }
+        }
+
+        // Fetch token from /api/token
+        const tokenRes = await fetch('/api/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ channelName, uid }),
+        });
+
+        if (!tokenRes.ok) {
+          const errData = await tokenRes.json().catch(() => ({}));
+          if (tokenRes.status === 500 && String(errData.error).includes('credentials not configured')) {
+            console.info('[useAgoraRTM] Telemetry standby: Agora credentials not configured in .env.local');
+            broadcastError('Agora telemetry standby (credentials not configured)');
+            return;
+          }
+          throw new Error(
+            errData.error || `Failed to fetch RTM token (HTTP ${tokenRes.status})`
+          );
+        }
+
+        const { rtmToken, appId } = await tokenRes.json();
+        if (!appId) {
+          throw new Error('Missing Agora App ID from token endpoint');
+        }
+
+        const AgoraRTM = (await import('agora-rtm-sdk')).default;
+
+        // Initialize single RTM client with warning log level to suppress harmless noise
+        const client = new AgoraRTM.RTM(appId, uid, {
+          useStringUserId: true,
+          logLevel: 'warn',
+        }) as unknown as RtmClientInstance;
+
+        // Attach listeners once on the client
+        client.addEventListener('message', (eventData: Record<string, unknown>) => {
+          try {
+            let rawData = eventData?.message;
+            if (rawData instanceof Uint8Array) {
+              rawData = new TextDecoder().decode(rawData);
+            }
+
+            if (typeof rawData !== 'string') return;
+
+            const parsed = JSON.parse(rawData);
+
+            const isDashboardEvent =
+              eventData?.customType === 'dashboard_event' ||
+              parsed?.customType === 'dashboard_event' ||
+              parsed?.type === 'dashboard_event';
+
+            if (
+              isDashboardEvent &&
+              parsed?.id &&
+              typeof parsed?.seq === 'number' &&
+              parsed?.eventType
+            ) {
+              dispatchToSubscribers(parsed as RTMDashboardEvent);
+            }
+          } catch (msgErr) {
+            console.warn('[useAgoraRTM] Message parsing error:', msgErr);
+          }
+        });
+
+        client.addEventListener('linkState', (eventData: Record<string, unknown>) => {
+          const stateStr =
+            typeof eventData?.currentState === 'string'
+              ? eventData.currentState
+              : '';
+          const connected = stateStr === 'CONNECTED';
+          if (activeSession) {
+            activeSession.isLoggedIn = connected;
+          }
+          updateAllConnectionStates(connected);
+        });
+
+        // Login to Agora RTM
+        await client.login({ token: rtmToken || undefined });
+
+        // Subscribe to incident channel
+        await client.subscribe(channelName);
+
+        activeSession = {
+          client,
+          appId,
+          uid,
+          subscribedChannel: channelName,
+          isLoggedIn: true,
+        };
+
+        updateAllConnectionStates(true);
+        broadcastError(null);
+      } catch (err) {
+        if (!isAbortOrCancelError(err)) {
+          const errMsg = err instanceof Error ? err.message : 'Failed to connect to Agora RTM';
+          broadcastError(errMsg);
+          console.error('[useAgoraRTM] Connection error:', err);
+        }
+        throw err;
+      } finally {
+        connectingPromise = null;
+      }
+    })();
+
+    await connectingPromise;
+  }, [channelName, uid]);
+
+  const disconnect = useCallback(async () => {
+    // If no active subscribers remain after a grace period, teardown the session
+    if (activeSubscribers.size === 0 && activeSession) {
+      try {
+        const session = activeSession;
+        activeSession = null;
+        if (session.subscribedChannel) {
+          await session.client.unsubscribe(session.subscribedChannel);
+        }
+        await session.client.logout();
+      } catch (err) {
+        if (!isAbortOrCancelError(err)) {
+          console.warn('[useAgoraRTM] Disconnect error:', err);
+        }
+      } finally {
+        updateAllConnectionStates(false);
       }
     }
   }, []);
 
-  const disconnect = useCallback(async () => {
-    try {
-      if (clientRef.current) {
-        const client = clientRef.current;
-        clientRef.current = null;
-
-        try {
-          if (channelName) {
-            await client.unsubscribe(channelName);
-          }
-        } catch {
-          // Ignore unsubscribe error on teardown
-        }
-
-        try {
-          await client.logout();
-        } catch {
-          // Ignore logout error on teardown
-        }
-      }
-      if (isMountedRef.current) {
-        setIsConnected(false);
-      }
-    } catch (err) {
-      if (!isAbortOrCancelError(err)) {
-        console.warn('[useAgoraRTM] Disconnect error:', err);
-      }
-    }
-  }, [channelName]);
-
-  const connect = useCallback(async () => {
-    if (typeof window === 'undefined' || !isMountedRef.current) return;
-    if (!channelName || !uid) {
-      setError('channelName and uid are required for RTM');
-      return;
-    }
-
-    if (clientRef.current || isConnectingRef.current) {
-      return;
-    }
-
-    isConnectingRef.current = true;
-
-    try {
-      // 1. Fetch token from /api/token
-      const tokenRes = await fetch('/api/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channelName, uid }),
-      });
-
-      if (!isMountedRef.current) return;
-
-      if (!tokenRes.ok) {
-        const errData = await tokenRes.json().catch(() => ({}));
-        if (tokenRes.status === 500 && String(errData.error).includes('credentials not configured')) {
-          console.info('[useAgoraRTM] Telemetry standby: Agora credentials not configured in .env.local');
-          if (isMountedRef.current) setError('Agora telemetry standby (credentials not configured)');
-          return;
-        }
-        throw new Error(
-          errData.error || `Failed to fetch RTM token (HTTP ${tokenRes.status})`
-        );
-      }
-
-      const { rtmToken, appId } = await tokenRes.json();
-      if (!appId) {
-        throw new Error('Missing Agora App ID from token endpoint');
-      }
-
-      if (!isMountedRef.current) return;
-
-      // 2. Dynamic import to avoid SSR errors
-      const AgoraRTM = (await import('agora-rtm-sdk')).default;
-
-      // 3. Initialize RTM Client
-      const client = new AgoraRTM.RTM(appId, uid) as unknown as RtmClientInstance;
-      clientRef.current = client;
-
-      // 4. Attach event listeners
-      client.addEventListener('message', (eventData: Record<string, unknown>) => {
-        if (!isMountedRef.current) return;
-        try {
-          let rawData = eventData?.message;
-          if (rawData instanceof Uint8Array) {
-            rawData = new TextDecoder().decode(rawData);
-          }
-
-          if (typeof rawData !== 'string') return;
-
-          const parsed = JSON.parse(rawData);
-
-          // Check if message is a dashboard event
-          const isDashboardEvent =
-            eventData?.customType === 'dashboard_event' ||
-            parsed?.customType === 'dashboard_event' ||
-            parsed?.type === 'dashboard_event';
-
-          if (
-            isDashboardEvent &&
-            parsed?.id &&
-            typeof parsed?.seq === 'number' &&
-            parsed?.eventType
-          ) {
-            processAndDispatchEvent(parsed as RTMDashboardEvent);
-          }
-        } catch (msgErr) {
-          console.warn('[useAgoraRTM] Message parsing error:', msgErr);
-        }
-      });
-
-      client.addEventListener('linkState', (eventData: Record<string, unknown>) => {
-        if (!isMountedRef.current) return;
-        const stateStr =
-          typeof eventData?.currentState === 'string'
-            ? eventData.currentState
-            : '';
-        if (stateStr === 'CONNECTED') {
-          setIsConnected(true);
-        } else if (
-          stateStr === 'DISCONNECTED' ||
-          stateStr === 'FAILED' ||
-          stateStr === 'SUSPENDED'
-        ) {
-          setIsConnected(false);
-        }
-      });
-
-      // 5. Login to Agora RTM
-      await client.login({ token: rtmToken || undefined });
-      if (!isMountedRef.current) return;
-
-      // 6. Subscribe to channel
-      await client.subscribe(channelName);
-      if (!isMountedRef.current) return;
-
-      setIsConnected(true);
-      setError(null);
-    } catch (err) {
-      if (isAbortOrCancelError(err) || !isMountedRef.current) {
-        return;
-      }
-      const errMsg =
-        err instanceof Error ? err.message : 'Failed to connect to Agora RTM';
-      if (isMountedRef.current) setError(errMsg);
-      console.error('[useAgoraRTM] Connection error:', err);
-    } finally {
-      isConnectingRef.current = false;
-    }
-  }, [channelName, uid, processAndDispatchEvent]);
-
   // Lifecycle management
   useEffect(() => {
-    let mounted = true;
+    if (!enabled || !channelName || !uid) return;
 
-    if (enabled && channelName && uid) {
-      const init = async () => {
-        if (!mounted || !isMountedRef.current) return;
-        await connect();
-      };
-      void init();
+    // Register this instance's event handler into the subscriber set
+    const subscriberHandler = (event: RTMDashboardEvent) => {
+      if (onEventRef.current) {
+        onEventRef.current(event);
+      }
+    };
+    activeSubscribers.add(subscriberHandler);
+
+    // Cancel any pending teardown
+    if (teardownTimer) {
+      clearTimeout(teardownTimer);
+      teardownTimer = null;
     }
 
+    void connect();
+
     return () => {
-      mounted = false;
-      void disconnect();
+      activeSubscribers.delete(subscriberHandler);
+
+      // In React 18/19 (Strict Mode, fast refreshes), unmounts happen before immediate remounts.
+      // We debounce teardown by 2500ms to allow remounts to reuse the active RTM connection
+      // without instantiating duplicate client instances.
+      if (activeSubscribers.size === 0) {
+        teardownTimer = setTimeout(() => {
+          if (activeSubscribers.size === 0) {
+            void disconnect();
+          }
+        }, 2500);
+      }
     };
   }, [enabled, channelName, uid, connect, disconnect]);
 
@@ -280,3 +397,4 @@ export function useAgoraRTM({
     disconnect,
   };
 }
+
