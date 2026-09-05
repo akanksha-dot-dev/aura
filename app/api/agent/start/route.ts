@@ -435,6 +435,34 @@ export async function POST(request: NextRequest) {
             };
           }
 
+          // If running locally without an OpenAI key, use Agora Managed Mode ($0 Agora trial tier):
+          // Agora Cloud manages authentication to OpenAI directly on Agora's infrastructure.
+          // Requires ZERO external API keys and ZERO localhost network tunnels!
+          if (isLocalhost && !hasValidKey) {
+            return {
+              credential_mode: 'managed',
+              vendor: 'openai',
+              style: 'openai',
+              url: 'https://api.openai.com/v1/chat/completions',
+              system_messages: [
+                {
+                  role: 'system',
+                  content: AURA_SYSTEM_PROMPT,
+                },
+              ],
+              greeting_message:
+                'AURA online. Incident bridge monitoring active.',
+              failure_message:
+                'AURA experiencing connectivity issues. Standing by.',
+              max_history: 50,
+              params: {
+                model: 'gpt-4o-mini',
+                temperature: 0.1,
+                max_tokens: 1024,
+              },
+            };
+          }
+
           const resolvedMcpUrl =
             process.env.MCP_URL ||
             (hostHeader && !hostHeader.includes('localhost') && !hostHeader.includes('127.0.0.1')
