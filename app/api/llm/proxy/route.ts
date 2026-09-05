@@ -3,7 +3,7 @@ import { createDashboardEvent, publishDashboardEvent } from '@/lib/rtmPublisher'
 import { getIncidentState, buildDynamicContext } from '@/lib/incidentStore';
 
 export { buildDynamicContext } from '@/lib/incidentStore';
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 
 interface ProxyRequest {
