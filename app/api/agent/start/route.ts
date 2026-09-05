@@ -382,41 +382,80 @@ export async function POST(request: NextRequest) {
             ],
           },
         },
-        llm: {
-          vendor: 'custom',
-          style: 'openai',
-          url:
-            process.env.PROXY_URL ||
-            'https://aura.akanksha.dev/api/llm/proxy',
-          api_key: process.env.INTERNAL_PROXY_SECRET || '',
-          system_messages: [
-            {
-              role: 'system',
-              content: AURA_SYSTEM_PROMPT,
+        llm: (() => {
+          const rawProxyUrl = process.env.PROXY_URL || '';
+          const isLocalhost =
+            !rawProxyUrl ||
+            rawProxyUrl.includes('localhost') ||
+            rawProxyUrl.includes('127.0.0.1');
+
+          const openAIKey = process.env.OPENAI_API_KEY;
+          const hasValidKey =
+            openAIKey &&
+            openAIKey.startsWith('sk-') &&
+            !openAIKey.includes('your_openai_api_key');
+
+          // If running locally with a valid OpenAI key, point Agora Cloud directly to OpenAI
+          if (isLocalhost && hasValidKey) {
+            return {
+              style: 'openai',
+              url: 'https://api.openai.com/v1/chat/completions',
+              api_key: openAIKey,
+              system_messages: [
+                {
+                  role: 'system',
+                  content: AURA_SYSTEM_PROMPT,
+                },
+              ],
+              greeting_message:
+                'AURA online. Incident bridge monitoring active.',
+              failure_message:
+                'AURA experiencing connectivity issues. Standing by.',
+              max_history: 50,
+              params: {
+                model: 'gpt-4o-mini',
+                temperature: 0.1,
+                max_tokens: 1024,
+              },
+            };
+          }
+
+          return {
+            vendor: 'custom',
+            style: 'openai',
+            url: rawProxyUrl || 'https://aura.akanksha.dev/api/llm/proxy',
+            api_key: process.env.INTERNAL_PROXY_SECRET || '',
+            system_messages: [
+              {
+                role: 'system',
+                content: AURA_SYSTEM_PROMPT,
+              },
+            ],
+            greeting_message:
+              'AURA online. Incident bridge monitoring active.',
+            failure_message:
+              'AURA experiencing connectivity issues. Standing by.',
+            max_history: 50,
+            params: {
+              model: 'gpt-4.1-mini',
+              temperature: 0.1,
+              max_tokens: 1024,
             },
-          ],
-          greeting_message:
-            'AURA online. Incident bridge monitoring active.',
-          failure_message:
-            'AURA experiencing connectivity issues. Standing by.',
-          max_history: 50,
-          params: {
-            model: 'gpt-4.1-mini',
-            temperature: 0.1,
-            max_tokens: 1024,
-          },
-          mcp_servers: [
-            {
-              name: 'aura-incident-mcp',
-              endpoint:
-                process.env.MCP_URL ||
-                'https://aura.akanksha.dev/api/mcp/sse',
-              transport: 'streamable_http',
-              allowed_tools: ['*'],
-              timeout_ms: 4000,
-            },
-          ],
-        },
+            ...(!isLocalhost && process.env.MCP_URL
+              ? {
+                  mcp_servers: [
+                    {
+                      name: 'aura-incident-mcp',
+                      endpoint: process.env.MCP_URL,
+                      transport: 'streamable_http',
+                      allowed_tools: ['*'],
+                      timeout_ms: 4000,
+                    },
+                  ],
+                }
+              : {}),
+          };
+        })(),
         tts: {
           credential_mode: 'managed',
           vendor: 'openai',
