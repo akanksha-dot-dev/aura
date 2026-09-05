@@ -1,4 +1,5 @@
 import { IncidentState, calculateCognitiveLoad, classifyOODAPhase, EvidenceItem } from './types';
+import { PRESET_SCENARIOS } from './scenarios';
 
 /**
  * Format milliseconds into human-readable elapsed duration (e.g. "6m 12s").
@@ -20,6 +21,9 @@ export function initializeLiveIncident(
     title?: string;
     severity?: 'SEV-0' | 'SEV-1' | 'SEV-2' | 'SEV-3';
     affectedServices?: string[];
+    description?: string;
+    impact?: string;
+    suspectedCause?: string;
     personas?: Array<{ uid: string; displayName: string; role: string }>;
   }
 ): IncidentState {
@@ -81,13 +85,52 @@ export function initializeLiveIncident(
     }
   }
 
+  const cleanChannelKey = channelName.trim().toLowerCase();
+  const matchingPreset = PRESET_SCENARIOS.find(
+    (s) =>
+      s.channelName.toLowerCase() === cleanChannelKey ||
+      s.id.toLowerCase() === cleanChannelKey ||
+      cleanChannelKey.includes(s.id.toLowerCase())
+  );
+
+  const resolvedTitle =
+    scenarioOverrides?.title ||
+    matchingPreset?.title ||
+    (cleanChannelKey.includes('cdn')
+      ? 'CDN Cache Invalidation Storm — Global Latency Spike'
+      : cleanChannelKey.includes('auth')
+      ? 'Authentication Service Compromise — Suspicious Token Generation'
+      : cleanChannelKey.includes('k8s')
+      ? 'Kubernetes Node Pool Exhaustion — Pod Eviction Cascade'
+      : cleanChannelKey.includes('checkout') || cleanChannelKey.includes('payment')
+      ? 'Payment Gateway Degradation & Checkout Outage'
+      : `Active Incident Bridge (${channelName})`);
+
+  const resolvedSeverity =
+    scenarioOverrides?.severity ||
+    matchingPreset?.severity ||
+    (cleanChannelKey.includes('auth') ? 'SEV-0' : cleanChannelKey.includes('cdn') ? 'SEV-2' : 'SEV-1');
+
+  const resolvedServices =
+    scenarioOverrides?.affectedServices ||
+    matchingPreset?.affectedServices ||
+    (cleanChannelKey.includes('cdn')
+      ? ['cdn-edge', 'static-assets', 'image-service']
+      : cleanChannelKey.includes('auth')
+      ? ['auth-service', 'token-service', 'user-api']
+      : cleanChannelKey.includes('k8s')
+      ? ['k8s-control-plane', 'api-gateway', 'worker-pool']
+      : cleanChannelKey.includes('payment') || cleanChannelKey.includes('checkout')
+      ? ['payment-api', 'checkout-service', 'postgres-primary']
+      : ['core-api', 'service-gateway']);
+
   const liveState: IncidentState = {
     incidentId: `inc-${channelName.replace(/[^a-zA-Z0-9-]/g, '-')}`,
-    title: scenarioOverrides?.title || 'Payment Gateway Outage — Checkout Failures',
-    severity: scenarioOverrides?.severity || 'SEV-1',
+    title: resolvedTitle,
+    severity: resolvedSeverity,
     status: 'investigating',
     openedAt: now,
-    affectedServices: scenarioOverrides?.affectedServices || ['payment-api', 'checkout-service', 'postgres-primary'],
+    affectedServices: resolvedServices,
     participants,
     incidentCommanderUid: icUid,
     evidenceItems: [],
@@ -232,7 +275,28 @@ const channelStates = new Map<string, IncidentState>();
 export function getIncidentState(channelName = 'incident-war-room'): IncidentState {
   const key = channelName.trim().toLowerCase();
   if (!channelStates.has(key)) {
-    channelStates.set(key, createBaselineIncidentState(channelName));
+    const preset = PRESET_SCENARIOS.find(
+      (s) =>
+        s.channelName.toLowerCase() === key ||
+        s.id.toLowerCase() === key ||
+        key.includes(s.id.toLowerCase())
+    );
+    if (preset) {
+      channelStates.set(
+        key,
+        initializeLiveIncident(channelName, undefined, {
+          title: preset.title,
+          severity: preset.severity,
+          affectedServices: preset.affectedServices,
+          description: preset.description,
+          impact: preset.impact,
+          suspectedCause: preset.suspectedCause,
+          personas: preset.personas,
+        })
+      );
+    } else {
+      channelStates.set(key, initializeLiveIncident(channelName));
+    }
   }
   return channelStates.get(key)!;
 }

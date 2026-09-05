@@ -6,7 +6,13 @@ import { useAgoraRTM } from '@/hooks/useAgoraRTM';
 import { useIncidentState } from '@/hooks/useIncidentState';
 import { Participant, TopologyNode, TopologyEdge } from '@/lib/types';
 import { startMockReplay } from '@/lib/mockReplay';
-import { loadScenarioConfig, createIncidentStateFromScenario, ScenarioConfig } from '@/lib/scenarios';
+import {
+  loadScenarioConfig,
+  createIncidentStateFromScenario,
+  ScenarioConfig,
+  PRESET_SCENARIOS,
+  PersonaDefinition,
+} from '@/lib/scenarios';
 import { StatusBar } from '@/components/StatusBar';
 import { SpeakerPanel } from '@/components/SpeakerPanel';
 import { ConflictBanner } from '@/components/ConflictBanner';
@@ -33,6 +39,7 @@ function DashboardContent() {
   const name = searchParams.get('name') || 'Operator';
   const role = searchParams.get('role') || 'Incident Responder';
   const channel = searchParams.get('channel') || 'incident-war-room';
+  const scenarioId = searchParams.get('scenarioId');
   const isMockReplay = Boolean(searchParams.get('__AURA_REPLAY_MOCK_STREAM'));
   const speedParam = Math.max(0.1, Number(searchParams.get('speed')) || 1);
   const initialCostRate = Math.max(1, Number(searchParams.get('costRate')) || 150);
@@ -96,12 +103,26 @@ function DashboardContent() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // 0. Load scenario config from sessionStorage (set by lobby)
-  const [scenarioConfig, setScenarioConfig] = useState<ScenarioConfig | null>(null);
+  // 0. Synchronously resolve scenario config from sessionStorage or URL query params (set by lobby)
+  const [scenarioConfig, setScenarioConfig] = useState<ScenarioConfig | null>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = loadScenarioConfig();
+      if (stored) return stored;
+    }
+    const matchingPreset =
+      (scenarioId ? PRESET_SCENARIOS.find((s) => s.id === scenarioId) : null) ||
+      PRESET_SCENARIOS.find((s) => s.channelName.toLowerCase() === channel.toLowerCase()) ||
+      PRESET_SCENARIOS[0];
+    return matchingPreset;
+  });
+
   useEffect(() => {
-    const config = loadScenarioConfig();
+    const config =
+      loadScenarioConfig() ||
+      (scenarioId ? PRESET_SCENARIOS.find((s) => s.id === scenarioId) : null) ||
+      PRESET_SCENARIOS.find((s) => s.channelName.toLowerCase() === channel.toLowerCase());
     if (config) setScenarioConfig(config);
-  }, []);
+  }, [scenarioId, channel]);
 
   // 1. Central Incident State Engine — initialized from scenario config
   const scenarioInitialState = useMemo(() => {
@@ -399,6 +420,13 @@ function DashboardContent() {
       if (isStartingAgentRef.current || activeAgentIdRef.current) return;
       isStartingAgentRef.current = true;
       try {
+        const activeScenario =
+          scenarioConfig ||
+          (typeof window !== 'undefined' ? loadScenarioConfig() : null) ||
+          (scenarioId ? PRESET_SCENARIOS.find((s) => s.id === scenarioId) : null) ||
+          PRESET_SCENARIOS.find((s) => s.channelName.toLowerCase() === channel.toLowerCase()) ||
+          PRESET_SCENARIOS[0];
+
         const agentPayload: Record<string, unknown> = {
           channelName: channel,
           userUid: uid,
@@ -406,22 +434,24 @@ function DashboardContent() {
           userRole: role,
           language: voiceLang || 'en-IN',
         };
-        // Pass scenario config so the system prompt is dynamically contextualized
-        if (scenarioConfig) {
+
+        if (activeScenario) {
           agentPayload.scenario = {
-            title: scenarioConfig.title,
-            severity: scenarioConfig.severity,
-            affectedServices: scenarioConfig.affectedServices,
-            description: scenarioConfig.description,
-            impact: scenarioConfig.impact,
-            suspectedCause: scenarioConfig.suspectedCause,
-            personas: scenarioConfig.personas.map((p) => ({
+            id: activeScenario.id,
+            title: activeScenario.title,
+            severity: activeScenario.severity,
+            affectedServices: activeScenario.affectedServices,
+            description: activeScenario.description,
+            impact: activeScenario.impact,
+            suspectedCause: activeScenario.suspectedCause,
+            personas: activeScenario.personas.map((p: PersonaDefinition) => ({
               uid: p.uid,
               displayName: p.displayName,
               role: p.role,
             })),
           };
         }
+
         const res = await fetch('/api/agent/start', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -458,7 +488,7 @@ function DashboardContent() {
         }).catch(() => {});
       }
     };
-  }, [isMockReplay, channel]);
+  }, [isMockReplay, channel, uid, name, role, voiceLang, scenarioConfig, scenarioId]);
 
   // Merge local user into participant list if not yet dispatched via RTM
   const effectiveParticipants: Record<string, Participant> = useMemo(() => {

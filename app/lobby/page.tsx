@@ -38,6 +38,7 @@ function LobbyContent() {
       name: persona.displayName,
       role: persona.role,
       channel,
+      scenarioId: activeScenario.id,
     });
     if (options?.costRate) {
       params.set('costRate', options.costRate.toString());
