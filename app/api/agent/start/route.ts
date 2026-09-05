@@ -292,6 +292,15 @@ interface AgentStartRequest {
   userUid?: string;
   userName?: string;
   userRole?: string;
+  scenario?: {
+    title?: string;
+    severity?: string;
+    affectedServices?: string[];
+    description?: string;
+    impact?: string;
+    suspectedCause?: string;
+    personas?: Array<{ uid: string; displayName: string; role: string }>;
+  };
 }
 
 export async function POST(request: NextRequest) {
@@ -306,7 +315,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { channelName, userUid, userName, userRole } = body;
+    const { channelName, userUid, userName, userRole, scenario } = body;
 
     if (!channelName || typeof channelName !== 'string') {
       return NextResponse.json(
@@ -376,16 +385,36 @@ export async function POST(request: NextRequest) {
       : '';
 
     // Initialize clean live incident state for the real operator if provided
+    const scenarioOverrides = scenario ? {
+      title: scenario.title,
+      severity: scenario.severity as 'SEV-0' | 'SEV-1' | 'SEV-2' | 'SEV-3' | undefined,
+      affectedServices: scenario.affectedServices,
+      personas: scenario.personas,
+    } : undefined;
+
     if (userUid) {
       initializeLiveIncident(channelName, {
         uid: userUid,
         displayName: userName || userUid,
         role: userRole || 'Incident Responder',
-      });
+      }, scenarioOverrides);
     }
 
     const initialIncidentContext = buildDynamicContext(getIncidentState(channelName));
-    const effectiveSystemPrompt = `${AURA_SYSTEM_PROMPT}\n\n═══════════════════════════════════════════════\nCURRENT INCIDENT SITUATION & REAL-TIME CONTEXT\n═══════════════════════════════════════════════\n${initialIncidentContext}`;
+
+    // Build scenario-specific context block for the system prompt
+    let scenarioContextBlock = '';
+    if (scenario) {
+      const parts: string[] = [];
+      if (scenario.description) parts.push(`Scenario Description: ${scenario.description}`);
+      if (scenario.impact) parts.push(`Current Impact: ${scenario.impact}`);
+      if (scenario.suspectedCause) parts.push(`Suspected Root Cause: ${scenario.suspectedCause}`);
+      if (parts.length > 0) {
+        scenarioContextBlock = `\n\n═══════════════════════════════════════════════\nSCENARIO BRIEFING\n═══════════════════════════════════════════════\n${parts.join('\n')}`;
+      }
+    }
+
+    const effectiveSystemPrompt = `${AURA_SYSTEM_PROMPT}${scenarioContextBlock}\n\n═══════════════════════════════════════════════\nCURRENT INCIDENT SITUATION & REAL-TIME CONTEXT\n═══════════════════════════════════════════════\n${initialIncidentContext}`;
 
     const payload = {
       name: sessionName,
@@ -551,7 +580,7 @@ export async function POST(request: NextRequest) {
         tts: {
           credential_mode: 'managed',
           vendor: 'minimax',
-          skip_patterns: [1, 2, 3, 4, 5],
+          skip_patterns: ['\\[.*?\\]', 'NO_RESPONSE', 'https?://\\S+'],
           params: {
             url: 'wss://api.minimax.io/ws/v1/t2a_v2',
             model: 'speech-2.6-turbo',

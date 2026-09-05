@@ -6,7 +6,7 @@ export const ClassificationType = z.enum([
 export type ClassificationType = z.infer<typeof ClassificationType>;
 
 export const HypothesisStatus = z.enum([
-  'active', 'confirmed', 'disproven', 'stale'
+  'active', 'confirmed', 'disproven', 'resolved', 'stale'
 ]);
 export type HypothesisStatus = z.infer<typeof HypothesisStatus>;
 
@@ -102,7 +102,8 @@ export function getDisplayConfidence(item: EvidenceItem): number {
     return item.confidence;
   }
   const ageMinutes = (Date.now() - item.timestamp) / 60_000;
-  const decayFactor = Math.max(0, 1 - (ageMinutes / 10)); // Linear decay over 10 minutes
+  // Asymptotic decay: floors at ~30% of original confidence after 20+ minutes
+  const decayFactor = Math.max(0.3, 1 - (ageMinutes / (ageMinutes + 10)));
   return Math.round(item.confidence * decayFactor);
 }
 
@@ -131,7 +132,7 @@ export function classifyOODAPhase(state: IncidentState): OODAPhase {
   };
   const total = recent.length;
 
-  if (counts.action > 0 || counts.action / total > 0.25) return 'ACT';
+  if (counts.action > 0 && counts.action / total >= 0.25) return 'ACT';
   if (counts.decision / total > 0.2) return 'DECIDE';
   if (counts.hypothesis + counts.conflict > 0) return 'ORIENT';
   return 'OBSERVE';
@@ -147,7 +148,7 @@ export interface TopologyNode {
   speakerName: string;           // Display name
   confidence: number;            // 0-85 (capped)
   timestamp: number;             // Unix ms
-  status: 'active' | 'confirmed' | 'disproven' | 'stale';
+  status: 'active' | 'confirmed' | 'disproven' | 'resolved' | 'stale';
   x?: number;
   y?: number;
   vx?: number;

@@ -1,138 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { IncidentState, calculateCognitiveLoad } from '@/lib/types';
 import { createDashboardEvent, publishDashboardEvent } from '@/lib/rtmPublisher';
 import { getIncidentState, buildDynamicContext } from '@/lib/incidentStore';
 
 export { buildDynamicContext } from '@/lib/incidentStore';
 export const runtime = 'nodejs';
 
-/**
- * Format milliseconds into human-readable elapsed duration (e.g. "6m 12s").
- */
-function formatElapsedTime(ms: number): string {
-  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
-}
-
-/**
- * Baseline / demo scenario incident state matching SEV-1 Payment Outage.
- * Live incident state from RTM will hydrate this in subsequent stories.
- */
-const DEFAULT_INCIDENT_STATE: IncidentState = {
-  incidentId: 'inc-demo-001',
-  title: 'Payment Gateway Degradation & Checkout Outage',
-  severity: 'SEV-1',
-  status: 'investigating',
-  openedAt: Date.now() - 360_000,
-  affectedServices: ['payment-api', 'checkout-service', 'postgres-primary'],
-  participants: {
-    'user-sarah': {
-      uid: 'user-sarah',
-      displayName: 'Sarah Chen',
-      role: 'Incident Commander',
-      isIncidentCommander: true,
-      joinedAt: Date.now() - 360_000,
-      totalSpeakingMs: 45_000,
-      lastSpokeAt: Date.now() - 25_000,
-    },
-    'user-marcus': {
-      uid: 'user-marcus',
-      displayName: 'Marcus Vance',
-      role: 'Lead SRE',
-      isIncidentCommander: false,
-      joinedAt: Date.now() - 340_000,
-      totalSpeakingMs: 65_000,
-      lastSpokeAt: Date.now() - 10_000,
-    },
-    'user-priya': {
-      uid: 'user-priya',
-      displayName: 'Priya Patel',
-      role: 'Product Manager',
-      isIncidentCommander: false,
-      joinedAt: Date.now() - 300_000,
-      totalSpeakingMs: 20_000,
-      lastSpokeAt: Date.now() - 50_000,
-    },
-  },
-  incidentCommanderUid: 'user-sarah',
-  evidenceItems: [
-    {
-      id: 'evt-001',
-      category: 'fact',
-      content: 'Checkout error rate spiked to 42% following v2.14 release',
-      speakerUid: 'user-marcus',
-      speakerName: 'Marcus Vance',
-      confidence: 85,
-      timestamp: Date.now() - 300_000,
-      serviceAffected: 'payment-api',
-      relatedTo: [],
-      status: 'confirmed',
-    },
-    {
-      id: 'evt-002',
-      category: 'hypothesis',
-      content: 'Postgres connection pool exhaustion causing thread starvation',
-      speakerUid: 'user-marcus',
-      speakerName: 'Marcus Vance',
-      confidence: 75,
-      timestamp: Date.now() - 240_000,
-      serviceAffected: 'postgres-primary',
-      relatedTo: ['evt-001'],
-      status: 'active',
-      decidingMetric: 'active pg_stat_activity connection count',
-    },
-    {
-      id: 'evt-003',
-      category: 'hypothesis',
-      content: 'Payment gateway API rate limiting after PR #492',
-      speakerUid: 'user-sarah',
-      speakerName: 'Sarah Chen',
-      confidence: 65,
-      timestamp: Date.now() - 180_000,
-      serviceAffected: 'payment-api',
-      relatedTo: ['evt-001'],
-      status: 'active',
-      decidingMetric: 'upstream gateway HTTP 429 response codes',
-    },
-    {
-      id: 'evt-004',
-      category: 'conflict',
-      content: 'Connection pool exhaustion vs Gateway rate limiting',
-      speakerUid: 'aura_agent',
-      speakerName: 'AURA',
-      confidence: 80,
-      timestamp: Date.now() - 120_000,
-      serviceAffected: 'payment-api',
-      relatedTo: ['evt-002', 'evt-003'],
-      status: 'active',
-      hypothesisA: 'Postgres connection pool exhaustion',
-      hypothesisB: 'Payment gateway rate limiting',
-      decidingMetric: 'Database connection metrics vs HTTP 429 errors',
-    },
-    {
-      id: 'evt-005',
-      category: 'action',
-      content: 'Inspect Postgres connection pool utilization via Datadog',
-      speakerUid: 'user-sarah',
-      speakerName: 'Sarah Chen',
-      confidence: 85,
-      timestamp: Date.now() - 60_000,
-      serviceAffected: 'postgres-primary',
-      relatedTo: ['evt-002'],
-      status: 'active',
-      assignedTo: 'Marcus Vance',
-      actionStatus: 'in_progress',
-      eta: Date.now() + 180_000,
-    },
-  ],
-  eventSeq: 5,
-  currentOODAPhase: 'ORIENT',
-  costAccrued: 54000,
-  cognitiveLoadScore: 65,
-  lastReadbackAt: Date.now() - 90_000,
-};
 
 interface ProxyRequest {
   model?: string;
@@ -188,7 +60,7 @@ export async function POST(request: NextRequest) {
     delete cleanBody.turn_id;
     delete cleanBody.timestamp;
     const isStream = body.stream !== false;
-    const modelToUse = body.model || 'gpt-4o-mini';
+    const modelToUse = body.model || 'gpt-4.1-mini';
 
     const upstreamPayload = {
       ...cleanBody,
@@ -253,7 +125,8 @@ export async function POST(request: NextRequest) {
     if (!isStream) {
       const json = await upstreamResponse.json();
       const content = json.choices?.[0]?.message?.content;
-      if (typeof content === 'string' && content.trim() === 'NO_RESPONSE') {
+      const trimmedContent = typeof content === 'string' ? content.trim() : '';
+      if (trimmedContent === 'NO_RESPONSE' || trimmedContent === '[SILENT]') {
         json.choices[0].message.content = '';
       }
       return NextResponse.json(json);
@@ -297,7 +170,7 @@ export async function POST(request: NextRequest) {
 
                 if (dataStr === '[DONE]') {
                   if (isBufferingPrefix) {
-                    if (accumulatedContent.trim() === 'NO_RESPONSE') {
+                    if (accumulatedContent.trim() === 'NO_RESPONSE' || accumulatedContent.trim() === '[SILENT]') {
                       // Suppress TTS audio by emitting an empty content delta
                       const emptyChunk = JSON.stringify({
                         id: 'chatcmpl-no-response',
@@ -372,15 +245,17 @@ export async function POST(request: NextRequest) {
                     const trimmedCandidate = candidate.trimStart().toUpperCase();
 
                     if (
-                      'NO_RESPONSE'.startsWith(trimmedCandidate) &&
-                      trimmedCandidate.length <= 'NO_RESPONSE'.length
+                      ('NO_RESPONSE'.startsWith(trimmedCandidate) &&
+                      trimmedCandidate.length <= 'NO_RESPONSE'.length) ||
+                      ('[SILENT]'.startsWith(trimmedCandidate) &&
+                      trimmedCandidate.length <= '[SILENT]'.length)
                     ) {
                       accumulatedContent = candidate;
                       bufferedLines.push(line);
 
                       // Check if complete NO_RESPONSE and stop reached
                       if (
-                        candidate.trim() === 'NO_RESPONSE' &&
+                        (candidate.trim() === 'NO_RESPONSE' || candidate.trim() === '[SILENT]') &&
                         choice?.finish_reason === 'stop'
                       ) {
                         const emptyChunk = JSON.stringify({
@@ -417,7 +292,7 @@ export async function POST(request: NextRequest) {
                   if (isBufferingPrefix) {
                     if (
                       choice?.finish_reason === 'stop' &&
-                      accumulatedContent.trim() === 'NO_RESPONSE'
+                      (accumulatedContent.trim() === 'NO_RESPONSE' || accumulatedContent.trim() === '[SILENT]')
                     ) {
                       const emptyChunk = JSON.stringify({
                         id: chunkObj?.id || 'chatcmpl-no-response',
@@ -447,7 +322,7 @@ export async function POST(request: NextRequest) {
 
           // If stream finished without explicit [DONE]
           if (isBufferingPrefix) {
-            if (accumulatedContent.trim() === 'NO_RESPONSE') {
+            if (accumulatedContent.trim() === 'NO_RESPONSE' || accumulatedContent.trim() === '[SILENT]') {
               const emptyChunk = JSON.stringify({
                 id: 'chatcmpl-no-response',
                 object: 'chat.completion.chunk',
@@ -549,7 +424,7 @@ function handleAutonomousIncidentResponse(
         serviceAffected: 'postgres-primary',
         confidence: 85,
         status: 'confirmed',
-        speakerUid: 'user-marcus',
+        speakerUid: 'marcus_sre',
         speakerName: 'Marcus Vance',
       },
     };
@@ -569,7 +444,7 @@ function handleAutonomousIncidentResponse(
         status: 'pending_confirmation',
         speakerUid: 'aura_agent',
         speakerName: 'AURA',
-        assignedToUid: 'user-sarah',
+        assignedToUid: 'sarah_ic',
         assignedToName: 'Sarah Chen',
       },
     };
@@ -614,7 +489,7 @@ function handleAutonomousIncidentResponse(
       id: completionId,
       object: 'chat.completion',
       created: Math.floor(Date.now() / 1000),
-      model: 'gpt-4o-mini',
+      model: 'gpt-4.1-mini',
       choices: [
         {
           index: 0,
@@ -633,7 +508,7 @@ function handleAutonomousIncidentResponse(
         id: completionId,
         object: 'chat.completion.chunk',
         created: Math.floor(Date.now() / 1000),
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1-mini',
         choices: [
           {
             index: 0,
@@ -648,7 +523,7 @@ function handleAutonomousIncidentResponse(
         id: completionId,
         object: 'chat.completion.chunk',
         created: Math.floor(Date.now() / 1000),
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1-mini',
         choices: [{ index: 0, delta: {}, finish_reason: 'stop' }],
       });
       controller.enqueue(encoder.encode(`data: ${doneChunk}\n\n`));

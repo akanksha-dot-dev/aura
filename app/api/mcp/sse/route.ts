@@ -565,7 +565,7 @@ export async function POST(request: NextRequest) {
             category: 'decision',
             content: decision,
             speakerUid: authorizedByUid,
-            speakerName: getSpeakerName(authorizedByUid),
+            speakerName: getSpeakerName(authorizedByUid, channelName),
             confidence: CONFIDENCE_CAP,
             rationale,
             affectedServices,
@@ -579,7 +579,7 @@ export async function POST(request: NextRequest) {
             category: 'decision',
             content: decision,
             speakerUid: authorizedByUid,
-            speakerName: getSpeakerName(authorizedByUid),
+            speakerName: getSpeakerName(authorizedByUid, channelName),
             confidence: CONFIDENCE_CAP,
             relatedTo,
             status: 'confirmed',
@@ -655,7 +655,7 @@ export async function POST(request: NextRequest) {
             eventId: event.id,
             seq: event.seq,
             event,
-            message: `Action assigned to ${getSpeakerName(assignedToUid)}: "${task}"`,
+            message: `Action assigned to ${getSpeakerName(assignedToUid, channelName)}: "${task}"`,
           };
           break;
         }
@@ -758,6 +758,21 @@ export async function POST(request: NextRequest) {
 
           broadcastDashboardEvent(channelName, event);
 
+          // Persist to server-side incident store
+          addEvidenceToIncident(channelName, {
+            id: `jira-${ticketId}`,
+            category: 'action',
+            content: `[Jira ${ticketId}] ${summary}`,
+            speakerUid: AGENT_UID,
+            speakerName: 'AURA',
+            confidence: 85,
+            timestamp: Date.now(),
+            status: 'confirmed',
+            actionStatus: 'in_progress',
+            assignedTo: assignedTeam,
+            relatedTo: [],
+          });
+
           resultData = {
             id: ticketId,
             summary,
@@ -823,6 +838,21 @@ export async function POST(request: NextRequest) {
 
           broadcastDashboardEvent(channelName, event);
 
+          // Persist to server-side incident store
+          addEvidenceToIncident(channelName, {
+            id: `slack-${Date.now()}`,
+            category: 'action',
+            content: `[Slack → ${channel}] ${statusMessage}`,
+            speakerUid: AGENT_UID,
+            speakerName: 'AURA',
+            confidence: 85,
+            timestamp: Date.now(),
+            status: 'confirmed',
+            actionStatus: webhookDelivered ? 'done' : 'in_progress',
+            assignedTo: channel,
+            relatedTo: [],
+          });
+
           resultData = {
             success: true,
             channel,
@@ -851,6 +881,21 @@ export async function POST(request: NextRequest) {
           });
 
           broadcastDashboardEvent(channelName, event);
+
+          // Persist to server-side incident store
+          addEvidenceToIncident(channelName, {
+            id: `pd-${pageId}`,
+            category: 'action',
+            content: `[PagerDuty ${pageId}] Paged ${service} on-call (${urgency})${escalationNote ? ': ' + escalationNote : ''}`,
+            speakerUid: AGENT_UID,
+            speakerName: 'AURA',
+            confidence: 85,
+            timestamp: Date.now(),
+            status: 'confirmed',
+            actionStatus: 'in_progress',
+            assignedTo: service,
+            relatedTo: [],
+          });
 
           resultData = {
             success: true,

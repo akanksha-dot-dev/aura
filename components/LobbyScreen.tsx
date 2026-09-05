@@ -1,10 +1,23 @@
 'use client';
 
 import React from 'react';
-import { PERSONAS, PersonaConfig } from '@/lib/constants';
+import { PersonaConfig } from '@/lib/constants';
+import {
+  ScenarioConfig,
+  PersonaDefinition,
+  PRESET_SCENARIOS,
+  generateChannelName,
+  generatePersonaUid,
+  getAvatarColor,
+} from '@/lib/scenarios';
+import type { Severity } from '@/lib/types';
 
 export interface LobbyScreenProps {
-  onJoin: (persona: PersonaConfig, options?: { costRate?: number; simulateReplay?: boolean }) => void;
+  onJoin: (
+    persona: PersonaConfig,
+    options?: { costRate?: number; simulateReplay?: boolean },
+    scenario?: ScenarioConfig
+  ) => void;
   isConnecting?: boolean;
 }
 
@@ -15,32 +28,53 @@ const COST_PRESETS = [
   { label: 'Fintech / Cloud', rate: 500 },
 ];
 
-const PERSONA_ROLE_DESCRIPTIONS: Record<string, { badge: string; description: string }> = {
-  sarah_oncall: {
-    badge: 'MISSION COMMAND',
-    description: 'Leads war room triage, arbitrates contradictions, issues mitigation & rollback directives.',
-  },
-  marcus_devops: {
-    badge: 'INFRASTRUCTURE',
-    description: 'Investigates database pool exhaustion, verifies replica lag, executes canary deployment.',
-  },
-  priya_lead: {
-    badge: 'PRODUCT IMPACT',
-    description: 'Quantifies revenue loss, monitors user checkout failures, drafts executive stakeholder updates.',
-  },
-};
+const SEVERITY_OPTIONS: { value: Severity; label: string; color: string }[] = [
+  { value: 'SEV-0', label: 'SEV-0 CRITICAL', color: '#FF4444' },
+  { value: 'SEV-1', label: 'SEV-1 HIGH', color: '#F87171' },
+  { value: 'SEV-2', label: 'SEV-2 MEDIUM', color: '#FFA726' },
+  { value: 'SEV-3', label: 'SEV-3 LOW', color: '#66BB6A' },
+];
 
 export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) {
+  // Scenario state
+  const [activeScenarioId, setActiveScenarioId] = React.useState<string>(PRESET_SCENARIOS[0].id);
+  const [customScenarios, setCustomScenarios] = React.useState<ScenarioConfig[]>([]);
+  const [isCreatingCustom, setIsCreatingCustom] = React.useState(false);
+
+  // Custom scenario builder state
+  const [customTitle, setCustomTitle] = React.useState('');
+  const [customSeverity, setCustomSeverity] = React.useState<Severity>('SEV-1');
+  const [customServices, setCustomServices] = React.useState<string[]>([]);
+  const [customServiceInput, setCustomServiceInput] = React.useState('');
+  const [customPersonas, setCustomPersonas] = React.useState<PersonaDefinition[]>([]);
+  const [customDescription, setCustomDescription] = React.useState('');
+  const [customImpact, setCustomImpact] = React.useState('');
+  const [customCause, setCustomCause] = React.useState('');
+  const [newPersonaName, setNewPersonaName] = React.useState('');
+  const [newPersonaRole, setNewPersonaRole] = React.useState('');
+
+  // Join config state
   const [selectedRate, setSelectedRate] = React.useState<number>(150);
   const [customRateInput, setCustomRateInput] = React.useState<string>('150');
   const [customName, setCustomName] = React.useState<string>('');
   const [customRole, setCustomRole] = React.useState<string>('');
   const [demoMode, setDemoMode] = React.useState<'simulation' | 'live'>('simulation');
 
+  // All scenarios (presets + custom)
+  const allScenarios = React.useMemo(() => [...PRESET_SCENARIOS, ...customScenarios], [customScenarios]);
+  const activeScenario = allScenarios.find((s) => s.id === activeScenarioId) || PRESET_SCENARIOS[0];
+
+  // Sync cost rate from scenario
+  React.useEffect(() => {
+    setSelectedRate(activeScenario.costRate);
+    setCustomRateInput(activeScenario.costRate.toString());
+  }, [activeScenario.costRate]);
+
   const handleJoinPersona = (persona: PersonaConfig, overrideOptions?: { simulateReplay?: boolean }) => {
     const rate = Math.max(1, Number(customRateInput) || selectedRate);
     const shouldSimulate = overrideOptions?.simulateReplay ?? (demoMode === 'simulation');
-    onJoin(persona, { costRate: rate, simulateReplay: shouldSimulate });
+    const scenarioWithRate = { ...activeScenario, costRate: rate };
+    onJoin(persona, { costRate: rate, simulateReplay: shouldSimulate }, scenarioWithRate);
   };
 
   const handleJoinCustom = (e: React.FormEvent) => {
@@ -54,7 +88,59 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
       avatarColor: 'var(--color-aura)',
     };
     const rate = Math.max(1, Number(customRateInput) || selectedRate);
-    onJoin(customPersona, { costRate: rate, simulateReplay: demoMode === 'simulation' });
+    const scenarioWithRate = { ...activeScenario, costRate: rate };
+    onJoin(customPersona, { costRate: rate, simulateReplay: demoMode === 'simulation' }, scenarioWithRate);
+  };
+
+  const handleAddService = () => {
+    const svc = customServiceInput.trim().toLowerCase().replace(/\s+/g, '-');
+    if (svc && !customServices.includes(svc)) {
+      setCustomServices((prev) => [...prev, svc]);
+    }
+    setCustomServiceInput('');
+  };
+
+  const handleAddPersona = () => {
+    if (!newPersonaName.trim()) return;
+    const persona: PersonaDefinition = {
+      uid: generatePersonaUid(newPersonaName),
+      displayName: newPersonaName.trim(),
+      role: newPersonaRole.trim() || 'Incident Responder',
+      avatarColor: getAvatarColor(customPersonas.length),
+      badge: newPersonaRole.trim().toUpperCase().split(' ').slice(0, 2).join(' ') || 'RESPONDER',
+      description: `Active participant on the incident bridge as ${newPersonaRole.trim() || 'Responder'}.`,
+    };
+    setCustomPersonas((prev) => [...prev, persona]);
+    setNewPersonaName('');
+    setNewPersonaRole('');
+  };
+
+  const handleSaveCustomScenario = () => {
+    if (!customTitle.trim() || customPersonas.length === 0) return;
+    const scenario: ScenarioConfig = {
+      id: 'custom-' + Date.now(),
+      name: customTitle.trim(),
+      title: customTitle.trim(),
+      severity: customSeverity,
+      affectedServices: customServices.length > 0 ? customServices : ['service-a'],
+      personas: customPersonas,
+      channelName: generateChannelName(customTitle),
+      costRate: Math.max(1, Number(customRateInput) || selectedRate),
+      description: customDescription.trim() || undefined,
+      impact: customImpact.trim() || undefined,
+      suspectedCause: customCause.trim() || undefined,
+    };
+    setCustomScenarios((prev) => [...prev, scenario]);
+    setActiveScenarioId(scenario.id);
+    setIsCreatingCustom(false);
+    // Reset builder form
+    setCustomTitle('');
+    setCustomSeverity('SEV-1');
+    setCustomServices([]);
+    setCustomPersonas([]);
+    setCustomDescription('');
+    setCustomImpact('');
+    setCustomCause('');
   };
 
   const currentEffectiveRate = Math.max(1, Number(customRateInput) || selectedRate);
@@ -804,6 +890,305 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
         @keyframes flightdeck-spin {
           to { transform: rotate(360deg); }
         }
+        /* ─── Scenario Selector Styles ─── */
+        .scenario-selector {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .scenario-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+          gap: 10px;
+        }
+
+        .scenario-card {
+          background: var(--bg-surface);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-md);
+          padding: 14px 16px;
+          cursor: pointer;
+          transition: all var(--duration-fast) var(--ease-standard);
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          text-align: left;
+          color: var(--text-primary);
+        }
+
+        .scenario-card:hover {
+          background: var(--bg-surface-hover);
+          border-color: var(--border-glass-emphasis);
+        }
+
+        .scenario-card--active {
+          border-color: var(--color-aura);
+          background: rgba(212, 168, 83, 0.06);
+          box-shadow: 0 0 0 1px rgba(212, 168, 83, 0.15);
+        }
+
+        .scenario-card__header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+        }
+
+        .scenario-card__name {
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--text-primary);
+          line-height: 1.3;
+        }
+
+        .scenario-card__sev {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          font-weight: 700;
+          padding: 2px 6px;
+          border-radius: var(--radius-full);
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+
+        .scenario-card__desc {
+          font-size: 10.5px;
+          color: var(--text-muted);
+          line-height: 1.4;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        .scenario-card__services {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          flex-wrap: wrap;
+          margin-top: 2px;
+        }
+
+        .scenario-card__service-tag {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          padding: 1px 5px;
+          background: var(--bg-surface-raised);
+          border: 1px solid var(--border-hairline);
+          border-radius: var(--radius-sm);
+          color: var(--text-secondary);
+        }
+
+        .scenario-add-btn {
+          background: var(--bg-surface);
+          border: 1px dashed var(--border-subtle);
+          border-radius: var(--radius-md);
+          padding: 14px 16px;
+          cursor: pointer;
+          transition: all var(--duration-fast) var(--ease-standard);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          color: var(--text-muted);
+          font-size: 11px;
+          min-height: 100px;
+        }
+
+        .scenario-add-btn:hover {
+          border-color: var(--color-aura);
+          color: var(--color-aura);
+          background: rgba(212, 168, 83, 0.04);
+        }
+
+        /* ─── Custom Scenario Builder ─── */
+        .scenario-builder {
+          background: var(--bg-surface);
+          border: 1px solid rgba(212, 168, 83, 0.3);
+          border-radius: var(--radius-md);
+          padding: 18px 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+        }
+
+        .scenario-builder__row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+        }
+
+        @media (max-width: 600px) {
+          .scenario-builder__row { grid-template-columns: 1fr; }
+        }
+
+        .scenario-builder__field {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .scenario-builder__label {
+          font-size: 10px;
+          font-weight: 600;
+          color: var(--text-muted);
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+        }
+
+        .scenario-builder__tags {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 4px;
+          margin-top: 2px;
+        }
+
+        .scenario-builder__tag {
+          font-family: var(--font-mono);
+          font-size: 10px;
+          padding: 2px 7px;
+          background: rgba(212, 168, 83, 0.08);
+          border: 1px solid rgba(212, 168, 83, 0.2);
+          border-radius: var(--radius-full);
+          color: var(--color-aura);
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+
+        .scenario-builder__tag-remove {
+          cursor: pointer;
+          color: var(--text-muted);
+          font-size: 12px;
+          line-height: 1;
+        }
+
+        .scenario-builder__tag-remove:hover {
+          color: var(--color-conflict);
+        }
+
+        .scenario-builder__add-row {
+          display: flex;
+          gap: 6px;
+          align-items: center;
+        }
+
+        .scenario-builder__persona-list {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .scenario-builder__persona-chip {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 10px;
+          background: var(--bg-surface-raised);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-sm);
+        }
+
+        .scenario-builder__persona-avatar {
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 8px;
+          font-weight: 700;
+          color: var(--text-primary);
+          flex-shrink: 0;
+        }
+
+        .scenario-builder__persona-info {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .scenario-builder__persona-name {
+          font-size: 11px;
+          font-weight: 600;
+          color: var(--text-primary);
+        }
+
+        .scenario-builder__persona-role {
+          font-size: 10px;
+          color: var(--text-muted);
+        }
+
+        .scenario-builder__actions {
+          display: flex;
+          gap: 8px;
+          justify-content: flex-end;
+          margin-top: 4px;
+        }
+
+        .scenario-builder__cancel {
+          background: var(--bg-surface-raised);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-sm);
+          padding: 6px 14px;
+          font-size: 11px;
+          font-weight: 600;
+          color: var(--text-secondary);
+          cursor: pointer;
+        }
+
+        .scenario-builder__save {
+          background: var(--color-aura);
+          border: none;
+          border-radius: var(--radius-sm);
+          padding: 6px 16px;
+          font-size: 11px;
+          font-weight: 700;
+          color: #08090C;
+          cursor: pointer;
+        }
+
+        .scenario-builder__save:disabled {
+          opacity: 0.35;
+          cursor: not-allowed;
+        }
+
+        .flightdeck-select {
+          background: var(--bg-surface-raised);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-sm);
+          padding: 6px 10px;
+          font-size: 11.5px;
+          color: var(--text-primary);
+          outline: none;
+          cursor: pointer;
+          transition: border-color var(--duration-fast) var(--ease-standard);
+        }
+
+        .flightdeck-select:focus {
+          border-color: var(--color-aura);
+        }
+
+        .flightdeck-textarea {
+          background: var(--bg-surface-raised);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-sm);
+          padding: 6px 10px;
+          font-size: 11.5px;
+          color: var(--text-primary);
+          outline: none;
+          font-family: var(--font-sans);
+          resize: vertical;
+          min-height: 60px;
+          transition: border-color var(--duration-fast) var(--ease-standard);
+        }
+
+        .flightdeck-textarea:focus {
+          border-color: var(--color-aura);
+        }
       `}</style>
 
       <div className="flightdeck-content">
@@ -811,7 +1196,7 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
         <header className="flightdeck-header">
           <div className="flightdeck-status-pill" aria-label="System status">
             <span className="flightdeck-status-dot" aria-hidden="true" />
-            <span>VOICE INCIDENT COMMAND SYSTEM • SEV-1 ACTIVE</span>
+            <span>VOICE INCIDENT COMMAND SYSTEM • {activeScenario.severity} ACTIVE</span>
           </div>
 
           <h1 className="flightdeck-brand-title">AURA</h1>
@@ -836,24 +1221,252 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
           </div>
         )}
 
+        {/* ═══ Scenario Selector ═══ */}
+        <section className="scenario-selector" aria-label="Incident scenario selection">
+          <div className="flightdeck-section-bar">
+            <span className="flightdeck-section-title">Select Incident Scenario:</span>
+          </div>
+
+          <div className="scenario-grid">
+            {allScenarios.map((scenario) => {
+              const sevColor = SEVERITY_OPTIONS.find((s) => s.value === scenario.severity)?.color || '#F87171';
+              return (
+                <button
+                  key={scenario.id}
+                  type="button"
+                  className={`scenario-card ${activeScenarioId === scenario.id ? 'scenario-card--active' : ''}`}
+                  onClick={() => setActiveScenarioId(scenario.id)}
+                >
+                  <div className="scenario-card__header">
+                    <span className="scenario-card__name">{scenario.name}</span>
+                    <span
+                      className="scenario-card__sev"
+                      style={{
+                        background: `${sevColor}15`,
+                        color: sevColor,
+                        border: `1px solid ${sevColor}40`,
+                      }}
+                    >
+                      {scenario.severity}
+                    </span>
+                  </div>
+                  {scenario.description && (
+                    <span className="scenario-card__desc">{scenario.description}</span>
+                  )}
+                  <div className="scenario-card__services">
+                    {scenario.affectedServices.slice(0, 3).map((svc) => (
+                      <span key={svc} className="scenario-card__service-tag">{svc}</span>
+                    ))}
+                    {scenario.affectedServices.length > 3 && (
+                      <span className="scenario-card__service-tag">+{scenario.affectedServices.length - 3}</span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+
+            {/* Add Custom Scenario */}
+            <button
+              type="button"
+              className="scenario-add-btn"
+              onClick={() => setIsCreatingCustom(true)}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              <span>Create Custom Scenario</span>
+            </button>
+          </div>
+
+          {/* Custom Scenario Builder */}
+          {isCreatingCustom && (
+            <div className="scenario-builder">
+              <div className="flightdeck-section-bar">
+                <span className="flightdeck-section-title">⚡ Custom Scenario Builder</span>
+              </div>
+
+              <div className="scenario-builder__row">
+                <div className="scenario-builder__field">
+                  <label className="scenario-builder__label">Incident Title *</label>
+                  <input
+                    type="text"
+                    className="flightdeck-input"
+                    placeholder="e.g. Redis Cluster Split-Brain"
+                    value={customTitle}
+                    onChange={(e) => setCustomTitle(e.target.value)}
+                  />
+                </div>
+                <div className="scenario-builder__field">
+                  <label className="scenario-builder__label">Severity</label>
+                  <select
+                    className="flightdeck-select"
+                    value={customSeverity}
+                    onChange={(e) => setCustomSeverity(e.target.value as Severity)}
+                  >
+                    {SEVERITY_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="scenario-builder__field">
+                <label className="scenario-builder__label">Description</label>
+                <textarea
+                  className="flightdeck-textarea"
+                  placeholder="Brief description of the incident scenario..."
+                  value={customDescription}
+                  onChange={(e) => setCustomDescription(e.target.value)}
+                />
+              </div>
+
+              <div className="scenario-builder__row">
+                <div className="scenario-builder__field">
+                  <label className="scenario-builder__label">Live Impact</label>
+                  <input
+                    type="text"
+                    className="flightdeck-input"
+                    placeholder="e.g. 30% of read queries returning stale data"
+                    value={customImpact}
+                    onChange={(e) => setCustomImpact(e.target.value)}
+                  />
+                </div>
+                <div className="scenario-builder__field">
+                  <label className="scenario-builder__label">Suspected Cause</label>
+                  <input
+                    type="text"
+                    className="flightdeck-input"
+                    placeholder="e.g. Network partition between primary and replica nodes"
+                    value={customCause}
+                    onChange={(e) => setCustomCause(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="scenario-builder__field">
+                <label className="scenario-builder__label">Affected Services</label>
+                <div className="scenario-builder__add-row">
+                  <input
+                    type="text"
+                    className="flightdeck-input"
+                    style={{ flex: 1 }}
+                    placeholder="e.g. redis-cluster"
+                    value={customServiceInput}
+                    onChange={(e) => setCustomServiceInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddService(); } }}
+                  />
+                  <button type="button" className="flightdeck-custom-submit-btn" onClick={handleAddService}>
+                    + Add
+                  </button>
+                </div>
+                {customServices.length > 0 && (
+                  <div className="scenario-builder__tags">
+                    {customServices.map((svc) => (
+                      <span key={svc} className="scenario-builder__tag">
+                        {svc}
+                        <span
+                          className="scenario-builder__tag-remove"
+                          onClick={() => setCustomServices((prev) => prev.filter((s) => s !== svc))}
+                        >
+                          ×
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="scenario-builder__field">
+                <label className="scenario-builder__label">Responder Personas *</label>
+                <div className="scenario-builder__add-row">
+                  <input
+                    type="text"
+                    className="flightdeck-input"
+                    style={{ flex: 1 }}
+                    placeholder="Name (e.g. Alex)"
+                    value={newPersonaName}
+                    onChange={(e) => setNewPersonaName(e.target.value)}
+                  />
+                  <input
+                    type="text"
+                    className="flightdeck-input"
+                    style={{ flex: 1 }}
+                    placeholder="Role (e.g. DBA Lead)"
+                    value={newPersonaRole}
+                    onChange={(e) => setNewPersonaRole(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddPersona(); } }}
+                  />
+                  <button type="button" className="flightdeck-custom-submit-btn" onClick={handleAddPersona}>
+                    + Add
+                  </button>
+                </div>
+                {customPersonas.length > 0 && (
+                  <div className="scenario-builder__persona-list">
+                    {customPersonas.map((p, idx) => (
+                      <div key={p.uid} className="scenario-builder__persona-chip">
+                        <div
+                          className="scenario-builder__persona-avatar"
+                          style={{ background: p.avatarColor, opacity: 0.7 }}
+                        >
+                          {p.displayName[0]}
+                        </div>
+                        <div className="scenario-builder__persona-info">
+                          <span className="scenario-builder__persona-name">{p.displayName}</span>
+                          <span className="scenario-builder__persona-role">{p.role}</span>
+                        </div>
+                        <span
+                          className="scenario-builder__tag-remove"
+                          onClick={() => setCustomPersonas((prev) => prev.filter((_, i) => i !== idx))}
+                          style={{ cursor: 'pointer', fontSize: '14px', color: 'var(--text-muted)' }}
+                        >
+                          ×
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="scenario-builder__actions">
+                <button
+                  type="button"
+                  className="scenario-builder__cancel"
+                  onClick={() => setIsCreatingCustom(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="scenario-builder__save"
+                  disabled={!customTitle.trim() || customPersonas.length === 0}
+                  onClick={handleSaveCustomScenario}
+                >
+                  Create Scenario
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
+
         {/* Active Incident Briefing Card */}
         <section className="flightdeck-briefing" aria-labelledby="incident-briefing-title">
           <div className="flightdeck-briefing-header">
             <div className="flightdeck-chips-group">
-              <span className="flightdeck-chip flightdeck-chip-incident">INCIDENT #492</span>
-              <span className="flightdeck-chip flightdeck-chip-sev1">SEV-1 CRITICAL</span>
+              <span className="flightdeck-chip flightdeck-chip-incident">{activeScenario.channelName.toUpperCase()}</span>
+              <span className="flightdeck-chip flightdeck-chip-sev1">{activeScenario.severity} {activeScenario.severity === 'SEV-0' ? 'CRITICAL' : activeScenario.severity === 'SEV-1' ? 'HIGH' : activeScenario.severity === 'SEV-2' ? 'MEDIUM' : 'LOW'}</span>
               <span className="flightdeck-chip" style={{ background: 'rgba(212, 168, 83, 0.08)', color: 'var(--color-aura)', border: '1px solid rgba(212, 168, 83, 0.2)' }}>
-                CHECKOUT ROUTING
+                {activeScenario.affectedServices[0]?.toUpperCase() || 'SERVICE'}
               </span>
             </div>
             <div className="flightdeck-chip-ready">
               <span className="flightdeck-ready-dot" aria-hidden="true" />
-              <span>SIMULATION READY</span>
+              <span>{activeScenario.id === 'payment-outage' ? 'SIMULATION READY' : 'LIVE MODE READY'}</span>
             </div>
           </div>
 
           <h2 id="incident-briefing-title" className="flightdeck-briefing-title">
-            Payment Service Checkout Outage
+            {activeScenario.title}
           </h2>
 
           <div className="flightdeck-narrative-strip">
@@ -867,7 +1480,7 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
                 <span>Live Impact</span>
               </div>
               <p className="flightdeck-narrative-desc">
-                Error rates surged to 42% on payment services. Checkout flow frozen for ~1,420 checkout sessions.
+                {activeScenario.impact || `${activeScenario.severity} incident affecting ${activeScenario.affectedServices.join(', ')}.`}
               </p>
             </div>
 
@@ -882,7 +1495,7 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
                 <span>Suspected Root Cause</span>
               </div>
               <p className="flightdeck-narrative-desc">
-                PR #492 deployed 15m ago. Stripe webhook v2 migration causing connection pool starvation.
+                {activeScenario.suspectedCause || 'Root cause under investigation by incident responders.'}
               </p>
             </div>
 
@@ -894,25 +1507,30 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
                 <span>AURA Mission Directives</span>
               </div>
               <p className="flightdeck-narrative-desc">
-                Arbitrate conflicting responder statements, enforce evidence before canary rollback, synthesize SRE postmortem.
+                Arbitrate conflicting responder statements, enforce evidence-based decisions, synthesize SRE postmortem.
               </p>
             </div>
           </div>
 
-          <button
-            type="button"
-            disabled={isConnecting}
-            onClick={() => handleJoinPersona(PERSONAS[0], { simulateReplay: true })}
-            className="flightdeck-launch-btn"
-          >
-            <div className="flightdeck-launch-left">
-              <span className="flightdeck-launch-play" aria-hidden="true">▶</span>
-              <span>
-                {isConnecting ? 'INITIALIZING SIMULATION...' : 'LAUNCH INCIDENT SIMULATION (RECOMMENDED FOR JUDGES)'}
-              </span>
-            </div>
-            <span className="flightdeck-launch-badge">12 EVENTS · SUB-SECOND AGORA VOICE</span>
-          </button>
+          {activeScenario.id === 'payment-outage' && (
+            <button
+              type="button"
+              disabled={isConnecting}
+              onClick={() => handleJoinPersona(
+                { uid: activeScenario.personas[0].uid, displayName: activeScenario.personas[0].displayName, role: activeScenario.personas[0].role, avatarColor: activeScenario.personas[0].avatarColor },
+                { simulateReplay: true }
+              )}
+              className="flightdeck-launch-btn"
+            >
+              <div className="flightdeck-launch-left">
+                <span className="flightdeck-launch-play" aria-hidden="true">▶</span>
+                <span>
+                  {isConnecting ? 'INITIALIZING SIMULATION...' : 'LAUNCH INCIDENT SIMULATION (RECOMMENDED FOR JUDGES)'}
+                </span>
+              </div>
+              <span className="flightdeck-launch-badge">12 EVENTS · SUB-SECOND AGORA VOICE</span>
+            </button>
+          )}
         </section>
 
         {/* System Health Diagnostic Checklist */}
@@ -964,17 +1582,21 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
           </div>
 
           <div className="flightdeck-persona-grid">
-            {PERSONAS.map((persona) => {
-              const roleMeta = PERSONA_ROLE_DESCRIPTIONS[persona.uid] || {
-                badge: 'RESPONDER',
-                description: 'Active incident participant on audio bridge.',
+            {activeScenario.personas.map((persona) => {
+              const badge = persona.badge || persona.role.toUpperCase().split(' ').slice(0, 2).join(' ');
+              const desc = persona.description || `Active incident participant as ${persona.role}.`;
+              const personaConfig: PersonaConfig = {
+                uid: persona.uid,
+                displayName: persona.displayName,
+                role: persona.role,
+                avatarColor: persona.avatarColor,
               };
 
               return (
                 <button
                   key={persona.uid}
                   disabled={isConnecting}
-                  onClick={() => handleJoinPersona(persona)}
+                  onClick={() => handleJoinPersona(personaConfig)}
                   className="flightdeck-persona-card"
                   type="button"
                 >
@@ -991,13 +1613,13 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
                     <div className="flightdeck-persona-meta">
                       <div className="flightdeck-persona-name-row">
                         <span className="flightdeck-persona-name">{persona.displayName}</span>
-                        <span className="flightdeck-persona-badge">{roleMeta.badge}</span>
+                        <span className="flightdeck-persona-badge">{badge}</span>
                       </div>
                       <span className="flightdeck-persona-role">{persona.role}</span>
                     </div>
                   </div>
 
-                  <p className="flightdeck-persona-desc">{roleMeta.description}</p>
+                  <p className="flightdeck-persona-desc">{desc}</p>
 
                   <div className="flightdeck-persona-cta">
                     <span>{isConnecting ? 'CONNECTING...' : 'ENTER BRIDGE'}</span>

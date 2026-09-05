@@ -117,7 +117,7 @@ export function PostmortemModal({
     [actionItems]
   );
 
-  const costTotal = incident.costAccrued || Math.round(durationSeconds * (costRate * 0.5));
+  const costTotal = incident.costAccrued || Math.round(durationSeconds * costRate);
   const costSavings = Math.round(costTotal * 0.52);
 
   const generateMarkdownReport = () => {

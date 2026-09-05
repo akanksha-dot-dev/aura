@@ -6,6 +6,7 @@ import { useAgoraRTM } from '@/hooks/useAgoraRTM';
 import { useIncidentState } from '@/hooks/useIncidentState';
 import { Participant, TopologyNode, TopologyEdge } from '@/lib/types';
 import { startMockReplay } from '@/lib/mockReplay';
+import { loadScenarioConfig, createIncidentStateFromScenario, ScenarioConfig } from '@/lib/scenarios';
 import { StatusBar } from '@/components/StatusBar';
 import { SpeakerPanel } from '@/components/SpeakerPanel';
 import { ConflictBanner } from '@/components/ConflictBanner';
@@ -95,9 +96,28 @@ function DashboardContent() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // 1. Central Incident State Engine
+  // 0. Load scenario config from sessionStorage (set by lobby)
+  const [scenarioConfig, setScenarioConfig] = useState<ScenarioConfig | null>(null);
+  useEffect(() => {
+    const config = loadScenarioConfig();
+    if (config) setScenarioConfig(config);
+  }, []);
+
+  // 1. Central Incident State Engine — initialized from scenario config
+  const scenarioInitialState = useMemo(() => {
+    if (!scenarioConfig) return undefined;
+    const baseState = createIncidentStateFromScenario(scenarioConfig);
+    return {
+      incidentId: baseState.incidentId,
+      title: baseState.title,
+      severity: baseState.severity,
+      affectedServices: baseState.affectedServices,
+      openedAt: baseState.openedAt,
+    };
+  }, [scenarioConfig]);
+
   const { state, processEvent, dispatchStateUpdate, claimIC, updateActionStatus } =
-    useIncidentState();
+    useIncidentState(scenarioInitialState);
 
   // Auto-open postmortem modal 2 seconds after resolution + play resolution chime
   const prevStatusRef = useRef(state.status);
@@ -215,6 +235,12 @@ function DashboardContent() {
   });
 
   // 3b. Client-Side Speech Recognition (Instant Zero-Latency Local Captions)
+  // Use a ref for volumeLevels so the effect doesn't restart on every audio frame
+  const volumeLevelsRef = useRef(volumeLevels);
+  volumeLevelsRef.current = volumeLevels;
+
+  const lastInterruptRef = useRef<number>(0);
+
   useEffect(() => {
     if (isMockReplay || typeof window === 'undefined') return;
 
@@ -244,7 +270,7 @@ function DashboardContent() {
           const transcript = res[0]?.transcript || '';
           if (res.isFinal) {
             const trimmed = transcript.trim();
-            const isAgentSpeaking = (volumeLevels['aura_agent'] ?? 0) > 15;
+            const isAgentSpeaking = (volumeLevelsRef.current['aura_agent'] ?? 0) > 15;
             if (trimmed && !isAgentSpeaking) {
               setLiveTranscriptText(trimmed);
               setLiveTranscriptSpeaker(name || 'Operator');
@@ -260,7 +286,7 @@ function DashboardContent() {
 
           // Interruption Guard: Only trigger interruption if actual human speech is recognized while AURA is vocalizing
           if (trimmed.length > 3) {
-            const agentSpeaking = (volumeLevels['aura_agent'] ?? 0) > 15;
+            const agentSpeaking = (volumeLevelsRef.current['aura_agent'] ?? 0) > 15;
             const agentId = activeAgentIdRef.current;
             if (agentSpeaking && agentId && Date.now() - lastInterruptRef.current > 3000) {
               lastInterruptRef.current = Date.now();
@@ -301,9 +327,7 @@ function DashboardContent() {
         recognition?.stop();
       } catch {}
     };
-  }, [isMockReplay, isJoined, name, volumeLevels]);
-
-  const lastInterruptRef = useRef<number>(0);
+  }, [isMockReplay, isJoined, name]);
 
   // 4. Mock Replay Stream (when ?__AURA_REPLAY_MOCK_STREAM is present)
   const [mockTranscript, setMockTranscript] = useState<string | null>(null);
@@ -375,15 +399,32 @@ function DashboardContent() {
       if (isStartingAgentRef.current || activeAgentIdRef.current) return;
       isStartingAgentRef.current = true;
       try {
+        const agentPayload: Record<string, unknown> = {
+          channelName: channel,
+          userUid: uid,
+          userName: name,
+          userRole: role,
+        };
+        // Pass scenario config so the system prompt is dynamically contextualized
+        if (scenarioConfig) {
+          agentPayload.scenario = {
+            title: scenarioConfig.title,
+            severity: scenarioConfig.severity,
+            affectedServices: scenarioConfig.affectedServices,
+            description: scenarioConfig.description,
+            impact: scenarioConfig.impact,
+            suspectedCause: scenarioConfig.suspectedCause,
+            personas: scenarioConfig.personas.map((p) => ({
+              uid: p.uid,
+              displayName: p.displayName,
+              role: p.role,
+            })),
+          };
+        }
         const res = await fetch('/api/agent/start', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            channelName: channel,
-            userUid: uid,
-            userName: name,
-            userRole: role,
-          }),
+          body: JSON.stringify(agentPayload),
         });
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));

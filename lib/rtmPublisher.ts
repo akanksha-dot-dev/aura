@@ -59,7 +59,7 @@ export async function publishDashboardEvent(
   }
 
   const botUid = AGENT_UID;
-  const endpoint = `https://api.agora.io/dev/v2/project/${appId}/rtm/users/${botUid}/channel_messages`;
+  const endpoint = `https://api.agora.io/api/v2/project/${appId}/rtm/message/channel`;
 
   const authHeader = `Basic ${Buffer.from(`${customerKey}:${customerSecret}`).toString('base64')}`;
 
@@ -77,7 +77,9 @@ export async function publishDashboardEvent(
       },
       body: JSON.stringify({
         channel_name: channelName,
-        payload: messagePayload,
+        message: messagePayload,
+        channel_type: 'MESSAGE',
+        sender_id: botUid,
       }),
     });
 

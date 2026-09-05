@@ -15,7 +15,13 @@ function formatElapsedTime(ms: number): string {
  */
 export function initializeLiveIncident(
   channelName = 'incident-war-room',
-  operator?: { uid: string; displayName: string; role: string }
+  operator?: { uid: string; displayName: string; role: string },
+  scenarioOverrides?: {
+    title?: string;
+    severity?: 'SEV-0' | 'SEV-1' | 'SEV-2' | 'SEV-3';
+    affectedServices?: string[];
+    personas?: Array<{ uid: string; displayName: string; role: string }>;
+  }
 ): IncidentState {
   const now = Date.now();
   const participants: Record<string, any> = {
@@ -32,12 +38,12 @@ export function initializeLiveIncident(
 
   let icUid: string | null = null;
 
+  // Add the operator
   if (operator && operator.uid) {
     const isIC =
       !operator.role ||
       operator.role.toLowerCase().includes('commander') ||
-      operator.role.toLowerCase().includes('lead') ||
-      true;
+      operator.role.toLowerCase().includes('lead');
 
     participants[operator.uid] = {
       uid: operator.uid,
@@ -48,16 +54,40 @@ export function initializeLiveIncident(
       totalSpeakingMs: 0,
       lastSpokeAt: now,
     };
-    icUid = operator.uid;
+    if (isIC) {
+      icUid = operator.uid;
+    }
+  }
+
+  // Add scenario personas (they won't be duplicated because the operator is separate)
+  if (scenarioOverrides?.personas) {
+    for (const p of scenarioOverrides.personas) {
+      if (participants[p.uid]) continue; // Don't override operator or AURA
+      const isIC =
+        p.role.toLowerCase().includes('commander') ||
+        p.role.toLowerCase().includes('lead');
+      participants[p.uid] = {
+        uid: p.uid,
+        displayName: p.displayName,
+        role: p.role,
+        isIncidentCommander: isIC,
+        joinedAt: now,
+        totalSpeakingMs: 0,
+        lastSpokeAt: now,
+      };
+      if (isIC && !icUid) {
+        icUid = p.uid;
+      }
+    }
   }
 
   const liveState: IncidentState = {
     incidentId: `inc-${channelName.replace(/[^a-zA-Z0-9-]/g, '-')}`,
-    title: 'Payment Gateway Outage — Checkout Failures',
-    severity: 'SEV-1',
+    title: scenarioOverrides?.title || 'Payment Gateway Outage — Checkout Failures',
+    severity: scenarioOverrides?.severity || 'SEV-1',
     status: 'investigating',
     openedAt: now,
-    affectedServices: ['payment-api', 'checkout-service', 'postgres-primary'],
+    affectedServices: scenarioOverrides?.affectedServices || ['payment-api', 'checkout-service', 'postgres-primary'],
     participants,
     incidentCommanderUid: icUid,
     evidenceItems: [],
@@ -86,8 +116,8 @@ export function createBaselineIncidentState(channelName = 'incident-war-room'): 
     openedAt: now - 360_000,
     affectedServices: ['payment-api', 'checkout-service', 'postgres-primary'],
     participants: {
-      'user-sarah': {
-        uid: 'user-sarah',
+      'sarah_ic': {
+        uid: 'sarah_ic',
         displayName: 'Sarah Chen',
         role: 'Incident Commander',
         isIncidentCommander: true,
@@ -95,8 +125,8 @@ export function createBaselineIncidentState(channelName = 'incident-war-room'): 
         totalSpeakingMs: 45_000,
         lastSpokeAt: now - 25_000,
       },
-      'user-marcus': {
-        uid: 'user-marcus',
+      'marcus_sre': {
+        uid: 'marcus_sre',
         displayName: 'Marcus Vance',
         role: 'Lead SRE',
         isIncidentCommander: false,
@@ -104,8 +134,8 @@ export function createBaselineIncidentState(channelName = 'incident-war-room'): 
         totalSpeakingMs: 65_000,
         lastSpokeAt: now - 10_000,
       },
-      'user-priya': {
-        uid: 'user-priya',
+      'priya_pm': {
+        uid: 'priya_pm',
         displayName: 'Priya Patel',
         role: 'Product Manager',
         isIncidentCommander: false,
@@ -114,13 +144,13 @@ export function createBaselineIncidentState(channelName = 'incident-war-room'): 
         lastSpokeAt: now - 50_000,
       },
     },
-    incidentCommanderUid: 'user-sarah',
+    incidentCommanderUid: 'sarah_ic',
     evidenceItems: [
       {
         id: 'evt-001',
         category: 'fact',
         content: 'Checkout error rate spiked to 42% following v2.14 release',
-        speakerUid: 'user-marcus',
+        speakerUid: 'marcus_sre',
         speakerName: 'Marcus Vance',
         confidence: 85,
         timestamp: now - 300_000,
@@ -132,7 +162,7 @@ export function createBaselineIncidentState(channelName = 'incident-war-room'): 
         id: 'evt-002',
         category: 'hypothesis',
         content: 'Postgres connection pool exhaustion causing thread starvation',
-        speakerUid: 'user-marcus',
+        speakerUid: 'marcus_sre',
         speakerName: 'Marcus Vance',
         confidence: 75,
         timestamp: now - 240_000,
@@ -145,7 +175,7 @@ export function createBaselineIncidentState(channelName = 'incident-war-room'): 
         id: 'evt-003',
         category: 'hypothesis',
         content: 'Payment gateway API rate limiting after PR #492',
-        speakerUid: 'user-sarah',
+        speakerUid: 'sarah_ic',
         speakerName: 'Sarah Chen',
         confidence: 65,
         timestamp: now - 180_000,
@@ -173,7 +203,7 @@ export function createBaselineIncidentState(channelName = 'incident-war-room'): 
         id: 'evt-005',
         category: 'action',
         content: 'Inspect Postgres connection pool utilization via Datadog',
-        speakerUid: 'user-sarah',
+        speakerUid: 'sarah_ic',
         speakerName: 'Sarah Chen',
         confidence: 85,
         timestamp: now - 60_000,

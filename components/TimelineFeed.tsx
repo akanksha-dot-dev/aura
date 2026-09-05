@@ -30,12 +30,14 @@ export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
     conflict: evidenceItems.filter((i) => i.category === 'conflict').length,
     action: evidenceItems.filter((i) => i.category === 'action').length,
     hypothesis: evidenceItems.filter((i) => i.category === 'hypothesis').length,
+    decision: evidenceItems.filter((i) => i.category === 'decision').length,
   };
 
   const filterTabs: { id: TimelineFilter; label: string; dotColor?: string; count: number }[] = [
     { id: 'all', label: 'All', count: counts.all },
     { id: 'fact', label: 'Facts', dotColor: 'var(--color-fact)', count: counts.fact },
     { id: 'conflict', label: 'Conflicts', dotColor: 'var(--color-conflict, #D84C4C)', count: counts.conflict },
+    { id: 'decision', label: 'Decisions', dotColor: 'var(--color-decision)', count: counts.decision },
     { id: 'action', label: 'Actions', dotColor: 'var(--color-action)', count: counts.action },
     { id: 'hypothesis', label: 'Hypotheses', dotColor: 'var(--color-hypothesis)', count: counts.hypothesis },
   ];

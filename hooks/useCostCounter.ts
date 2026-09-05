@@ -91,8 +91,12 @@ export function useCostCounter(
   }, [status, openedAt, baseRate, isPaused]);
 
   if (status === 'resolved' && resolvedAt !== undefined) {
+    // Use the last accumulated cost from the tick loop, which properly
+    // accounts for rate changes and pause/resume during the incident.
+    // Only fall back to naive calculation if activeCost was never set.
+    if (activeCost > 0) return activeCost;
     const elapsed = Math.max(0, (resolvedAt - openedAt) / 1000);
-    return Math.round(elapsed * (baseRate * 0.5));
+    return Math.round(elapsed * baseRate);
   }
 
   return activeCost;

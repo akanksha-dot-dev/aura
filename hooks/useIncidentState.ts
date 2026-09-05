@@ -14,7 +14,7 @@ import {
   calculateCognitiveLoad,
   classifyOODAPhase,
 } from '@/lib/types';
-import { COST_RATE_PER_SECOND, CONFIDENCE_CAP } from '@/lib/constants';
+import { CONFIDENCE_CAP } from '@/lib/constants';
 
 export interface UseIncidentStateReturn {
   state: IncidentState;
@@ -91,7 +91,7 @@ function incidentReducer(
       if (update.resolveConflict) {
         const id = String(update.resolveConflict);
         nextEvidence = nextEvidence.map((item) =>
-          item.id === id ? { ...item, status: 'disproven' as HypothesisStatus } : item
+          item.id === id ? { ...item, status: 'resolved' as HypothesisStatus } : item
         );
       }
 
@@ -417,9 +417,6 @@ function incidentReducer(
           return state;
       }
 
-      const elapsedSec = Math.floor((Date.now() - state.openedAt) / 1000);
-      const updatedCost = Math.max(0, elapsedSec * COST_RATE_PER_SECOND);
-
       const nextState: IncidentState = {
         ...state,
         evidenceItems: nextEvidence,
@@ -427,7 +424,6 @@ function incidentReducer(
         status: nextStatus,
         resolvedAt: nextResolvedAt,
         incidentCommanderUid: nextIC,
-        costAccrued: updatedCost,
         eventSeq: Math.max(state.eventSeq + 1, event.seq || 0),
       };
 

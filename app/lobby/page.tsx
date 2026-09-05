@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { LobbyScreen } from '@/components/LobbyScreen';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { PersonaConfig } from '@/lib/constants';
+import { ScenarioConfig, storeScenarioConfig, PRESET_SCENARIOS } from '@/lib/scenarios';
 
 function ViewTransition({ children, name = 'main-view' }: { children: React.ReactNode; name?: string }) {
   return (
@@ -17,11 +18,21 @@ function ViewTransition({ children, name = 'main-view' }: { children: React.Reac
 function LobbyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const channel = searchParams.get('channel') || 'incident-sev1-checkout';
+  const channelOverride = searchParams.get('channel');
   const [isConnecting, setIsConnecting] = useState(false);
 
-  const handleJoin = (persona: PersonaConfig, options?: { costRate?: number; simulateReplay?: boolean }) => {
+  const handleJoin = (
+    persona: PersonaConfig,
+    options?: { costRate?: number; simulateReplay?: boolean },
+    scenario?: ScenarioConfig
+  ) => {
     setIsConnecting(true);
+
+    // Store the full scenario config in sessionStorage for the dashboard to read
+    const activeScenario = scenario || PRESET_SCENARIOS[0];
+    storeScenarioConfig(activeScenario);
+
+    const channel = channelOverride || activeScenario.channelName;
     const params = new URLSearchParams({
       uid: persona.uid,
       name: persona.displayName,
