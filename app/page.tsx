@@ -138,10 +138,15 @@ function DashboardContent() {
   useAgoraRTM({
     channelName: channel,
     uid,
+    userName: name,
     onEvent: processEvent,
     onTranscript: (entry) => {
+      const isAgent = entry.speakerName === 'AURA' || entry.id.includes('aura_agent');
+      const isSelf = entry.speakerName === uid || entry.speakerName === name;
+      const speakerDisplay = isAgent ? 'AURA' : isSelf ? (name || 'Operator') : entry.speakerName;
+
       setLiveTranscriptText(entry.text);
-      setLiveTranscriptSpeaker(entry.speakerName);
+      setLiveTranscriptSpeaker(speakerDisplay);
       setTranscriptHistory((prev) => {
         const turnKey = entry.id;
         const existingIndex = prev.findIndex((p) => p.id === turnKey);
@@ -162,7 +167,7 @@ function DashboardContent() {
           updated[existingIndex] = {
             ...oldEntry,
             text: mergedText,
-            speakerName: entry.speakerName && entry.speakerName !== 'Responder' ? entry.speakerName : oldEntry.speakerName,
+            speakerName: speakerDisplay,
             timestamp: entry.timestamp || oldEntry.timestamp,
           };
           return updated;
@@ -172,9 +177,7 @@ function DashboardContent() {
         const lastIndex = prev.length - 1;
         if (lastIndex >= 0) {
           const lastEntry = prev[lastIndex];
-          const isSameSpeaker =
-            lastEntry.speakerName === entry.speakerName ||
-            (lastEntry.speakerName === 'AURA' && entry.speakerName === 'AURA');
+          const isSameSpeaker = lastEntry.speakerName === speakerDisplay;
           const isRecent = Math.abs(entry.timestamp - lastEntry.timestamp) < 5000;
 
           if (isSameSpeaker && isRecent) {
@@ -201,7 +204,7 @@ function DashboardContent() {
           ...prev,
           {
             id: entry.id,
-            speakerName: entry.speakerName,
+            speakerName: speakerDisplay,
             timestamp: entry.timestamp,
             text: entry.text,
           },
@@ -243,38 +246,8 @@ function DashboardContent() {
             const trimmed = transcript.trim();
             const isAgentSpeaking = (volumeLevels['aura_agent'] ?? 0) > 15;
             if (trimmed && !isAgentSpeaking) {
-              setTranscriptHistory((prev) => {
-                const lastIndex = prev.length - 1;
-                if (lastIndex >= 0) {
-                  const lastEntry = prev[lastIndex];
-                  const isSameUser = lastEntry.speakerName === (name || 'Commander Sarah');
-                  const isRecent = Date.now() - lastEntry.timestamp < 3500;
-                  if (isSameUser && isRecent) {
-                    let merged = trimmed;
-                    if (trimmed.includes(lastEntry.text)) {
-                      merged = trimmed;
-                    } else if (lastEntry.text.includes(trimmed)) {
-                      merged = lastEntry.text;
-                    } else {
-                      merged = `${lastEntry.text.trim()} ${trimmed}`;
-                    }
-                    const updated = [...prev];
-                    updated[lastIndex] = { ...lastEntry, text: merged, timestamp: Date.now() };
-                    return updated;
-                  }
-                }
-                return [
-                  ...prev,
-                  {
-                    id: `local-speech-${Date.now()}-${prev.length}`,
-                    speakerName: name || 'Commander Sarah',
-                    timestamp: Date.now(),
-                    text: trimmed,
-                  },
-                ];
-              });
               setLiveTranscriptText(trimmed);
-              setLiveTranscriptSpeaker(name || 'Commander Sarah');
+              setLiveTranscriptSpeaker(name || 'Operator');
             }
           } else {
             interimText += transcript;
@@ -283,7 +256,7 @@ function DashboardContent() {
         if (interimText.trim()) {
           const trimmed = interimText.trim();
           setLiveTranscriptText(trimmed);
-          setLiveTranscriptSpeaker(name || 'Commander Sarah');
+          setLiveTranscriptSpeaker(name || 'Operator');
 
           // Interruption Guard: Only trigger interruption if actual human speech is recognized while AURA is vocalizing
           if (trimmed.length > 3) {
@@ -405,7 +378,12 @@ function DashboardContent() {
         const res = await fetch('/api/agent/start', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ channelName: channel }),
+          body: JSON.stringify({
+            channelName: channel,
+            userUid: uid,
+            userName: name,
+            userRole: role,
+          }),
         });
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { RTMDashboardEvent } from '@/lib/types';
+import { PERSONAS } from '@/lib/constants';
 
 export interface RTMTranscriptEntry {
   id: string;
@@ -13,6 +14,7 @@ export interface RTMTranscriptEntry {
 
 export interface UseAgoraRTMOptions {
   uid: string;
+  userName?: string;
   channelName: string; // e.g., "incident-sev1-4821"
   onEvent: (event: RTMDashboardEvent) => void;
   onTranscript?: (entry: RTMTranscriptEntry) => void;
@@ -67,6 +69,7 @@ interface GlobalRtmSession {
   client: RtmClientInstance;
   appId: string;
   uid: string;
+  userName?: string;
   subscribedChannel: string | null;
   isLoggedIn: boolean;
 }
@@ -143,6 +146,7 @@ function broadcastError(err: string | null) {
 
 export function useAgoraRTM({
   uid,
+  userName,
   channelName,
   onEvent,
   onTranscript,
@@ -204,6 +208,9 @@ export function useAgoraRTM({
 
     // 1. If an active session exists for this exact UID
     if (activeSession && activeSession.uid === uid) {
+      if (userName) {
+        activeSession.userName = userName;
+      }
       if (activeSession.isLoggedIn) {
         updateAllConnectionStates(true);
         broadcastError(null);
@@ -316,6 +323,7 @@ export function useAgoraRTM({
             }
 
             // 2. Agora ConvAI Transcript Handling
+            const publisher = String(eventData?.publisher || '').trim();
             const resolveSpeakerInfo = (
               item: Record<string, unknown>,
               fallbackUid?: string
@@ -336,10 +344,9 @@ export function useAgoraRTM({
                 item?.agent_id ??
                 item?.speaker_uid ??
                 item?.speaker ??
-                item?.stream_id ??
                 fallbackUid ??
                 ''
-              );
+              ).trim();
 
               const isAgent =
                 role === 'assistant' ||
@@ -347,17 +354,43 @@ export function useAgoraRTM({
                 rawUid === 'aura_agent' ||
                 rawUid === '0' ||
                 rawUid.toLowerCase().includes('agent') ||
-                rawUid.toLowerCase().includes('aura');
+                rawUid.toLowerCase().includes('aura') ||
+                publisher === 'aura_agent' ||
+                item?.stream_id === 0;
 
               if (isAgent) {
                 return { speakerUid: 'aura_agent', speakerName: 'AURA' };
               }
 
-              if (rawUid && rawUid !== 'undefined' && rawUid !== 'null' && rawUid !== 'Responder' && rawUid !== 'user') {
-                return { speakerUid: rawUid, speakerName: rawUid };
+              const localUid = activeSession?.uid || uid;
+              const localName = activeSession?.userName || userName;
+              if (rawUid && (rawUid === localUid || rawUid === uid)) {
+                return { speakerUid: localUid, speakerName: localName || localUid };
               }
 
-              return { speakerUid: 'operator_1', speakerName: 'Commander Sarah' };
+              if (rawUid) {
+                const persona = PERSONAS.find((p) => p.uid === rawUid);
+                if (persona) {
+                  return { speakerUid: rawUid, speakerName: persona.displayName };
+                }
+                if (
+                  rawUid !== 'undefined' &&
+                  rawUid !== 'null' &&
+                  rawUid !== 'Responder' &&
+                  rawUid !== 'user'
+                ) {
+                  return { speakerUid: rawUid, speakerName: rawUid };
+                }
+              }
+
+              if (publisher && (publisher === localUid || publisher === uid)) {
+                return { speakerUid: localUid, speakerName: localName || localUid };
+              }
+
+              return {
+                speakerUid: localUid || 'operator',
+                speakerName: localName || 'Incident Responder',
+              };
             };
 
             // Case A: Array of transcription items
@@ -376,8 +409,8 @@ export function useAgoraRTM({
                   item?.transcript ||
                   item?.content ||
                   item?.words?.map((w: { word?: string; text?: string }) => w?.word || w?.text || '').join(' ');
-                if (typeof text === 'string' && text.trim()) {
-                  const speaker = resolveSpeakerInfo(item as Record<string, unknown>);
+                if (typeof text === 'string' && text.trim() && text.trim() !== '[SILENT]') {
+                  const speaker = resolveSpeakerInfo(item as Record<string, unknown>, publisher);
                   const turnId = item?.turn_id ?? item?.turnID ?? item?.message_id ?? item?.msg_id ?? Date.now();
                   dispatchTranscriptToSubscribers({
                     id: `tr-${turnId}-${speaker.speakerUid}`,
@@ -399,8 +432,8 @@ export function useAgoraRTM({
               parsed?.data?.text ||
               parsed?.data?.transcript;
 
-            if (typeof singleText === 'string' && singleText.trim()) {
-              const speaker = resolveSpeakerInfo(parsed as Record<string, unknown>);
+            if (typeof singleText === 'string' && singleText.trim() && singleText.trim() !== '[SILENT]') {
+              const speaker = resolveSpeakerInfo(parsed as Record<string, unknown>, publisher);
               const turnId = parsed?.turn_id ?? parsed?.turnID ?? parsed?.message_id ?? parsed?.msg_id ?? Date.now();
               dispatchTranscriptToSubscribers({
                 id: `tr-${turnId}-${speaker.speakerUid}`,
@@ -438,6 +471,7 @@ export function useAgoraRTM({
           client,
           appId,
           uid,
+          userName,
           subscribedChannel: channelName,
           isLoggedIn: true,
         };

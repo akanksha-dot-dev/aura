@@ -11,7 +11,70 @@ function formatElapsedTime(ms: number): string {
 }
 
 /**
- * Creates a fresh baseline incident state matching the SEV-1 Payment Outage.
+ * Creates a clean live incident state for a real operator without mock personas.
+ */
+export function initializeLiveIncident(
+  channelName = 'incident-war-room',
+  operator?: { uid: string; displayName: string; role: string }
+): IncidentState {
+  const now = Date.now();
+  const participants: Record<string, any> = {
+    aura_agent: {
+      uid: 'aura_agent',
+      displayName: 'AURA',
+      role: 'AI Incident Commander',
+      isIncidentCommander: false,
+      joinedAt: now,
+      totalSpeakingMs: 0,
+      lastSpokeAt: now,
+    },
+  };
+
+  let icUid: string | null = null;
+
+  if (operator && operator.uid) {
+    const isIC =
+      !operator.role ||
+      operator.role.toLowerCase().includes('commander') ||
+      operator.role.toLowerCase().includes('lead') ||
+      true;
+
+    participants[operator.uid] = {
+      uid: operator.uid,
+      displayName: operator.displayName || operator.uid,
+      role: operator.role || 'Incident Responder',
+      isIncidentCommander: isIC,
+      joinedAt: now,
+      totalSpeakingMs: 0,
+      lastSpokeAt: now,
+    };
+    icUid = operator.uid;
+  }
+
+  const liveState: IncidentState = {
+    incidentId: `inc-${channelName.replace(/[^a-zA-Z0-9-]/g, '-')}`,
+    title: 'Payment Gateway Outage — Checkout Failures',
+    severity: 'SEV-1',
+    status: 'investigating',
+    openedAt: now,
+    affectedServices: ['payment-api', 'checkout-service', 'postgres-primary'],
+    participants,
+    incidentCommanderUid: icUid,
+    evidenceItems: [],
+    eventSeq: 0,
+    currentOODAPhase: 'OBSERVE',
+    costAccrued: 0,
+    cognitiveLoadScore: 0,
+    lastReadbackAt: 0,
+  };
+
+  const key = channelName.trim().toLowerCase();
+  channelStates.set(key, liveState);
+  return liveState;
+}
+
+/**
+ * Creates a fresh baseline incident state matching the SEV-1 Payment Outage for mock/fallback scenarios.
  */
 export function createBaselineIncidentState(channelName = 'incident-war-room'): IncidentState {
   const now = Date.now();
@@ -50,17 +113,8 @@ export function createBaselineIncidentState(channelName = 'incident-war-room'): 
         totalSpeakingMs: 20_000,
         lastSpokeAt: now - 50_000,
       },
-      operator_1: {
-        uid: 'operator_1',
-        displayName: 'Commander Sarah',
-        role: 'Incident Commander',
-        isIncidentCommander: true,
-        joinedAt: now - 60_000,
-        totalSpeakingMs: 12_000,
-        lastSpokeAt: now - 5_000,
-      },
     },
-    incidentCommanderUid: 'operator_1',
+    incidentCommanderUid: 'user-sarah',
     evidenceItems: [
       {
         id: 'evt-001',
@@ -186,16 +240,30 @@ export function addEvidenceToIncident(
 /**
  * Formats the rich dynamic incident context for per-turn prompt injection.
  */
+/**
+ * Resolves a human-readable display name for any speaker UID in a given channel.
+ */
+export function getSpeakerDisplayName(channelName: string, uid?: string): string {
+  if (!uid) return 'Responder';
+  if (uid === 'aura_agent' || uid.toLowerCase().includes('aura')) return 'AURA';
+  const state = getIncidentState(channelName);
+  if (state.participants[uid]?.displayName) {
+    return state.participants[uid].displayName;
+  }
+  return uid;
+}
+
 export function buildDynamicContext(state: IncidentState): string {
   const elapsed = formatElapsedTime(Date.now() - state.openedAt);
   const ic = state.incidentCommanderUid
     ? state.participants[state.incidentCommanderUid]?.displayName ?? state.incidentCommanderUid
     : 'Unassigned';
 
-  const participants = Object.values(state.participants)
+  const humanParticipants = Object.values(state.participants)
+    .filter((p) => p.uid !== 'aura_agent')
     .map((p) => {
       const silentFor = Math.round((Date.now() - p.lastSpokeAt) / 1000);
-      return `${p.displayName} (${p.role}, silent ${Math.max(0, silentFor)}s)`;
+      return `${p.displayName} (UID: "${p.uid}", Role: ${p.role}${p.isIncidentCommander ? ', Incident Commander' : ''}, silent ${Math.max(0, silentFor)}s)`;
     })
     .join(', ');
 
@@ -206,7 +274,7 @@ export function buildDynamicContext(state: IncidentState): string {
         (e) =>
           `  [${e.id}] ${e.category.toUpperCase()}: "${e.content}" (by ${e.speakerName}, confidence ${e.confidence})`
       )
-      .join('\n') || '  None';
+      .join('\n') || '  None yet. Awaiting initial telemetry and observations from responders.';
 
   const conflicts =
     state.evidenceItems
@@ -235,7 +303,7 @@ export function buildDynamicContext(state: IncidentState): string {
   return `[INCIDENT CONTEXT — INJECTED AT ${new Date().toISOString()}]
 Incident: ${state.title} | Severity: ${state.severity} | Status: ${state.status} | Elapsed: ${elapsed}
 IC: ${ic} | Current OODA Phase: ${state.currentOODAPhase}
-Active Responders in Room: ${participants || 'None'}
+Active Responders on Bridge: ${humanParticipants || 'None currently detected'}
 Telemetry & Epistemic Counts: Facts: ${state.evidenceItems.filter((e) => e.category === 'fact').length} | Active Hypotheses: ${state.evidenceItems.filter((e) => e.category === 'hypothesis' && e.status === 'active').length} | Decisions: ${state.evidenceItems.filter((e) => e.category === 'decision').length} | Pending Actions: ${state.evidenceItems.filter((e) => e.category === 'action' && (e.actionStatus === 'pending' || e.actionStatus === 'in_progress')).length} | Unresolved Conflicts: ${state.evidenceItems.filter((e) => e.category === 'conflict' && e.status === 'active').length}
 Last verbal readback: ${Math.max(0, secsSinceReadback)}s ago
 Sweller Cognitive Load: ${calculateCognitiveLoad(state)}/100

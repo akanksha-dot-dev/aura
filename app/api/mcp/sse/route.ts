@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CONFIDENCE_CAP, AGENT_UID, PERSONAS } from '@/lib/constants';
 import { createDashboardEvent, publishDashboardEvent } from '@/lib/rtmPublisher';
-import { addEvidenceToIncident } from '@/lib/incidentStore';
+import { addEvidenceToIncident, getSpeakerDisplayName } from '@/lib/incidentStore';
 import { EvidenceItem, RTMDashboardEvent } from '@/lib/types';
 
 export const runtime = 'nodejs';
 
-function getSpeakerName(uid?: string): string {
+function getSpeakerName(uid?: string, channelName?: string): string {
   if (!uid) return 'Unknown';
-  if (uid === AGENT_UID) return 'AURA';
+  if (uid === AGENT_UID || uid.toLowerCase().includes('aura')) return 'AURA';
+  if (channelName) {
+    const resolved = getSpeakerDisplayName(channelName, uid);
+    if (resolved && resolved !== uid) return resolved;
+  }
   const found = PERSONAS.find((p) => p.uid === uid);
   return found ? found.displayName : uid;
 }
@@ -408,6 +412,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
+      console.log(`[MCP] Tool invoked: "${toolName}" on channel "${channelName}" with args:`, JSON.stringify(args));
       let resultData: Record<string, unknown>;
 
       switch (toolName) {
@@ -435,11 +440,12 @@ export async function POST(request: NextRequest) {
             });
           }
 
+          const resolvedSpeaker = getSpeakerName(speakerUid, channelName);
           const event = createDashboardEvent('evidence_added', {
             category: 'fact',
             content,
             speakerUid,
-            speakerName: getSpeakerName(speakerUid),
+            speakerName: resolvedSpeaker,
             confidence,
             serviceAffected,
             relatedTo,
@@ -452,7 +458,7 @@ export async function POST(request: NextRequest) {
             category: 'fact',
             content,
             speakerUid,
-            speakerName: getSpeakerName(speakerUid),
+            speakerName: resolvedSpeaker,
             confidence,
             serviceAffected,
             relatedTo,
@@ -494,11 +500,12 @@ export async function POST(request: NextRequest) {
             });
           }
 
+          const resolvedSpeaker = getSpeakerName(proposedByUid, channelName);
           const event = createDashboardEvent('evidence_added', {
             category: 'hypothesis',
             content: title,
             speakerUid: proposedByUid,
-            speakerName: getSpeakerName(proposedByUid),
+            speakerName: resolvedSpeaker,
             confidence: Math.min(CONFIDENCE_CAP, 75),
             supportingEvidence,
             decidingMetric,
@@ -512,7 +519,7 @@ export async function POST(request: NextRequest) {
             category: 'hypothesis',
             content: title,
             speakerUid: proposedByUid,
-            speakerName: getSpeakerName(proposedByUid),
+            speakerName: resolvedSpeaker,
             confidence: Math.min(CONFIDENCE_CAP, 75),
             decidingMetric,
             relatedTo,
@@ -610,13 +617,14 @@ export async function POST(request: NextRequest) {
             });
           }
 
+          const resolvedAssignedTo = getSpeakerName(assignedToUid, channelName);
           const event = createDashboardEvent('evidence_added', {
             category: 'action',
             content: task,
             speakerUid: AGENT_UID,
             speakerName: 'AURA',
             confidence: CONFIDENCE_CAP,
-            assignedTo: getSpeakerName(assignedToUid),
+            assignedTo: resolvedAssignedTo,
             assignedToUid,
             eta: Date.now() + etaMinutes * 60_000,
             actionStatus: 'pending',
@@ -632,7 +640,7 @@ export async function POST(request: NextRequest) {
             speakerUid: AGENT_UID,
             speakerName: 'AURA',
             confidence: CONFIDENCE_CAP,
-            assignedTo: getSpeakerName(assignedToUid),
+            assignedTo: resolvedAssignedTo,
             eta: Date.now() + etaMinutes * 60_000,
             actionStatus: 'pending',
             relatedTo,
