@@ -31,6 +31,7 @@ import {
   playActionCompletedEarcon,
   playResolutionEarcon,
 } from '@/lib/audioCues';
+import { speakLine, stopSpeech } from '@/lib/tts';
 
 function DashboardContent() {
   const router = useRouter();
@@ -371,6 +372,10 @@ function DashboardContent() {
             text: transcript,
           },
         ]);
+        // Speak the line aloud using Web Speech API TTS.
+        // AURA gets a distinct (slightly higher pitch, faster) voice.
+        const isAura = speaker === 'AURA' || speaker === null;
+        speakLine(transcript, isAura, speedParam).catch(() => {});
       },
       onCelebration: () => {
         setTimeout(() => {
@@ -379,7 +384,10 @@ function DashboardContent() {
       },
     });
 
-    return cleanup;
+    return () => {
+      cleanup();
+      stopSpeech();
+    };
   }, [isMockReplay, speedParam, processEvent, dispatchStateUpdate]);
 
   // Combined transcript entries (from real-time speech history or epistemic evidence stream)
