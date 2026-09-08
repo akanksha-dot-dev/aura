@@ -25,6 +25,7 @@ import { PostmortemModal } from '@/components/PostmortemModal';
 import { TranscriptDrawer, TranscriptEntry } from '@/components/TranscriptDrawer';
 import { AgoraAnalyticsOverlay } from '@/components/AgoraAnalyticsOverlay';
 import { KeyboardShortcutsModal } from '@/components/KeyboardShortcutsModal';
+import { WarRoomInvite } from '@/components/WarRoomInvite';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import {
   playConflictEarcon,
@@ -63,6 +64,7 @@ function DashboardContent() {
   const [isSpeakerCollapsed, setIsSpeakerCollapsed] = useState(false);
   const [isActionsCollapsed, setIsActionsCollapsed] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
 
   // Global Mission-Control Keyboard Shortcuts (T: Tab, J: Drawer, P: Postmortem, K: Pause Cost, [: Left Sidebar, ]: Right Sidebar, \: Full Focus, ?: Shortcuts, Esc: Close)
   useEffect(() => {
@@ -902,6 +904,26 @@ function DashboardContent() {
             <span>Keys</span>
             <kbd className="keyboard-hint-badge">?</kbd>
           </button>
+
+          {/* Share War Room button — opens invite modal */}
+          <button
+            id="war-room-share-btn"
+            type="button"
+            className="mission-deck__log-btn"
+            onClick={() => setIsInviteOpen(true)}
+            title="Share War Room &amp; Invite Team"
+            aria-label="Share War Room"
+            style={{ borderColor: 'rgba(108,92,231,0.5)', color: '#A29BFE' }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="18" cy="5" r="3"/>
+              <circle cx="6" cy="12" r="3"/>
+              <circle cx="18" cy="19" r="3"/>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+            <span>Share</span>
+          </button>
           <AgoraAnalyticsOverlay
             mos={networkStats.mos}
             jitter={networkStats.jitter}
@@ -936,6 +958,12 @@ function DashboardContent() {
       <KeyboardShortcutsModal
         isOpen={isShortcutsOpen}
         onClose={() => setIsShortcutsOpen(false)}
+      />
+
+      {/* 12. War Room Invite & Share Modal */}
+      <WarRoomInvite
+        isOpen={isInviteOpen}
+        onClose={() => setIsInviteOpen(false)}
       />
     </div>
   );

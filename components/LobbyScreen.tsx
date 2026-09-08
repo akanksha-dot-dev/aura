@@ -11,6 +11,7 @@ import {
   getAvatarColor,
 } from '@/lib/scenarios';
 import type { Severity } from '@/lib/types';
+import { WarRoomInvite } from '@/components/WarRoomInvite';
 
 export interface LobbyScreenProps {
   onJoin: (
@@ -59,6 +60,7 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
   const [customName, setCustomName] = React.useState<string>('');
   const [customRole, setCustomRole] = React.useState<string>('');
   const [demoMode, setDemoMode] = React.useState<'simulation' | 'live'>('simulation');
+  const [isInviteOpen, setIsInviteOpen] = React.useState(false);
   const [voiceLang, setVoiceLang] = React.useState<string>(() => {
     if (typeof window !== 'undefined') {
       return sessionStorage.getItem('aura_voice_lang') || 'en-IN';
@@ -1217,6 +1219,55 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
           <p className="flightdeck-tagline">
             Real-time multi-speaker acoustic intelligence • Live contradiction arbitration • Continuous SRE debrief
           </p>
+
+          {/* ── Share War Room Button ─────────────────────────────────────── */}
+          <button
+            id="share-war-room-btn"
+            type="button"
+            onClick={() => setIsInviteOpen(true)}
+            style={{
+              marginTop: '18px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: 'linear-gradient(135deg, rgba(108,92,231,0.25) 0%, rgba(78,205,196,0.15) 100%)',
+              border: '1px solid rgba(108,92,231,0.5)',
+              borderRadius: '10px',
+              color: '#fff',
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: 600,
+              padding: '10px 20px',
+              transition: 'all 0.2s',
+              backdropFilter: 'blur(8px)',
+              boxShadow: '0 0 20px rgba(108,92,231,0.2)',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'linear-gradient(135deg, rgba(108,92,231,0.4) 0%, rgba(78,205,196,0.25) 100%)';
+              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 30px rgba(108,92,231,0.4)';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'linear-gradient(135deg, rgba(108,92,231,0.25) 0%, rgba(78,205,196,0.15) 100%)';
+              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 20px rgba(108,92,231,0.2)';
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="18" cy="5" r="3"/>
+              <circle cx="6" cy="12" r="3"/>
+              <circle cx="18" cy="19" r="3"/>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+            Share War Room &amp; Invite Team
+            <span style={{
+              background: 'rgba(78,205,196,0.2)',
+              border: '1px solid rgba(78,205,196,0.4)',
+              borderRadius: '4px',
+              fontSize: '10px',
+              padding: '2px 6px',
+              color: '#4ECDC4',
+            }}>LIVE</span>
+          </button>
         </header>
 
         {/* Connecting Banner */}
@@ -1766,6 +1817,9 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
           </section>
         </div>
       </div>
+
+      {/* ── War Room Invite Modal ─────────────────────────────────────────── */}
+      <WarRoomInvite isOpen={isInviteOpen} onClose={() => setIsInviteOpen(false)} />
     </div>
   );
 }
