@@ -4,6 +4,7 @@ import {
   listIncidents,
   getIncidentStats,
   searchIncidents,
+  seedHistoricalIncidents,
   type DbIncident,
 } from '@/lib/db';
 import { findSimilarIncidentsAdvanced, analyzePatterns } from '@/lib/similarityEngine';
@@ -22,6 +23,7 @@ export const runtime = 'nodejs';
  *   ?view=patterns      — Recurring incident patterns
  *   ?view=similar       — Similar incident lookup (requires &services=... or &symptoms=...)
  *   ?view=heatmap       — Incident frequency heatmap data
+ *   ?seed=true          — Force seed demo incidents
  *
  * Common filters:
  *   &severity=SEV-1     — Filter by severity
@@ -41,11 +43,32 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50', 10);
     const offset = parseInt(searchParams.get('offset') || '0', 10);
     const query = searchParams.get('q') || '';
+    const shouldSeed = searchParams.get('seed') === 'true';
+
+    if (shouldSeed) {
+      seedHistoricalIncidents(true);
+    }
 
     switch (view) {
       // ── Overview: Aggregate statistics ───────────────────────────────
       case 'overview': {
-        const stats = getIncidentStats();
+        let rawStats = getIncidentStats();
+        // Auto-seed if database is fresh / has sparse test data
+        if (rawStats.totalIncidents < 4) {
+          seedHistoricalIncidents(false);
+          rawStats = getIncidentStats();
+        }
+
+        const stats = {
+          total: rawStats.totalIncidents,
+          open: Math.max(0, rawStats.totalIncidents - rawStats.resolvedIncidents),
+          resolved: rawStats.resolvedIncidents,
+          avgMttrMs: Math.round(rawStats.avgResolutionTimeMs || 0),
+          totalIncidents: rawStats.totalIncidents,
+          resolvedIncidents: rawStats.resolvedIncidents,
+          avgResolutionTimeMs: rawStats.avgResolutionTimeMs,
+          incidentsBySeverity: rawStats.incidentsBySeverity,
+        };
         const database = getDb();
 
         // MTTR by severity
@@ -290,6 +313,11 @@ export async function POST(request: NextRequest) {
     const database = getDb();
 
     switch (action) {
+      case 'seed': {
+        const result = seedHistoricalIncidents(body.force === true);
+        return NextResponse.json(result);
+      }
+
       case 'tag_incident': {
         const { incidentId, tags } = body;
         if (!incidentId || !Array.isArray(tags)) {

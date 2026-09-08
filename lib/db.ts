@@ -768,3 +768,328 @@ export function getIncidentStats(): {
     incidentsBySeverity: bySeverity,
   };
 }
+
+// ─── Historical Seed Data for Executive Intelligence Dashboard ───
+
+export function seedHistoricalIncidents(force = false): { seeded: number; message: string } {
+  const database = getDb();
+
+  const count = (database.prepare('SELECT COUNT(*) as count FROM incidents').get() as { count: number }).count;
+  if (count >= 6 && !force) {
+    return { seeded: 0, message: `Database already has ${count} incidents. Pass force=true to re-seed.` };
+  }
+
+  const now = Date.now();
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const MIN_MS = 60 * 1000;
+
+  const sampleIncidents = [
+    {
+      id: 'INC-4819',
+      title: 'Token validation latency spike & 504 Gateway Timeouts',
+      severity: 'SEV-1',
+      status: 'resolved',
+      channelName: 'war-room-4819',
+      openedAt: now - 18 * DAY_MS,
+      resolvedAt: now - 18 * DAY_MS + 26 * MIN_MS,
+      affectedServices: ['auth-service', 'api-gateway', 'redis-session'],
+      costAccrued: 18500,
+      cognitiveLoadScore: 68,
+      oodaPhase: 'ACT',
+      team: 'Identity & Auth',
+      rootCause: {
+        category: 'Resource Exhaustion',
+        subcategory: 'Redis connection pool saturation',
+        description: 'Redis connection pool saturated due to burst of token refresh requests during mobile app update roll-out.',
+      },
+      tags: ['auth', 'redis', 'timeouts', 'api-gateway'],
+      playbook: [
+        { text: 'Scaled Redis read replicas from 2 to 6', durationMs: 420000, effective: 1 },
+        { text: 'Increased client connection pool maxTotal from 50 to 200 in auth-service configuration', durationMs: 360000, effective: 1 },
+        { text: 'Enabled circuit breaker on JWT verification fallback to local public-key cache', durationMs: 240000, effective: 1 },
+      ],
+      postmortem: {
+        title: 'Postmortem: INC-4819 Token validation latency spike',
+        summary: 'Mobile app v4.2 update rollout caused synchronized token refresh requests that exceeded auth-service Redis connection pool capacity, resulting in cascading 504 gateway timeouts for 26 minutes.',
+        rootCause: 'Connection pool starvation in auth-service Redis client library under peak token refresh load.',
+        lessonsLearned: 'Always implement jitter on client-side refresh timers. Auto-scale Redis replica read pools proactively before mobile app rollouts.',
+      },
+    },
+    {
+      id: 'INC-4822',
+      title: 'Payment processing failures with Postgres connection pool exhaustion',
+      severity: 'SEV-1',
+      status: 'resolved',
+      channelName: 'war-room-4822',
+      openedAt: now - 14 * DAY_MS,
+      resolvedAt: now - 14 * DAY_MS + 38 * MIN_MS,
+      affectedServices: ['payment-service', 'postgres-primary', 'billing-gateway'],
+      costAccrued: 42000,
+      cognitiveLoadScore: 82,
+      oodaPhase: 'ACT',
+      team: 'Payments Team',
+      rootCause: {
+        category: 'Database Contention',
+        subcategory: 'Connection pool exhaustion',
+        description: 'Unindexed query on transactions table holding connection locks during bulk settlement batch run.',
+      },
+      tags: ['payments', 'postgres', 'locks', 'slow-query'],
+      playbook: [
+        { text: 'Ran pg_terminate_backend on idle-in-transaction queries older than 60 seconds', durationMs: 180000, effective: 1 },
+        { text: 'Added concurrent composite index on transactions(user_id, status, created_at)', durationMs: 900000, effective: 1 },
+        { text: 'Restarted payment-service deployment pods to refresh leaked pool connections', durationMs: 300000, effective: 1 },
+      ],
+      postmortem: {
+        title: 'Postmortem: INC-4822 Payment processing failures',
+        summary: 'Nightly settlement cron triggered unindexed table scan that held Postgres row locks, leading to connection exhaustion for live checkout requests.',
+        rootCause: 'Missing composite index on transactions table allowing sequential table scans to monopolize connection pool.',
+        lessonsLearned: 'Mandate EXPLAIN ANALYZE reviews in PRs for queries in batch jobs touching core tables.',
+      },
+    },
+    {
+      id: 'INC-4835',
+      title: 'Stripe webhook deadlock causing payment double-charge timeouts',
+      severity: 'SEV-1',
+      status: 'resolved',
+      channelName: 'war-room-4835',
+      openedAt: now - 8 * DAY_MS,
+      resolvedAt: now - 8 * DAY_MS + 45 * MIN_MS,
+      affectedServices: ['payment-service', 'checkout-api', 'redis-cluster'],
+      costAccrued: 55000,
+      cognitiveLoadScore: 78,
+      oodaPhase: 'ACT',
+      team: 'Payments Team',
+      rootCause: {
+        category: 'Concurrency Bug',
+        subcategory: 'Distributed lock timeout too short',
+        description: 'Redlock TTL was set to 2000ms while payment gateway callback took up to 3500ms under load, triggering lock expirations and lock contention deadlocks.',
+      },
+      tags: ['payments', 'webhooks', 'deadlock', 'stripe'],
+      playbook: [
+        { text: 'Temporarily throttled incoming Stripe webhook worker concurrency to 10', durationMs: 240000, effective: 1 },
+        { text: 'Increased Redis lock lease time from 2000ms to 12000ms in payment-service config', durationMs: 600000, effective: 1 },
+        { text: 'Retried failed dead-letter-queue transactions with idempotency keys', durationMs: 480000, effective: 1 },
+      ],
+      postmortem: {
+        title: 'Postmortem: INC-4835 Stripe webhook deadlock',
+        summary: 'Latency increase on third-party payment partner triggered distributed lock lease expiration before transactions completed, creating duplicate processing races.',
+        rootCause: 'Aggressive 2-second lock lease duration without renewal heartbeats.',
+        lessonsLearned: 'Implement background heartbeat extension for distributed locks in payment pipeline.',
+      },
+    },
+    {
+      id: 'INC-4841',
+      title: 'Cascading 500s across checkout pipeline due to unhandled NullPointer in v2.4.1',
+      severity: 'SEV-0',
+      status: 'resolved',
+      channelName: 'war-room-4841',
+      openedAt: now - 3 * DAY_MS,
+      resolvedAt: now - 3 * DAY_MS + 52 * MIN_MS,
+      affectedServices: ['payment-service', 'fraud-engine', 'checkout-api'],
+      costAccrued: 85000,
+      cognitiveLoadScore: 94,
+      oodaPhase: 'ACT',
+      team: 'Payments Team',
+      rootCause: {
+        category: 'Software Regression',
+        subcategory: 'Missing null check on new currency field',
+        description: 'Deployment of v2.4.1 introduced a new currency code field without null check for legacy carts, crashing payment worker threads.',
+      },
+      tags: ['payments', 'checkout', 'regression', 'sev-0'],
+      playbook: [
+        { text: 'Initiated immediate canary rollback of payment-service from v2.4.1 to v2.4.0', durationMs: 420000, effective: 1 },
+        { text: 'Flushed poisoned cart sessions in Redis cache', durationMs: 180000, effective: 1 },
+        { text: 'Verified end-to-end checkout synthetics return HTTP 200', durationMs: 120000, effective: 1 },
+      ],
+      postmortem: {
+        title: 'Postmortem: INC-4841 Cascading 500s on Checkout',
+        summary: 'Critical SEV-0 outage lasting 52 minutes halting all checkout flows worldwide due to backwards-incompatible currency field deserialization.',
+        rootCause: 'Software defect introduced in commit 8f2a1b without backwards-compatibility test on legacy session data.',
+        lessonsLearned: 'Payments Team requires automated canary analysis (ACA) and mandatory shadow-traffic validation before full production release.',
+      },
+    },
+    {
+      id: 'INC-4850',
+      title: 'Elasticsearch cluster yellow status due to unassigned replica shards',
+      severity: 'SEV-2',
+      status: 'resolved',
+      channelName: 'war-room-4850',
+      openedAt: now - 10 * DAY_MS,
+      resolvedAt: now - 10 * DAY_MS + 16 * MIN_MS,
+      affectedServices: ['search-indexer', 'elasticsearch-cluster'],
+      costAccrued: 4500,
+      cognitiveLoadScore: 42,
+      oodaPhase: 'ACT',
+      team: 'Search & Data Platform',
+      rootCause: {
+        category: 'Disk Exhaustion',
+        subcategory: 'ES high watermark hit',
+        description: 'Disk space exceeded 85% high watermark on node 3, preventing new shard allocation.',
+      },
+      tags: ['search', 'elasticsearch', 'storage', 'disk'],
+      playbook: [
+        { text: 'Deleted expired log indices older than 30 days via curator', durationMs: 240000, effective: 1 },
+        { text: 'Triggered cluster shard rebalance via POST /_cluster/reroute', durationMs: 360000, effective: 1 },
+      ],
+      postmortem: {
+        title: 'Postmortem: INC-4850 Elasticsearch cluster degradation',
+        summary: 'Log index lifecycle management failed to purge stale index data, causing node 3 disk utilization to hit flood stage.',
+        rootCause: 'Disk capacity threshold breached on single Elasticsearch data node.',
+        lessonsLearned: 'Set up disk growth rate alerting at 75% capacity instead of 85%.',
+      },
+    },
+    {
+      id: 'INC-4859',
+      title: 'Kafka consumer lag exceeding 100k messages on email notifications',
+      severity: 'SEV-2',
+      status: 'resolved',
+      channelName: 'war-room-4859',
+      openedAt: now - 5 * DAY_MS,
+      resolvedAt: now - 5 * DAY_MS + 22 * MIN_MS,
+      affectedServices: ['notification-worker', 'kafka-broker', 'email-gateway'],
+      costAccrued: 6200,
+      cognitiveLoadScore: 50,
+      oodaPhase: 'ACT',
+      team: 'Core Infrastructure',
+      rootCause: {
+        category: 'Third-Party Rate Limit',
+        subcategory: 'Email gateway 429 throttling',
+        description: 'Marketing campaign blast exceeded transactional email API quota, causing Kafka consumers to back off and accumulate lag.',
+      },
+      tags: ['kafka', 'notifications', 'rate-limit'],
+      playbook: [
+        { text: 'Separated transactional notifications topic from marketing notifications topic', durationMs: 480000, effective: 1 },
+        { text: 'Scaled notification-worker pods from 4 to 12 partitions', durationMs: 300000, effective: 1 },
+      ],
+      postmortem: {
+        title: 'Postmortem: INC-4859 Notification consumer lag',
+        summary: 'Bulk email campaign flooded single Kafka partition shared with OTP/password reset emails.',
+        rootCause: 'Lack of multi-tenant rate limiting and shared topic usage for different priority queues.',
+        lessonsLearned: 'Enforce topic separation between critical transactional emails and bulk marketing messages.',
+      },
+    },
+    {
+      id: 'INC-4863',
+      title: 'BGP route flap causing intermittent DNS resolution failures',
+      severity: 'SEV-1',
+      status: 'resolved',
+      channelName: 'war-room-4863',
+      openedAt: now - 21 * DAY_MS,
+      resolvedAt: now - 21 * DAY_MS + 31 * MIN_MS,
+      affectedServices: ['dns-resolver', 'edge-router', 'core-api'],
+      costAccrued: 31000,
+      cognitiveLoadScore: 74,
+      oodaPhase: 'ACT',
+      team: 'Core Infrastructure',
+      rootCause: {
+        category: 'Network Infrastructure',
+        subcategory: 'Upstream BGP flap',
+        description: 'Upstream transit provider flapped routes 14 times in 10 minutes, triggering DNS lookup packet loss.',
+      },
+      tags: ['dns', 'bgp', 'network', 'edge'],
+      playbook: [
+        { text: 'Withdrew BGP announcement from problematic ISP transit peer', durationMs: 360000, effective: 1 },
+        { text: 'Rerouted traffic through backup Tier-1 transit provider', durationMs: 240000, effective: 1 },
+      ],
+      postmortem: {
+        title: 'Postmortem: INC-4863 Upstream BGP Flapping Outage',
+        summary: 'Intermittent DNS packet loss for 12% of North America traffic due to external transit route flapping.',
+        rootCause: 'BGP route instability on upstream provider peer connection.',
+        lessonsLearned: 'Implement BGP route flap dampening and redundant multi-cloud DNS Anycast.',
+      },
+    },
+    {
+      id: 'INC-4870',
+      title: 'Checkout cart sync failures due to Redis evictions under peak traffic',
+      severity: 'SEV-1',
+      status: 'investigating',
+      channelName: 'war-room-live',
+      openedAt: now - 45 * MIN_MS,
+      resolvedAt: null,
+      affectedServices: ['payment-service', 'checkout-api', 'cart-service'],
+      costAccrued: 14500,
+      cognitiveLoadScore: 76,
+      oodaPhase: 'ORIENT',
+      team: 'Payments Team',
+      rootCause: {
+        category: 'Resource Exhaustion',
+        subcategory: 'Redis maxmemory eviction policy',
+        description: 'Cart sessions getting evicted prematurely causing user sessions to drop at final checkout step.',
+      },
+      tags: ['payments', 'redis', 'checkout', 'active'],
+      playbook: [
+        { text: 'Increase Redis maxmemory from 16GB to 32GB on session cluster', durationMs: 180000, effective: 1 },
+        { text: 'Switch eviction policy from volatile-lru to allkeys-lfu', durationMs: 120000, effective: 1 },
+      ],
+      postmortem: null,
+    },
+  ];
+
+  const transaction = database.transaction(() => {
+    for (const inc of sampleIncidents) {
+      // 1. Upsert incident
+      upsertIncident({
+        id: inc.id,
+        title: inc.title,
+        severity: inc.severity,
+        status: inc.status,
+        channelName: inc.channelName,
+        openedAt: inc.openedAt,
+        resolvedAt: inc.resolvedAt,
+        affectedServices: inc.affectedServices,
+        costAccrued: inc.costAccrued,
+        cognitiveLoadScore: inc.cognitiveLoadScore,
+        oodaPhase: inc.oodaPhase,
+      });
+
+      // 2. Incident team attribution
+      database.prepare(`
+        INSERT INTO incident_teams (incident_id, team_name, is_primary_owner)
+        VALUES (?, ?, 1)
+        ON CONFLICT DO NOTHING
+      `).run(inc.id, inc.team);
+
+      // 3. Root causes
+      if (inc.rootCause) {
+        database.prepare(`
+          INSERT INTO root_causes (incident_id, category, subcategory, description)
+          VALUES (?, ?, ?, ?)
+          ON CONFLICT(incident_id) DO UPDATE SET
+            category = excluded.category,
+            subcategory = excluded.subcategory,
+            description = excluded.description
+        `).run(inc.id, inc.rootCause.category, inc.rootCause.subcategory, inc.rootCause.description);
+      }
+
+      // 4. Tags
+      const tagStmt = database.prepare('INSERT OR IGNORE INTO incident_tags (incident_id, tag) VALUES (?, ?)');
+      for (const t of inc.tags) {
+        tagStmt.run(inc.id, t);
+      }
+
+      // 5. Playbook steps
+      const pbStmt = database.prepare(`
+        INSERT INTO resolution_playbook (incident_id, step_order, action_text, was_effective, duration_ms)
+        VALUES (?, ?, ?, ?, ?)
+      `);
+      for (let i = 0; i < inc.playbook.length; i++) {
+        const step = inc.playbook[i];
+        pbStmt.run(inc.id, i + 1, step.text, step.effective, step.durationMs);
+      }
+
+      // 6. Postmortem
+      if (inc.postmortem) {
+        upsertPostmortem({
+          incidentId: inc.id,
+          title: inc.postmortem.title,
+          summary: inc.postmortem.summary,
+          rootCause: inc.postmortem.rootCause,
+          lessonsLearned: inc.postmortem.lessonsLearned,
+        });
+      }
+    }
+  });
+
+  transaction();
+  return { seeded: sampleIncidents.length, message: `Successfully seeded ${sampleIncidents.length} historical incidents with teams, root causes, and playbooks.` };
+}
