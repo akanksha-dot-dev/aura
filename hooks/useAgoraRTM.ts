@@ -286,17 +286,33 @@ export function useAgoraRTM({
         }
 
         const { rtmToken, appId } = await tokenRes.json();
-        if (!appId) {
-          throw new Error('Missing Agora App ID from token endpoint');
+        const trimmedAppId = typeof appId === 'string' ? appId.trim() : '';
+
+        if (
+          !trimmedAppId ||
+          trimmedAppId.includes('your_') ||
+          trimmedAppId.includes('placeholder') ||
+          !/^[0-9a-fA-F]{32}$/.test(trimmedAppId)
+        ) {
+          console.info('[useAgoraRTM] Telemetry standby: Agora App ID is not configured or is a placeholder in .env.local.');
+          broadcastError('Agora telemetry standby (credentials not configured)');
+          return;
         }
 
         const AgoraRTM = (await import('agora-rtm-sdk')).default;
 
-        // Initialize single RTM client with warning log level to suppress harmless noise
-        const client = new AgoraRTM.RTM(appId, uid, {
-          useStringUserId: true,
-          logLevel: 'warn',
-        }) as unknown as RtmClientInstance;
+        // Initialize single RTM client with try/catch to gracefully handle invalid/standby configurations
+        let client: RtmClientInstance;
+        try {
+          client = new AgoraRTM.RTM(trimmedAppId, uid, {
+            useStringUserId: true,
+            logLevel: 'warn',
+          }) as unknown as RtmClientInstance;
+        } catch (initErr) {
+          console.info('[useAgoraRTM] Telemetry standby: Agora RTM client unavailable:', initErr);
+          broadcastError('Agora telemetry standby (RTM unavailable)');
+          return;
+        }
 
         // Attach listeners once on the client
         client.addEventListener('message', (eventData: Record<string, unknown>) => {
@@ -726,9 +742,16 @@ export function useAgoraRTM({
         if (!isAbortOrCancelError(err)) {
           const errMsg = err instanceof Error ? err.message : 'Failed to connect to Agora RTM';
           broadcastError(errMsg);
-          console.error('[useAgoraRTM] Connection error:', err);
+          if (
+            errMsg.includes('Invalid App id') ||
+            errMsg.includes('credentials not configured') ||
+            errMsg.includes('standby')
+          ) {
+            console.info('[useAgoraRTM] Telemetry standby:', errMsg);
+          } else {
+            console.warn('[useAgoraRTM] Connection notice:', err);
+          }
         }
-        throw err;
       } finally {
         connectingPromise = null;
       }
@@ -782,7 +805,9 @@ export function useAgoraRTM({
       teardownTimer = null;
     }
 
-    void connect();
+    void connect().catch((err) => {
+      console.warn('[useAgoraRTM] Connection attempt handled:', err);
+    });
 
     return () => {
       activeSubscribers.delete(subscriberHandler);

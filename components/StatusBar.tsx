@@ -34,6 +34,7 @@ export interface StatusBarProps {
   onToggleCostPause?: () => void;
   voiceLang?: string;
   onVoiceLangChange?: (newLang: string) => void;
+  cognitiveLoadScore?: number;
 }
 
 function formatTimer(totalSeconds: number): string {
@@ -63,9 +64,19 @@ export function StatusBar({
   onToggleCostPause,
   voiceLang = 'en-IN',
   onVoiceLangChange,
+  cognitiveLoadScore = 0,
 }: StatusBarProps) {
   const [activeElapsed, setActiveElapsed] = useState<number>(0);
   const theme = useSyncExternalStore(subscribeTheme, getThemeSnapshot, getServerThemeSnapshot);
+
+  // AURA Pulse: status bar breathes based on cognitive load & incident status
+  const pulseClass = status === 'resolved'
+    ? 'status-bar--pulse-resolved'
+    : cognitiveLoadScore >= 70
+    ? 'status-bar--pulse-high'
+    : cognitiveLoadScore >= 40
+    ? 'status-bar--pulse-med'
+    : 'status-bar--pulse-low';
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -373,7 +384,7 @@ export function StatusBar({
           background: var(--bg-surface-hover);
         }
       `}</style>
-      <header className={`precision-bar ${styles.statusBar}`} role="banner">
+      <header className={`precision-bar ${styles.statusBar} ${pulseClass}`} role="banner">
         {/* Left Section: Breadcrumb with Brand + ID + Severity + Title */}
         <div className={`precision-bar__left ${styles.left}`}>
           <div className={`precision-bar__brand ${styles.brand}`}>

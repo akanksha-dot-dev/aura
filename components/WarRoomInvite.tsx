@@ -202,14 +202,13 @@ export function WarRoomInvite({ isOpen, onClose }: WarRoomInviteProps) {
 
   useEffect(() => {
     if (!isOpen) return;
+    setActiveTab('invite');
     setLoading(true);
     fetch('/api/room/info')
       .then((r) => r.json())
       .then((data: RoomInfo) => {
         setRoomInfo(data);
         if (data.personaLinks?.length > 0) setSelectedPersona(data.personaLinks[0]);
-        // Auto-switch to setup tab if credentials aren't ready
-        if (!data.voiceReady) setActiveTab('setup');
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -353,12 +352,12 @@ export function WarRoomInvite({ isOpen, onClose }: WarRoomInviteProps) {
                   borderRadius: 20,
                   background: roomInfo.voiceReady
                     ? 'rgba(78,205,196,0.15)'
-                    : 'rgba(255,107,107,0.15)',
-                  border: `1px solid ${roomInfo.voiceReady ? '#4ECDC4' : '#FF6B6B'}`,
-                  color: roomInfo.voiceReady ? '#4ECDC4' : '#FF9494',
+                    : 'rgba(255,217,61,0.15)',
+                  border: `1px solid ${roomInfo.voiceReady ? '#4ECDC4' : '#FFD93D'}`,
+                  color: roomInfo.voiceReady ? '#4ECDC4' : '#FFD93D',
                 }}
               >
-                {roomInfo.voiceReady ? '✓ VOICE READY' : '⚠ SETUP REQUIRED'}
+                {roomInfo.voiceReady ? '✓ LIVE VOICE READY' : '⚡ COLLAB / SIM READY'}
               </span>
             )}
             <button
@@ -390,9 +389,9 @@ export function WarRoomInvite({ isOpen, onClose }: WarRoomInviteProps) {
           }}
         >
           {([
-            { id: 'invite', label: '🔗 Invite Links' },
-            { id: 'setup', label: '⚙️ Credentials Setup' },
+            { id: 'invite', label: '🔗 Invite Links (Ready)' },
             { id: 'tunnel', label: '🌐 Public Tunnel' },
+            { id: 'setup', label: '⚙️ Cloud Keys (Optional)' },
           ] as const).map((tab) => (
             <button
               key={tab.id}
@@ -426,7 +425,45 @@ export function WarRoomInvite({ isOpen, onClose }: WarRoomInviteProps) {
 
           {/* ─── TAB: Invite Links ─────────────────────────────────────────── */}
           {!loading && activeTab === 'invite' && roomInfo && (
-            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+            <div>
+              {!roomInfo.voiceReady && (
+                <div
+                  style={{
+                    width: '100%',
+                    padding: '10px 16px',
+                    marginBottom: 16,
+                    borderRadius: 8,
+                    background: 'rgba(255, 217, 61, 0.08)',
+                    border: '1px solid rgba(255, 217, 61, 0.25)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontSize: 12,
+                    color: '#FFD93D',
+                  }}
+                >
+                  <span>
+                    ⚡ <strong>Collab &amp; War Room Sharing is Active:</strong> Anyone on your LAN or tunnel can join via the links below. (To enable live Agora cloud voice audio, see the <strong>Credentials Setup</strong> tab).
+                  </span>
+                  <button
+                    onClick={() => setActiveTab('setup')}
+                    style={{
+                      background: 'rgba(255, 217, 61, 0.15)',
+                      border: '1px solid rgba(255, 217, 61, 0.4)',
+                      borderRadius: 6,
+                      color: '#FFD93D',
+                      padding: '4px 10px',
+                      fontSize: 11,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      marginLeft: 12,
+                    }}
+                  >
+                    Setup Cloud Keys →
+                  </button>
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
 
               {/* Left: QR + URL */}
               <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center' }}>
@@ -595,6 +632,7 @@ export function WarRoomInvite({ isOpen, onClose }: WarRoomInviteProps) {
                 </div>
               </div>
             </div>
+            </div>
           )}
 
           {/* ─── TAB: Credentials Setup ────────────────────────────────────── */}
@@ -606,28 +644,48 @@ export function WarRoomInvite({ isOpen, onClose }: WarRoomInviteProps) {
                 style={{
                   background: roomInfo.voiceReady
                     ? 'rgba(78,205,196,0.06)'
-                    : 'rgba(255,107,107,0.06)',
-                  border: `1px solid ${roomInfo.voiceReady ? 'rgba(78,205,196,0.3)' : 'rgba(255,107,107,0.3)'}`,
+                    : 'rgba(255,217,61,0.06)',
+                  border: `1px solid ${roomInfo.voiceReady ? 'rgba(78,205,196,0.3)' : 'rgba(255,217,61,0.3)'}`,
                   borderRadius: 12,
                   padding: '16px 20px',
                   display: 'flex',
                   alignItems: 'center',
+                  justifyContent: 'space-between',
                   gap: 14,
                 }}
               >
-                <div style={{ fontSize: 28 }}>{roomInfo.voiceReady ? '✅' : '⚠️'}</div>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: roomInfo.voiceReady ? '#4ECDC4' : '#FF9494' }}>
-                    {roomInfo.voiceReady
-                      ? 'All systems go — AURA Voice AI is fully operational'
-                      : 'Action required — some credentials need to be configured'}
-                  </div>
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>
-                    {roomInfo.voiceReady
-                      ? 'Open the Invite Links tab to share with your team.'
-                      : 'Complete the steps below to enable AURA\'s live voice AI capabilities.'}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <div style={{ fontSize: 28 }}>{roomInfo.voiceReady ? '✅' : '⚡'}</div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: roomInfo.voiceReady ? '#4ECDC4' : '#FFD93D' }}>
+                      {roomInfo.voiceReady
+                        ? 'All systems go — AURA Live Voice AI is fully operational'
+                        : 'War Room Links Are Ready To Share (Cloud Voice Keys Optional)'}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>
+                      {roomInfo.voiceReady
+                        ? 'Open the Invite Links tab to share with your team.'
+                        : 'You can share war room links and collaborate right now. Configure keys below only if you want live Agora cloud voice AI.'}
+                    </div>
                   </div>
                 </div>
+                <button
+                  onClick={() => setActiveTab('invite')}
+                  style={{
+                    background: '#6C5CE7',
+                    border: 'none',
+                    borderRadius: 8,
+                    color: '#fff',
+                    padding: '8px 16px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}
+                >
+                  ← Go to Invite Links
+                </button>
               </div>
 
               {/* Credential cards */}

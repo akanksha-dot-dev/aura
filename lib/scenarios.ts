@@ -11,6 +11,15 @@ export interface PersonaDefinition {
   description?: string;
 }
 
+export interface PlaybookStep {
+  id: string;
+  phase: 'diagnose' | 'mitigate' | 'resolve' | 'communicate';
+  title: string;
+  detail: string;
+  command?: string;  // Shell / dashboard command hint
+  priority: 'critical' | 'high' | 'medium';
+}
+
 export interface ScenarioConfig {
   id: string;
   name: string;
@@ -23,6 +32,7 @@ export interface ScenarioConfig {
   description?: string;
   impact?: string;
   suspectedCause?: string;
+  playbook?: PlaybookStep[];
 }
 
 // ─── Preset Scenarios ───
@@ -65,6 +75,15 @@ export const PRESET_SCENARIOS: ScenarioConfig[] = [
     description: 'SEV-1 checkout outage affecting payment processing. Error rate at 42%, database connection pool suspected.',
     impact: 'Error rates surged to 42% on payment services. Checkout flow frozen for ~1,420 checkout sessions.',
     suspectedCause: 'PR #492 deployed 15m ago. Stripe webhook v2 migration causing connection pool starvation.',
+    playbook: [
+      { id: 'po-1', phase: 'diagnose', priority: 'critical', title: 'Check DB connection pool metrics', detail: 'Verify pool utilization and wait queue depth in Grafana → postgres-primary dashboard.', command: 'kubectl exec -it postgres-primary -- psql -c "SELECT count(*) FROM pg_stat_activity;"' },
+      { id: 'po-2', phase: 'diagnose', priority: 'critical', title: 'Verify replica lag', detail: 'High replica lag means writes are backing up. Check replication status on all 3 replicas.', command: 'kubectl exec postgres-replica-0 -- psql -c "SELECT now() - pg_last_xact_replay_timestamp();"' },
+      { id: 'po-3', phase: 'diagnose', priority: 'high', title: 'Trace Stripe webhook failures', detail: 'Correlate error spike with PR #492 deploy time. Check webhook event queue depth.', command: 'stripe events list --limit=50 | grep payment_intent.failed' },
+      { id: 'po-4', phase: 'mitigate', priority: 'critical', title: 'Rollback PR #492', detail: 'Execute immediate rollback of Stripe webhook v2 migration to restore connection pool headroom.', command: 'git revert HEAD --no-edit && git push origin main' },
+      { id: 'po-5', phase: 'mitigate', priority: 'high', title: 'Scale connection pool emergency limits', detail: 'Temporarily raise PgBouncer max_client_conn to shed load while rollback deploys.', command: 'kubectl set env deployment/pgbouncer MAX_CLIENT_CONN=500' },
+      { id: 'po-6', phase: 'communicate', priority: 'high', title: 'Post Slack status update', detail: 'Notify #incidents and #customer-success with current impact scope and ETA.' },
+      { id: 'po-7', phase: 'resolve', priority: 'medium', title: 'Confirm error rate recovery', detail: 'Monitor payment-api error rate for 5 min post-rollback. Resolve when < 1%.' },
+    ],
   },
   {
     id: 'cdn-degradation',
@@ -103,6 +122,14 @@ export const PRESET_SCENARIOS: ScenarioConfig[] = [
     description: 'CDN cache invalidation storm causing global latency spikes. Static assets loading 10x slower than baseline.',
     impact: 'p95 page load time at 12.4s (baseline 1.2s). Image service returning 503s across APAC and EU regions.',
     suspectedCause: 'Automated cache purge job triggered a full invalidation instead of selective purge after deploy #1847.',
+    playbook: [
+      { id: 'cdn-1', phase: 'diagnose', priority: 'critical', title: 'Check CDN cache hit ratio', detail: 'Open Fastly/Cloudflare dashboard and verify MISS rate across all edge POPs. Expected < 5%, current likely > 90%.', command: 'curl -sI https://cdn.example.com/static/app.js | grep x-cache' },
+      { id: 'cdn-2', phase: 'diagnose', priority: 'high', title: 'Identify purge job trigger', detail: 'Check deploy #1847 CI logs for cache-busting steps. Find if purge was scoped correctly.', command: 'kubectl logs -n ci job/deploy-1847 | grep "cache purge"' },
+      { id: 'cdn-3', phase: 'mitigate', priority: 'critical', title: 'Enable Stale-While-Revalidate', detail: 'Configure CDN to serve stale cached assets for 10 minutes while origin refills edge caches.', command: 'fastly surrogate-control --stale-while-revalidate=600' },
+      { id: 'cdn-4', phase: 'mitigate', priority: 'high', title: 'Increase origin shield capacity', detail: 'Scale origin shield replicas to absorb refill traffic spike without overloading primary origin.' },
+      { id: 'cdn-5', phase: 'communicate', priority: 'medium', title: 'Status page update', detail: 'Post to status page: Investigating increased page load times. Mitigation in progress.' },
+      { id: 'cdn-6', phase: 'resolve', priority: 'medium', title: 'Verify p95 recovery', detail: 'Monitor p95 load time. Declare resolved when < 2s sustained for 10 minutes.' },
+    ],
   },
   {
     id: 'auth-breach',
@@ -141,6 +168,14 @@ export const PRESET_SCENARIOS: ScenarioConfig[] = [
     description: 'SEV-0 security incident. Suspicious token generation patterns detected. Potential credential compromise.',
     impact: 'Anomalous JWT tokens detected with elevated privileges. 847 suspicious sessions in the last 30 minutes.',
     suspectedCause: 'Token signing key rotation failed silently, allowing stale keys to generate valid tokens with admin scope.',
+    playbook: [
+      { id: 'auth-1', phase: 'diagnose', priority: 'critical', title: 'IMMEDIATE: Revoke all active admin tokens', detail: 'Do not wait for root cause. Revoke all sessions with admin scope as containment action NOW.', command: 'redis-cli FLUSHDB 0  # Clears all session store entries' },
+      { id: 'auth-2', phase: 'diagnose', priority: 'critical', title: 'Audit stale signing keys', detail: 'Verify which JWT signing keys are active in the key vault. Identify keys that should have been rotated.', command: 'aws secretsmanager list-secret-version-ids --secret-id jwt-signing-key' },
+      { id: 'auth-3', phase: 'diagnose', priority: 'high', title: 'Enumerate compromised accounts', detail: 'Query audit-log for all sessions created with the stale key in the last 2 hours.', command: 'SELECT user_id, created_at FROM sessions WHERE signing_key_id = old_key_id;' },
+      { id: 'auth-4', phase: 'mitigate', priority: 'critical', title: 'Force-rotate signing keys', detail: 'Generate new RS256 key pair, update all services, and purge old key from vault immediately.', command: 'openssl genrsa -out jwt-private.pem 4096 && aws secretsmanager put-secret-value' },
+      { id: 'auth-5', phase: 'communicate', priority: 'high', title: 'Notify security & legal', detail: 'Notify CISO, legal, and potentially affected users per breach protocol.' },
+      { id: 'auth-6', phase: 'resolve', priority: 'high', title: 'Confirm anomalous token generation stopped', detail: 'Monitor auth-service logs for 15 min. Verify zero new tokens with stale key signatures.' },
+    ],
   },
   {
     id: 'k8s-cascade',
@@ -179,6 +214,14 @@ export const PRESET_SCENARIOS: ScenarioConfig[] = [
     description: 'Node pool at 98% capacity. HPA scaling maxed out. Pod evictions cascading across critical services.',
     impact: 'API gateway dropping 30% of requests. Worker pods being evicted every 45 seconds across 3 node pools.',
     suspectedCause: 'Memory leak in v3.2.1 of the recommendation service causing OOM kills that trigger cascading pod evictions.',
+    playbook: [
+      { id: 'k8s-1', phase: 'diagnose', priority: 'critical', title: 'Identify top memory consumers', detail: 'Sort all pods by memory consumption. Find the recommendation-service pods leaking memory.', command: 'kubectl top pods -A --sort-by=memory | head -20' },
+      { id: 'k8s-2', phase: 'diagnose', priority: 'critical', title: 'Check OOM kill events', detail: 'Verify OOMKilled pods in the last 30 minutes to confirm memory leak as root cause.', command: 'kubectl get events -A --field-selector=reason=OOMKilling --sort-by=.lastTimestamp' },
+      { id: 'k8s-3', phase: 'mitigate', priority: 'critical', title: 'Scale down recommendation-service', detail: 'Temporarily reduce replicas to 0 to stop OOM cascade. Feature degrades gracefully.', command: 'kubectl scale deployment recommendation-service --replicas=0 -n production' },
+      { id: 'k8s-4', phase: 'mitigate', priority: 'high', title: 'Emergency node pool scale-out', detail: 'Add 5 nodes to the primary pool to recover evicted critical pods immediately.', command: 'gcloud container clusters resize prod-cluster --num-nodes=15 --node-pool=default' },
+      { id: 'k8s-5', phase: 'mitigate', priority: 'high', title: 'Rollback recommendation-service to v3.1.8', detail: 'Deploy previous stable version. Verify memory stabilizes within 3 minutes.', command: 'kubectl set image deployment/recommendation-service app=gcr.io/prod/recommendation:v3.1.8' },
+      { id: 'k8s-6', phase: 'resolve', priority: 'medium', title: 'Verify node pool pressure resolved', detail: 'Monitor node resource utilization. Resolve when all pools are < 70% memory utilization.' },
+    ],
   },
 ];
 

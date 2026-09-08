@@ -5,8 +5,18 @@
   "version": "1.0.0",
   "description": "AURA joins your Google Meet incident war rooms as an AI participant — transcribing speech, logging evidence, detecting conflicts, and delivering real-time SBAR briefings.",
 
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "action": {
-    "default_title": "AURA Incident Commander"
+    "default_title": "AURA Incident Commander",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
   },
 
   "side_panel": {

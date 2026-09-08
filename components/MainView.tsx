@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { EvidenceItem, TopologyNode, TopologyEdge } from '@/lib/types';
+import { EvidenceItem, TopologyNode, TopologyEdge, IncidentState } from '@/lib/types';
 import { TimelineFeed } from './TimelineFeed';
 import { IncidentTopology } from './IncidentTopology';
+import { AnalyticsDashboard } from './AnalyticsDashboard';
 
 export interface MainViewProps {
   evidenceItems: EvidenceItem[];
@@ -11,8 +12,11 @@ export interface MainViewProps {
   nodes: TopologyNode[];
   edges: TopologyEdge[];
   isResolved?: boolean;
-  activeTab?: 'timeline' | 'topology';
-  onTabChange?: (tab: 'timeline' | 'topology') => void;
+  activeTab?: 'timeline' | 'topology' | 'analytics';
+  onTabChange?: (tab: 'timeline' | 'topology' | 'analytics') => void;
+  // Analytics props
+  incident?: IncidentState;
+  costRate?: number;
 }
 
 export function MainView({
@@ -23,11 +27,13 @@ export function MainView({
   isResolved = false,
   activeTab: controlledActiveTab,
   onTabChange,
+  incident,
+  costRate = 150,
 }: MainViewProps) {
-  const [internalActiveTab, setInternalActiveTab] = useState<'timeline' | 'topology'>('timeline');
+  const [internalActiveTab, setInternalActiveTab] = useState<'timeline' | 'topology' | 'analytics'>('timeline');
   const activeTab = controlledActiveTab ?? internalActiveTab;
 
-  const handleTabSelect = (tab: 'timeline' | 'topology') => {
+  const handleTabSelect = (tab: 'timeline' | 'topology' | 'analytics') => {
     setInternalActiveTab(tab);
     onTabChange?.(tab);
   };
@@ -187,13 +193,37 @@ export function MainView({
               <span className="main-view__tab-count">{nodes.length}</span>
               {activeTab !== 'topology' && <kbd className="keyboard-hint-badge" title="Press T to switch view">T</kbd>}
             </button>
+
+            {/* NEW: Analytics tab */}
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'analytics'}
+              id="tab-analytics"
+              aria-controls="panel-analytics"
+              className={`main-view__tab ${
+                activeTab === 'analytics' ? 'main-view__tab--active' : ''
+              }`}
+              onClick={() => handleTabSelect('analytics')}
+            >
+              <span className="main-view__tab-icon" aria-hidden="true">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="20" x2="18" y2="10" />
+                  <line x1="12" y1="20" x2="12" y2="4" />
+                  <line x1="6" y1="20" x2="6" y2="14" />
+                </svg>
+              </span>
+              <span>Analytics</span>
+            </button>
           </div>
 
           <div className="main-view__meta-hint">
             {activeTab === 'timeline' ? (
               <span>CHRONOLOGICAL TELEMETRY STREAM</span>
-            ) : (
+            ) : activeTab === 'topology' ? (
               <span>FORCE-DIRECTED CAUSAL INFERENCE</span>
+            ) : (
+              <span>INCIDENT METRICS DASHBOARD</span>
             )}
           </div>
         </div>
@@ -231,6 +261,24 @@ export function MainView({
             nodes={nodes}
             edges={edges}
           />
+        </div>
+
+        {/* Analytics Panel */}
+        <div
+          role="tabpanel"
+          id="panel-analytics"
+          aria-labelledby="tab-analytics"
+          className="main-view__panel"
+          style={{
+            display: activeTab === 'analytics' ? 'flex' : 'none',
+            flex: 1,
+            minHeight: 0,
+            overflow: 'hidden',
+          }}
+        >
+          {incident && activeTab === 'analytics' && (
+            <AnalyticsDashboard incident={incident} costRate={costRate} />
+          )}
         </div>
       </main>
     </>

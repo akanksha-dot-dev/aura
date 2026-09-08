@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { addEvidenceToIncident, updateIncidentState, getIncidentState } from '@/lib/incidentStore';
-import { publishDashboardEvent } from '@/lib/rtmPublisher';
+import { publishDashboardEvent, createDashboardEvent } from '@/lib/rtmPublisher';
 import { buildDynamicContext } from '@/lib/incidentStore';
 
 export const runtime = 'nodejs';
@@ -74,20 +74,21 @@ export async function POST(request: NextRequest) {
         confidence: 75,
         timestamp: Date.now(),
         status: 'active',
+        relatedTo: [],
       });
 
       // Broadcast to AURA war room dashboard via RTM
-      await publishDashboardEvent(channelName, {
-        type: 'evidence_added',
-        payload: {
+      await publishDashboardEvent(
+        channelName,
+        createDashboardEvent('evidence_added', {
           id: evId,
           category: 'fact',
           content: `[Google Meet] ${speakerName}: "${transcript}"`,
           speakerName,
           confidence: 75,
           source: 'google_meet',
-        },
-      }).catch(() => { /* RTM optional */ });
+        })
+      ).catch(() => { /* RTM optional */ });
     }
 
     // ── Call AURA LLM proxy ────────────────────────────────────────────────
@@ -107,7 +108,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ response, source: 'demo_mode' });
     }
 
-    const dynamicContext = incidentState ? buildDynamicContext(channelName) : 'No active incident context.';
+    const dynamicContext = incidentState ? buildDynamicContext(incidentState) : 'No active incident context.';
 
     const llmMessages = [
       {

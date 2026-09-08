@@ -36,19 +36,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const appId = process.env.AGORA_APP_ID;
-    const appCertificate = process.env.AGORA_APP_CERTIFICATE;
+    const rawAppId = process.env.AGORA_APP_ID?.trim() || '';
+    const rawCert = process.env.AGORA_APP_CERTIFICATE?.trim() || '';
 
-    if (!appId || !appCertificate) {
+    const isPlaceholderOrInvalid = (val: string) =>
+      !val ||
+      val.includes('your_') ||
+      val.includes('placeholder') ||
+      !/^[0-9a-fA-F]{32}$/.test(val);
+
+    if (isPlaceholderOrInvalid(rawAppId) || isPlaceholderOrInvalid(rawCert)) {
       return NextResponse.json(
         {
           error:
-            'Agora server credentials not configured (AGORA_APP_ID or AGORA_APP_CERTIFICATE missing)',
+            'Agora server credentials not configured (AGORA_APP_ID or AGORA_APP_CERTIFICATE missing, placeholder, or invalid in .env.local)',
         },
         { status: 500 }
       );
     }
 
+    const appId: string = rawAppId;
+    const appCertificate: string = rawCert;
     const expireTimeInSeconds = 3600; // 1 hour
 
     // Build RTC token with String UID / user account

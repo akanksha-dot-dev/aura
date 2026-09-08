@@ -26,6 +26,8 @@ import { TranscriptDrawer, TranscriptEntry } from '@/components/TranscriptDrawer
 import { AgoraAnalyticsOverlay } from '@/components/AgoraAnalyticsOverlay';
 import { KeyboardShortcutsModal } from '@/components/KeyboardShortcutsModal';
 import { WarRoomInvite } from '@/components/WarRoomInvite';
+import { SmartPlaybook } from '@/components/SmartPlaybook';
+import { QuickCapture, QuickCapturePayload } from '@/components/QuickCapture';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import {
   playConflictEarcon,
@@ -55,7 +57,7 @@ function DashboardContent() {
   }, [searchParams, isMockReplay, router]);
 
   // View tabs & Modal states
-  const [mainViewTab, setMainViewTab] = useState<'timeline' | 'topology'>('timeline');
+  const [mainViewTab, setMainViewTab] = useState<'timeline' | 'topology' | 'analytics'>('timeline');
   const [isPostmortemOpen, setIsPostmortemOpen] = useState(false);
   const [isTranscriptDrawerOpen, setIsTranscriptDrawerOpen] = useState(false);
   const [transcriptHistory, setTranscriptHistory] = useState<TranscriptEntry[]>([]);
@@ -65,6 +67,7 @@ function DashboardContent() {
   const [isActionsCollapsed, setIsActionsCollapsed] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [isQuickCaptureOpen, setIsQuickCaptureOpen] = useState(false);
 
   // Global Mission-Control Keyboard Shortcuts (T: Tab, J: Drawer, P: Postmortem, K: Pause Cost, [: Left Sidebar, ]: Right Sidebar, \: Full Focus, ?: Shortcuts, Esc: Close)
   useEffect(() => {
@@ -94,11 +97,15 @@ function DashboardContent() {
         });
       } else if (e.key === '?' || (e.shiftKey && e.key === '/')) {
         setIsShortcutsOpen((prev) => !prev);
+      } else if (e.key === '/' && !e.shiftKey) {
+        e.preventDefault();
+        setIsQuickCaptureOpen((prev) => !prev);
       } else if (e.key === 'Escape') {
         setIsTranscriptDrawerOpen(false);
         setIsPostmortemOpen(false);
         setIsAnalyticsCollapsed(true);
         setIsShortcutsOpen(false);
+        setIsQuickCaptureOpen(false);
       }
     };
 
@@ -786,6 +793,7 @@ function DashboardContent() {
             sessionStorage.setItem('aura_voice_lang', newLang);
           }
         }}
+        cognitiveLoadScore={state.cognitiveLoadScore}
       />
 
       {/* 2. Speaker Panel */}
@@ -825,7 +833,7 @@ function DashboardContent() {
         }
       />
 
-      {/* 4. Main View: Tabbed Container (Timeline ↔ Topology) */}
+      {/* 4. Main View: Tabbed Container (Timeline ↔ Topology ↔ Analytics) */}
       <MainView
         evidenceItems={state.evidenceItems}
         incidentOpenedAt={state.openedAt}
@@ -834,6 +842,8 @@ function DashboardContent() {
         isResolved={state.status === 'resolved'}
         activeTab={mainViewTab}
         onTabChange={setMainViewTab}
+        incident={state}
+        costRate={costRate}
       />
 
       {/* 5. Action Tracker */}
@@ -845,6 +855,35 @@ function DashboardContent() {
         isCollapsed={isActionsCollapsed}
         onToggleCollapse={() => setIsActionsCollapsed((prev) => !prev)}
       />
+
+      {/* 5b. AURA Smart Playbook — AI-driven runbook suggestions */}
+      {!isActionsCollapsed && scenarioConfig?.playbook && scenarioConfig.playbook.length > 0 && (
+        <div style={{ gridArea: 'actions', paddingTop: 0, overflow: 'auto' }}>
+          <SmartPlaybook
+            steps={scenarioConfig.playbook}
+            incidentStatus={state.status}
+            onCreateAction={(title, detail) => {
+              processEvent({
+                type: 'dashboard_event',
+                id: `playbook-action-${Date.now()}`,
+                seq: state.eventSeq + 1,
+                timestamp: Date.now(),
+                eventType: 'evidence_added',
+                payload: {
+                  id: `playbook-action-${Date.now()}`,
+                  category: 'action',
+                  content: `${title} — ${detail}`,
+                  speakerUid: uid,
+                  speakerName: name,
+                  confidence: 80,
+                  timestamp: Date.now(),
+                  actionStatus: 'pending',
+                },
+              });
+            }}
+          />
+        </div>
+      )}
 
       {/* 6-8. Unified Mission Deck (Bottom Dock: Tension Sparkline, Live Captions, Incident Stats) */}
       <footer className="mission-deck" role="region" aria-label="Incident Mission Deck">
@@ -903,6 +942,24 @@ function DashboardContent() {
             </svg>
             <span>Keys</span>
             <kbd className="keyboard-hint-badge">?</kbd>
+          </button>
+
+          {/* Quick Capture button */}
+          <button
+            id="quick-capture-btn"
+            type="button"
+            className="mission-deck__log-btn"
+            onClick={() => setIsQuickCaptureOpen(true)}
+            title="Quick Capture — Log evidence instantly (Press /)"
+            aria-label="Open Quick Capture"
+            style={{ borderColor: 'rgba(245,158,11,0.4)', color: 'var(--color-aura)' }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 20h9"/>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+            </svg>
+            <span>Capture</span>
+            <kbd className="keyboard-hint-badge">/</kbd>
           </button>
 
           {/* Share War Room button — opens invite modal */}
@@ -964,6 +1021,32 @@ function DashboardContent() {
       <WarRoomInvite
         isOpen={isInviteOpen}
         onClose={() => setIsInviteOpen(false)}
+      />
+
+      {/* 13. Quick Capture Command Bar */}
+      <QuickCapture
+        isOpen={isQuickCaptureOpen}
+        onClose={() => setIsQuickCaptureOpen(false)}
+        speakerName={name}
+        onSubmit={(payload: QuickCapturePayload) => {
+          processEvent({
+            type: 'dashboard_event',
+            id: `qc-${Date.now()}`,
+            seq: state.eventSeq + 1,
+            timestamp: Date.now(),
+            eventType: 'evidence_added',
+            payload: {
+              id: `qc-${Date.now()}`,
+              category: payload.category,
+              content: payload.content,
+              speakerUid: uid,
+              speakerName: name,
+              confidence: 75,
+              timestamp: Date.now(),
+              ...(payload.category === 'action' ? { actionStatus: 'pending' } : {}),
+            },
+          });
+        }}
       />
     </div>
   );

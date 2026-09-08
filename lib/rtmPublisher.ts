@@ -51,7 +51,17 @@ export async function publishDashboardEvent(
   const customerKey = process.env.AGORA_CUSTOMER_KEY;
   const customerSecret = process.env.AGORA_CUSTOMER_SECRET;
 
-  if (!appId || !customerKey || !customerSecret) {
+  const isPlaceholder = (v?: string) =>
+    !v || v.includes('your_') || v.includes('placeholder');
+
+  if (
+    !appId ||
+    !customerKey ||
+    !customerSecret ||
+    isPlaceholder(appId) ||
+    isPlaceholder(customerKey) ||
+    isPlaceholder(customerSecret)
+  ) {
     console.warn(
       '[RTM Publisher] Missing Agora credentials (AGORA_APP_ID, AGORA_CUSTOMER_KEY, AGORA_CUSTOMER_SECRET). Skipping RTM publish.'
     );

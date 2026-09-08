@@ -34,34 +34,46 @@ export async function GET(request: NextRequest) {
             return;
           }
 
+          const activeConflict = state.evidenceItems.find(
+            (e) => e.category === 'conflict' && e.status === 'active'
+          );
           const payload = {
             ts: Date.now(),
             channel: channelName,
             severity: state.severity,
             status: state.status,
-            oodaPhase: state.oodaPhase,
+            oodaPhase: state.currentOODAPhase,
             cognitiveLoad: state.cognitiveLoadScore,
             costAccrued: state.costAccrued,
-            activeConflict: state.activeConflict,
-            evidenceCount: state.evidence.length,
-            recentEvidence: state.evidence.slice(-3).map((e) => ({
+            activeConflict: activeConflict
+              ? {
+                  hypothesisA: activeConflict.hypothesisA || 'Hypothesis A',
+                  hypothesisB: activeConflict.hypothesisB || 'Hypothesis B',
+                  decidingMetric: activeConflict.decidingMetric || '',
+                }
+              : null,
+            evidenceCount: state.evidenceItems.length,
+            recentEvidence: state.evidenceItems.slice(-3).map((e) => ({
               id: e.id,
               category: e.category,
               content: e.content.slice(0, 120),
               speakerName: e.speakerName,
               timestamp: e.timestamp,
             })),
-            actionItems: state.actionItems.slice(-3).map((a) => ({
-              id: a.id,
-              title: a.title,
-              owner: a.owner,
-              status: a.status,
-            })),
-            participants: state.participants.map((p) => ({
+            actionItems: state.evidenceItems
+              .filter((e) => e.category === 'action')
+              .slice(-3)
+              .map((a) => ({
+                id: a.id,
+                title: a.content,
+                owner: a.assignedTo || 'Unassigned',
+                status: a.actionStatus || 'pending',
+              })),
+            participants: Object.values(state.participants).map((p) => ({
               uid: p.uid,
               displayName: p.displayName,
               role: p.role,
-              isActive: p.isActive,
+              isActive: Date.now() - p.lastSpokeAt < 60000,
             })),
           };
 

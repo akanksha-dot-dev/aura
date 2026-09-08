@@ -298,8 +298,19 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
       }
 
       const tokenData = await tokenRes.json();
-      const targetAppId = propAppId || tokenData.appId;
+      const targetAppId = (propAppId || tokenData.appId || '').trim();
       const rtcToken = tokenData.rtcToken;
+
+      if (
+        !targetAppId ||
+        targetAppId.includes('your_') ||
+        targetAppId.includes('placeholder') ||
+        !/^[0-9a-fA-F]{32}$/.test(targetAppId)
+      ) {
+        console.info('[useAgoraRTC] Voice standby: Agora App ID is not configured or is a placeholder in .env.local.');
+        if (isMountedRef.current) setError('Agora voice standby (credentials not configured)');
+        return;
+      }
 
       if (!isMountedRef.current) return;
 
