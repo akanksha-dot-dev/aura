@@ -152,6 +152,156 @@ export async function speakLine(
   });
 }
 
+// ── Prosody-Modulated TTS (Pillar 1: Human-Like Conversational AI) ──────────
+
+/**
+ * ToneAdjustment from the conversational intelligence engine.
+ */
+export interface ProsodyOptions {
+  /** Speech rate multiplier (0.75–1.3). Default 1.0 */
+  rateMultiplier?: number;
+  /** Pitch shift relative to base (0.7–1.3). Default 1.15 for AURA */
+  pitchShift?: number;
+  /** Volume multiplier (0.5–1.2). Default 1.0 */
+  volumeMultiplier?: number;
+  /** Pause duration between clauses in ms (0–400). Default 150 */
+  clausePauseMs?: number;
+  /** Response style hint for selecting tone */
+  style?: 'calm_authoritative' | 'urgent_focused' | 'empathetic_steady' | 'energized_collaborative';
+}
+
+/** Critical terms that should be emphasized (spoken slightly louder/slower) */
+const EMPHASIS_TERMS = new Set([
+  'sev-0', 'sev-1', 'sev-2', 'sev-3', 'rollback', 'deploy', 'deployment',
+  'outage', 'downtime', 'root cause', 'mitigation', 'escalate', 'escalation',
+  'p0', 'critical', 'urgent', 'blocked', 'resolved', 'confirmed',
+  'database', 'postgres', 'redis', 'kubernetes', 'k8s', 'aws', 'gcp',
+  'latency', 'error rate', 'connection pool', 'memory leak', 'cpu',
+  'circuit breaker', 'failover', 'canary', 'hotfix',
+]);
+
+/**
+ * Insert natural micro-pauses between clauses to simulate breathing.
+ *
+ * Splits text at natural clause boundaries (commas, semicolons, colons,
+ * periods, dashes) and speaks each clause with a brief pause between.
+ */
+function splitIntoClauses(text: string): string[] {
+  // Split at natural pause points while preserving the text
+  return text
+    .split(/(?<=[.!?;:])\s+|(?<=,)\s+(?=[A-Z])|(?:\s+—\s+)|(?:\s+-\s+)/)
+    .filter(c => c.trim().length > 0);
+}
+
+/**
+ * Detect if a word is a critical term that should be emphasized.
+ */
+function containsEmphasisTerm(clause: string): boolean {
+  const lower = clause.toLowerCase();
+  for (const term of EMPHASIS_TERMS) {
+    if (lower.includes(term)) return true;
+  }
+  return false;
+}
+
+/**
+ * Speak text with prosody modulation, breathing simulation, and emphasis.
+ *
+ * This is the enhanced version of speakLine that integrates with the
+ * conversational intelligence engine's ToneAdjustment output.
+ *
+ * @param text The text to speak
+ * @param prosody Prosody modulation options from the conversational intelligence engine
+ * @param speedMultiplier Replay speed multiplier (default 1)
+ */
+export async function speakWithProsody(
+  text: string,
+  prosody: ProsodyOptions = {},
+  speedMultiplier = 1,
+): Promise<void> {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return;
+  if (!text || text === 'NO_RESPONSE' || text.startsWith('[Monitoring')) return;
+
+  const {
+    rateMultiplier = 1.0,
+    pitchShift = 1.15,
+    volumeMultiplier = 1.0,
+    clausePauseMs = 150,
+    style = 'calm_authoritative',
+  } = prosody;
+
+  // Style-based base adjustments
+  const styleAdjustments: Record<string, { rate: number; pitch: number; pause: number }> = {
+    calm_authoritative:     { rate: 1.0,  pitch: 1.15, pause: 150 },
+    urgent_focused:         { rate: 1.1,  pitch: 1.1,  pause: 80  },
+    empathetic_steady:      { rate: 0.9,  pitch: 1.05, pause: 200 },
+    energized_collaborative: { rate: 1.05, pitch: 1.2,  pause: 100 },
+  };
+
+  const adj = styleAdjustments[style] || styleAdjustments.calm_authoritative;
+
+  const voices = await ensureVoices();
+  const voice = pickVoice(voices, true);
+
+  // Split text into clauses for breathing simulation
+  const clauses = splitIntoClauses(text);
+
+  for (let i = 0; i < clauses.length; i++) {
+    const clause = clauses[i].trim();
+    if (!clause) continue;
+
+    const hasEmphasis = containsEmphasisTerm(clause);
+
+    await new Promise<void>((resolve) => {
+      queue.push(() => {
+        window.speechSynthesis.cancel();
+
+        const utter = new SpeechSynthesisUtterance(clause);
+
+        // Apply prosody modulation
+        utter.rate = Math.min(1.3, Math.max(0.75,
+          adj.rate * rateMultiplier * Math.max(1, speedMultiplier * 0.6) *
+          (hasEmphasis ? 0.92 : 1.0) // Slow down slightly for emphasis terms
+        ));
+        utter.pitch = Math.min(1.3, Math.max(0.7,
+          adj.pitch * (pitchShift / 1.15) *
+          (hasEmphasis ? 1.05 : 1.0) // Slightly higher pitch for emphasis
+        ));
+        utter.volume = Math.min(1, Math.max(0.3,
+          1.0 * volumeMultiplier *
+          (hasEmphasis ? 1.1 : 1.0) // Slightly louder for emphasis
+        ));
+
+        if (voice) utter.voice = voice;
+
+        utter.onend = () => {
+          isSpeaking = false;
+          resolve();
+          drainQueue();
+        };
+
+        utter.onerror = () => {
+          isSpeaking = false;
+          resolve();
+          drainQueue();
+        };
+
+        window.speechSynthesis.speak(utter);
+      });
+
+      drainQueue();
+    });
+
+    // Breathing simulation: insert a natural pause between clauses
+    if (i < clauses.length - 1) {
+      const effectivePause = clausePauseMs || adj.pause;
+      // Random variation (±30%) for natural feel
+      const jitter = effectivePause * (0.7 + Math.random() * 0.6);
+      await new Promise(r => setTimeout(r, Math.round(jitter)));
+    }
+  }
+}
+
 /**
  * Stop any currently-playing speech and clear the queue.
  */
@@ -161,3 +311,4 @@ export function stopSpeech(): void {
   isSpeaking = false;
   window.speechSynthesis.cancel();
 }
+
