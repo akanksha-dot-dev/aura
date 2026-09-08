@@ -105,32 +105,49 @@ export default function DashboardPage() {
   const [teamsData, setTeamsData] = useState<TeamsData | null>(null);
   const [patternsData, setPatternsData] = useState<PatternsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [seeding, setSeeding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    try {
+      const [ovRes, tmRes, ptRes] = await Promise.all([
+        fetch(`/api/dashboard?view=overview&days=${daysBack}`),
+        fetch(`/api/dashboard?view=teams&days=${daysBack}`),
+        fetch(`/api/dashboard?view=patterns&days=${daysBack}`),
+      ]);
+
+      if (ovRes.ok) setOverview(await ovRes.json());
+      if (tmRes.ok) setTeamsData(await tmRes.json());
+      if (ptRes.ok) setPatternsData(await ptRes.json());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load dashboard');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     setLoading(true);
     setError(null);
-
-    const fetchData = async () => {
-      try {
-        const [ovRes, tmRes, ptRes] = await Promise.all([
-          fetch(`/api/dashboard?view=overview&days=${daysBack}`),
-          fetch(`/api/dashboard?view=teams&days=${daysBack}`),
-          fetch(`/api/dashboard?view=patterns&days=${daysBack}`),
-        ]);
-
-        if (ovRes.ok) setOverview(await ovRes.json());
-        if (tmRes.ok) setTeamsData(await tmRes.json());
-        if (ptRes.ok) setPatternsData(await ptRes.json());
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to load dashboard');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
   }, [daysBack]);
+
+  const handleReSeed = async () => {
+    if (seeding) return;
+    setSeeding(true);
+    try {
+      await fetch('/api/dashboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'seed', force: true }),
+      });
+      await fetchData();
+    } catch (e) {
+      console.error('Seed failed:', e);
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   return (
     <>
@@ -147,6 +164,17 @@ export default function DashboardPage() {
             <h1 className="dash-header__title">Incident Intelligence</h1>
           </div>
           <div className="dash-header__right">
+            <button
+              className="dash-btn"
+              onClick={handleReSeed}
+              disabled={seeding}
+              title="Populate historical incidents for testing team repeat offenders and root cause patterns"
+            >
+              {seeding ? '⏳ Seeding…' : '🌱 Seed Sample Data'}
+            </button>
+            <a href="/lobby" className="dash-btn dash-btn--secondary">
+              🎙️ War Room
+            </a>
             <select
               className="dash-select"
               value={daysBack}
@@ -505,10 +533,37 @@ const dashboardStyles = `
     background: rgba(255,255,255,0.1);
   }
 
-  .dash-header__title {
-    font-size: 16px;
+  .dash-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    color: #F59E0B;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 12px;
     font-weight: 600;
-    color: #a1a1aa;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .dash-btn:hover {
+    background: rgba(245, 158, 11, 0.25);
+    border-color: rgba(245, 158, 11, 0.6);
+  }
+  .dash-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .dash-btn--secondary {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #e4e4e7;
+  }
+  .dash-btn--secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
   }
 
   .dash-select {
