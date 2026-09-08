@@ -1,0 +1,67 @@
+{
+  "manifest_version": 3,
+  "name": "AURA — AI Incident Commander for Google Meet",
+  "short_name": "AURA Meet",
+  "version": "1.0.0",
+  "description": "AURA joins your Google Meet incident war rooms as an AI participant — transcribing speech, logging evidence, detecting conflicts, and delivering real-time SBAR briefings.",
+
+  "action": {
+    "default_title": "AURA Incident Commander"
+  },
+
+  "side_panel": {
+    "default_path": "panel/panel.html"
+  },
+
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["https://meet.google.com/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "permissions": [
+    "tabs",
+    "tabCapture",
+    "storage",
+    "offscreen",
+    "sidePanel",
+    "activeTab",
+    "scripting",
+    "notifications"
+  ],
+
+  "host_permissions": [
+    "https://meet.google.com/*"
+  ],
+
+  "web_accessible_resources": [
+    {
+      "resources": ["panel/*", "icons/*"],
+      "matches": ["https://meet.google.com/*"]
+    }
+  ],
+
+  "commands": {
+    "activate-aura": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+A",
+        "mac": "Command+Shift+A"
+      },
+      "description": "Activate AURA in current Google Meet call"
+    },
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+U",
+        "mac": "Command+Shift+U"
+      }
+    }
+  }
+}
