@@ -1,9 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createDashboardEvent, publishDashboardEvent } from '@/lib/rtmPublisher';
 import { getIncidentState, buildDynamicContext } from '@/lib/incidentStore';
+import { insertTranscript } from '@/lib/db';
 
 export { buildDynamicContext } from '@/lib/incidentStore';
 export const runtime = 'nodejs';
+
+// ── Filler Word Detection ──
+const FILLER_PATTERNS = {
+  thinking: /^\s*(h+m+|u+h+|u+m+|e+r+m*|m+h+m+)\s*\.?\s*$/i,
+  pauseRequest: /^\s*(wait|hold on|one sec|let me think|give me a moment|hang on|just a sec|one moment)\s*\.?\s*$/i,
+  discovery: /^\s*(a+h+|o+h+!?|oh wait|oh!|aha|eureka)\s*\.?\s*$/i,
+  acknowledgment: /^\s*(yeah|right|okay|ok|sure|yep|yup|got it|mm-?hm+|mhm)\s*\.?\s*$/i,
+  transition: /^\s*(so\.{2,}|basically\.{2,}|like\.{2,}|well\.{2,}|anyway\.{2,})\s*$/i,
+};
+
+type FillerType = 'thinking' | 'pauseRequest' | 'discovery' | 'acknowledgment' | 'transition' | null;
+
+function detectFillerType(text: string): FillerType {
+  if (!text || text.trim().length === 0) return null;
+  const cleaned = text.trim();
+  if (cleaned.length > 60) return null; // Too long to be a filler
+  for (const [type, pattern] of Object.entries(FILLER_PATTERNS)) {
+    if (pattern.test(cleaned)) return type as FillerType;
+  }
+  return null;
+}
 
 
 interface ProxyRequest {
@@ -54,6 +76,37 @@ export async function POST(request: NextRequest) {
       role: 'system',
       content: dynamicContext,
     });
+
+    // 3b. Filler word detection & context injection
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user')?.content || '';
+    const fillerType = detectFillerType(lastUserMsg);
+
+    if (fillerType) {
+      const fillerHints: Record<string, string> = {
+        thinking: '[SPEAKER_THINKING: The responder said a thinking filler (hmm/uh/um). They are processing a thought. Wait patiently. Respond with brief patience like "Take your time" or stay silent with [SILENT]. Do NOT provide unsolicited information.]',
+        pauseRequest: '[SPEAKER_PAUSE_REQUEST: The responder explicitly asked you to wait ("wait"/"hold on"/"let me think"). Respond with EXACTLY one short phrase like "Of course, take your time." or "Sure, I\'m here." then STOP. Do NOT continue speaking.]',
+        discovery: '[SPEAKER_DISCOVERY: The responder made a discovery sound ("ahh!"/"oh!"/"oh wait"). They found something. Respond with brief encouragement: "What did you find?" or "Go ahead." or "What are you seeing?"]',
+        acknowledgment: '[SPEAKER_ACKNOWLEDGMENT: The responder said an acknowledgment filler ("yeah"/"right"/"okay"). This is NOT a question. Respond with "Copy that." or [SILENT]. Do NOT launch into explanations.]',
+        transition: '[SPEAKER_TRANSITIONING: The responder is starting a thought with a transition word ("so..."/"basically..."). They are about to make a point. Respond with [SILENT] and let them finish.]',
+      };
+
+      messages.push({
+        role: 'system',
+        content: fillerHints[fillerType] || '',
+      });
+
+      // Persist filler to transcript DB
+      try {
+        const incidentState = getIncidentState(channelName);
+        insertTranscript({
+          incidentId: incidentState.incidentId,
+          speakerName: 'Responder',
+          text: lastUserMsg,
+          isFiller: true,
+          timestamp: Date.now(),
+        });
+      } catch { /* non-critical */ }
+    }
 
     // 4. Strip ConvAI custom fields (turn_id, timestamp) for upstream OpenAI compatibility
     const cleanBody = { ...body };
@@ -471,7 +524,24 @@ function handleAutonomousIncidentResponse(
     lower.includes('aura')
   ) {
     text =
-      'AURA online and standing by on incident bridge. Voice ingestion and telemetry monitoring active. How can I assist?';
+      'Hey there! AURA\'s online and standing by on the incident bridge. Voice ingestion and telemetry monitoring are both active. How can I help?';
+  } else if (
+    // Filler word handling in autonomous mode
+    /^\s*(h+m+|u+h+|u+m+|m+h+m+)\s*\.?\s*$/i.test(lower)
+  ) {
+    text = '[SILENT]'; // Thinking filler — stay silent
+  } else if (
+    /^\s*(wait|hold on|one sec|let me think|give me a moment)\s*\.?\s*$/i.test(lower)
+  ) {
+    text = 'Of course, take your time.';
+  } else if (
+    /^\s*(a+h+|o+h+!?|oh wait|oh!)\s*\.?\s*$/i.test(lower)
+  ) {
+    text = 'What did you find?';
+  } else if (
+    /^\s*(yeah|right|okay|ok|sure|yep|got it|mhm)\s*\.?\s*$/i.test(lower)
+  ) {
+    text = 'Copy that.';
   }
 
   // Publish live RTM event if applicable

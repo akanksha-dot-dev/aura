@@ -48,6 +48,8 @@ export function PostmortemModal({
   // Capture snapshot timestamp on mount to keep render calculations pure
   const [snapshotTimestamp] = useState<number>(() => Date.now());
   const [copiedMd, setCopiedMd] = useState(false);
+  const [savedToDb, setSavedToDb] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Close on Escape key
   useEffect(() => {

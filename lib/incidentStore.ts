@@ -1,5 +1,12 @@
 import { IncidentState, calculateCognitiveLoad, classifyOODAPhase, EvidenceItem } from './types';
 import { PRESET_SCENARIOS } from './scenarios';
+import {
+  upsertIncident,
+  insertEvidence as dbInsertEvidence,
+  upsertParticipant,
+  persistFullIncidentSnapshot,
+  insertTranscript,
+} from './db';
 
 /**
  * Format milliseconds into human-readable elapsed duration (e.g. "6m 12s").
@@ -314,6 +321,47 @@ export function updateIncidentState(
   next.currentOODAPhase = classifyOODAPhase(next);
   const key = channelName.trim().toLowerCase();
   channelStates.set(key, next);
+
+  // Persist to database (non-blocking)
+  try {
+    upsertIncident({
+      id: next.incidentId,
+      title: next.title,
+      severity: next.severity,
+      status: next.status,
+      channelName,
+      openedAt: next.openedAt,
+      resolvedAt: next.resolvedAt,
+      affectedServices: next.affectedServices,
+      incidentCommanderUid: next.incidentCommanderUid,
+      costAccrued: next.costAccrued,
+      cognitiveLoadScore: next.cognitiveLoadScore,
+      oodaPhase: next.currentOODAPhase,
+    });
+
+    // On resolution, persist full snapshot for historical intelligence
+    if (next.status === 'resolved') {
+      persistFullIncidentSnapshot({
+        incidentId: next.incidentId,
+        title: next.title,
+        severity: next.severity,
+        status: next.status,
+        channelName,
+        openedAt: next.openedAt,
+        resolvedAt: next.resolvedAt,
+        affectedServices: next.affectedServices,
+        incidentCommanderUid: next.incidentCommanderUid,
+        costAccrued: next.costAccrued,
+        cognitiveLoadScore: next.cognitiveLoadScore,
+        currentOODAPhase: next.currentOODAPhase,
+        participants: next.participants,
+        evidenceItems: next.evidenceItems,
+      });
+    }
+  } catch (err) {
+    console.warn('[IncidentStore] DB persistence error (non-critical):', err);
+  }
+
   return next;
 }
 
@@ -324,11 +372,119 @@ export function addEvidenceToIncident(
   channelName: string,
   item: EvidenceItem
 ): IncidentState {
-  return updateIncidentState(channelName, (prev) => ({
+  const updated = updateIncidentState(channelName, (prev) => ({
     ...prev,
     eventSeq: prev.eventSeq + 1,
     evidenceItems: [...prev.evidenceItems, item],
   }));
+
+  // Persist individual evidence item to DB
+  try {
+    dbInsertEvidence({
+      id: item.id,
+      incidentId: updated.incidentId,
+      category: item.category,
+      content: item.content,
+      speakerUid: item.speakerUid,
+      speakerName: item.speakerName,
+      confidence: item.confidence,
+      timestamp: item.timestamp,
+      serviceAffected: item.serviceAffected,
+      relatedTo: item.relatedTo,
+      status: item.status,
+      assignedTo: item.assignedTo,
+      eta: item.eta,
+      actionStatus: item.actionStatus,
+      decidingMetric: item.decidingMetric,
+      hypothesisA: item.hypothesisA,
+      hypothesisB: item.hypothesisB,
+      speakerAUid: item.speakerAUid,
+      speakerBUid: item.speakerBUid,
+    });
+  } catch (err) {
+    console.warn('[IncidentStore] Evidence DB persistence error (non-critical):', err);
+  }
+
+  return updated;
+}
+
+/**
+ * Dynamically adds a participant to an active incident channel.
+ * Used when new team members join the war room.
+ */
+export function addParticipantToIncident(
+  channelName: string,
+  participant: { uid: string; displayName: string; role: string; isIncidentCommander?: boolean }
+): IncidentState {
+  const updated = updateIncidentState(channelName, (prev) => {
+    if (prev.participants[participant.uid]) return prev; // Already joined
+    const now = Date.now();
+    return {
+      ...prev,
+      participants: {
+        ...prev.participants,
+        [participant.uid]: {
+          uid: participant.uid,
+          displayName: participant.displayName,
+          role: participant.role,
+          isIncidentCommander: participant.isIncidentCommander || false,
+          joinedAt: now,
+          totalSpeakingMs: 0,
+          lastSpokeAt: now,
+        },
+      },
+    };
+  });
+
+  // Persist participant to DB
+  try {
+    upsertParticipant({
+      incidentId: updated.incidentId,
+      uid: participant.uid,
+      displayName: participant.displayName,
+      role: participant.role,
+      isIncidentCommander: participant.isIncidentCommander,
+      joinedAt: Date.now(),
+    });
+  } catch (err) {
+    console.warn('[IncidentStore] Participant DB persistence error (non-critical):', err);
+  }
+
+  return updated;
+}
+
+/**
+ * Removes a participant from an active incident channel.
+ */
+export function removeParticipantFromIncident(
+  channelName: string,
+  uid: string
+): IncidentState {
+  return updateIncidentState(channelName, (prev) => {
+    const { [uid]: _, ...remaining } = prev.participants;
+    return {
+      ...prev,
+      participants: remaining,
+    };
+  });
+}
+
+/**
+ * Persists a transcript entry for an active incident.
+ */
+export function persistTranscriptEntry(
+  channelName: string,
+  entry: { speakerName: string; speakerUid?: string; text: string; isAgent?: boolean; isFiller?: boolean; timestamp: number; turnId?: string }
+): void {
+  try {
+    const state = getIncidentState(channelName);
+    insertTranscript({
+      incidentId: state.incidentId,
+      ...entry,
+    });
+  } catch (err) {
+    console.warn('[IncidentStore] Transcript DB persistence error (non-critical):', err);
+  }
 }
 
 /**

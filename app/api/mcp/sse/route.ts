@@ -3,6 +3,12 @@ import { CONFIDENCE_CAP, AGENT_UID, PERSONAS, PERSONA_ALIASES } from '@/lib/cons
 import { createDashboardEvent, publishDashboardEvent } from '@/lib/rtmPublisher';
 import { addEvidenceToIncident, getSpeakerDisplayName } from '@/lib/incidentStore';
 import { EvidenceItem, RTMDashboardEvent } from '@/lib/types';
+import {
+  searchIncidents as dbSearchIncidents,
+  findSimilarIncidents,
+  getIncidentById,
+  getEvidenceByIncident,
+} from '@/lib/db';
 
 export const runtime = 'nodejs';
 
@@ -271,6 +277,45 @@ const TOOL_DEFINITIONS = [
         },
       },
       required: ['service', 'urgency', 'escalation_note'],
+    },
+  },
+  {
+    name: 'search_past_incidents',
+    description:
+      'Searches the historical incident database for past incidents matching a query. Use when you detect patterns similar to previous incidents or when a responder asks "have we seen this before?".',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'Search query — can be service name, symptom description, or error pattern',
+        },
+        services: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Optional list of affected services to find similar incidents',
+        },
+        limit: {
+          type: 'number',
+          description: 'Maximum number of results (default 5)',
+        },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'get_incident_history',
+    description:
+      'Retrieves detailed information about a specific past incident by ID, including evidence trail, participants, and resolution.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        incident_id: {
+          type: 'string',
+          description: 'The incident ID to retrieve (e.g., "inc-incident-sev1-checkout")',
+        },
+      },
+      required: ['incident_id'],
     },
   },
 ];
@@ -911,6 +956,140 @@ export async function POST(request: NextRequest) {
             note: escalationNote,
             event,
           };
+          break;
+        }
+
+        case 'search_past_incidents': {
+          const query = String(args.query || '');
+          const services = Array.isArray(args.services)
+            ? (args.services as string[])
+            : undefined;
+          const limit = Number(args.limit) || 5;
+
+          if (!query) {
+            return NextResponse.json({
+              jsonrpc,
+              id,
+              error: {
+                code: -32602,
+                message: 'search_past_incidents requires a query',
+              },
+            });
+          }
+
+          let searchResults: Array<Record<string, unknown>> = [];
+
+          // Text-based search
+          try {
+            const textResults = dbSearchIncidents(query, limit);
+            searchResults = textResults.map((inc) => ({
+              id: inc.id,
+              title: inc.title,
+              severity: inc.severity,
+              status: inc.status,
+              affected_services: JSON.parse(inc.affected_services || '[]'),
+              opened_at: inc.opened_at,
+              resolved_at: inc.resolved_at,
+              duration_ms: inc.resolved_at ? inc.resolved_at - inc.opened_at : null,
+            }));
+          } catch (searchErr) {
+            console.warn('[MCP] search_past_incidents text search error:', searchErr);
+          }
+
+          // Service-based similarity
+          if (services && services.length > 0) {
+            try {
+              const similarResults = findSimilarIncidents({ services, limit });
+              for (const sim of similarResults) {
+                if (!searchResults.find((r) => r.id === sim.id)) {
+                  searchResults.push({
+                    id: sim.id,
+                    title: sim.title,
+                    severity: sim.severity,
+                    status: sim.status,
+                    affected_services: JSON.parse(sim.affected_services || '[]'),
+                    opened_at: sim.opened_at,
+                    resolved_at: sim.resolved_at,
+                    similarity_score: sim.similarity_score,
+                  });
+                }
+              }
+            } catch (simErr) {
+              console.warn('[MCP] search_past_incidents similarity error:', simErr);
+            }
+          }
+
+          resultData = {
+            success: true,
+            query,
+            results: searchResults,
+            count: searchResults.length,
+            message: searchResults.length > 0
+              ? `Found ${searchResults.length} past incident(s) matching "${query}".`
+              : `No past incidents found matching "${query}".`,
+          };
+          break;
+        }
+
+        case 'get_incident_history': {
+          const incidentId = String(args.incident_id || '');
+
+          if (!incidentId) {
+            return NextResponse.json({
+              jsonrpc,
+              id,
+              error: {
+                code: -32602,
+                message: 'get_incident_history requires incident_id',
+              },
+            });
+          }
+
+          try {
+            const incident = getIncidentById(incidentId);
+            if (!incident) {
+              resultData = {
+                success: false,
+                message: `Incident "${incidentId}" not found in the database.`,
+              };
+              break;
+            }
+
+            const evidence = getEvidenceByIncident(incidentId);
+
+            resultData = {
+              success: true,
+              incident: {
+                ...incident,
+                affected_services: JSON.parse(incident.affected_services || '[]'),
+              },
+              evidence: evidence.map((e) => ({
+                id: e.id,
+                category: e.category,
+                content: e.content,
+                speaker_name: e.speaker_name,
+                confidence: e.confidence,
+                status: e.status,
+                timestamp: e.timestamp,
+              })),
+              summary: {
+                evidenceCount: evidence.length,
+                factCount: evidence.filter((e) => e.category === 'fact').length,
+                hypothesisCount: evidence.filter((e) => e.category === 'hypothesis').length,
+                decisionCount: evidence.filter((e) => e.category === 'decision').length,
+                durationMs: incident.resolved_at
+                  ? incident.resolved_at - incident.opened_at
+                  : null,
+              },
+              message: `Retrieved incident "${incident.title}" with ${evidence.length} evidence items.`,
+            };
+          } catch (histErr) {
+            console.warn('[MCP] get_incident_history error:', histErr);
+            resultData = {
+              success: false,
+              message: `Error retrieving incident: ${histErr instanceof Error ? histErr.message : String(histErr)}`,
+            };
+          }
           break;
         }
 

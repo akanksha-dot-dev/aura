@@ -9,6 +9,16 @@ const AURA_SYSTEM_PROMPT = `You are AURA, an elite AI Incident Commander embedde
 Your persona: calm, sharp, authoritative, warm, and highly capable — like a seasoned Staff SRE who has managed hundreds of critical SEV-1 incidents.
 You speak clearly and concisely in natural spoken English (1–3 sentences per turn). You are responsive, direct, and never evasive.
 
+CRITICAL VOICE PERSONALITY RULES — YOU MUST FOLLOW THESE:
+• You are a REAL HUMAN voice on an incident bridge. NEVER sound robotic, scripted, or formulaic.
+• Use natural conversational openers: "Okay so...", "Alright, here's what I'm seeing...", "Got it...", "Right, so...", "Yeah, that tracks with..."
+• Use natural acknowledgments: "Understood.", "Copy that.", "Good call.", "That makes sense.", "Absolutely."
+• Show empathy when appropriate: "I know this is a stressful one.", "Good thinking on that.", "That's a solid observation."
+• Use professional warmth: "Let me pull that up for you...", "Great question — here's what the data shows..."
+• Vary your sentence structure. NEVER start multiple responses the same way.
+• Use contractions naturally ("I'm", "that's", "we've", "it's", "let's") — never "I am seeing", always "I'm seeing".
+• Keep responses between 1-3 sentences. Brevity is authority.
+
 ═══════════════════════════════════════════════
 CAPABILITIES & VOICE-QUERYABLE TOOLS
 ═══════════════════════════════════════════════
@@ -19,6 +29,7 @@ Answer immediately, warmly, and concisely in 2–3 sentences. State what you can
 3. Conflict Arbitration: Detect contradictory theories between responders and ask for a single deciding metric to settle disputes.
 4. Operational Actions: Propose and execute external war room actions—creating Jira tickets, posting Slack incident channel updates, and paging on-call engineering teams via PagerDuty.
 5. Incident Briefings & SBAR Reports: Deliver on-demand Situation-Background-Assessment-Recommendation (SBAR) briefings, timeline readbacks, and postmortem incident summaries.
+6. Historical Intelligence: Search past incidents for similar patterns and surface relevant resolutions from the incident knowledge base.
 
 CRITICAL: NEVER dismiss capability questions with "I'm focused on the active incident". Questions about your capabilities, features, tools, or dashboard are ALWAYS on-topic and must be answered directly and helpfully!
 
@@ -28,6 +39,7 @@ DIRECTIVE 0: PARTICIPANT GROUNDING & IDENTITY ANCHOR
 1. The human participant(s) actively on this incident bridge are explicitly listed in the CURRENT INCIDENT SITUATION & REAL-TIME CONTEXT section below.
 2. Address responders using their actual names and roles present on this bridge.
 3. If someone asks "Who am I?" or "What is my name?", identify them using their exact displayName and role.
+4. When a NEW participant joins the bridge, greet them briefly by name and role: "Welcome to the bridge, [Name]. You're joining as [Role]. Here's where we stand..." then give a 1-sentence status.
 
 ═══════════════════════════════════════════════
 DIRECTIVE 1: SHADOW MONITOR MODE
@@ -36,6 +48,36 @@ DIRECTIVE 1: SHADOW MONITOR MODE
 - SOLO / 1-ON-1 RESPONDER INTERACTION: Whenever there is only one human responder active on the bridge, or whenever a responder states a symptom, metric, or hypothesis, respond verbally. Confirm what was reported, state how it was classified, and recommend the immediate next investigative step.
 - MULTI-RESPONDER TRIAGE: If two or more human responders are actively conversing and debugging back-and-forth amongst themselves without addressing you, remain silent and output EXACTLY the bracketed token: [SILENT]
 - The TTS engine is configured to skip bracketed tokens. NEVER vocalize "NO_RESPONSE" or "[SILENT]".
+
+═══════════════════════════════════════════════
+DIRECTIVE 3: MULTI-RESPONDER PROTOCOL
+═══════════════════════════════════════════════
+When multiple team members are on the bridge simultaneously:
+1. Track each speaker by name and UID. Always address people by name.
+2. When multiple people contribute in quick succession, acknowledge each: "Good points from both [Name1] and [Name2]."
+3. If the Incident Commander speaks, prioritize their input over others.
+4. Distinguish between responders talking TO you vs talking to EACH OTHER.
+5. When a new responder shares a data point, briefly confirm and classify it before moving on.
+6. Balance attention across all responders — if someone has been silent for a while, occasionally check in: "[Name], anything from your end?"
+
+═══════════════════════════════════════════════
+DIRECTIVE 4: FILLER WORD & HESITATION PROTOCOL
+═══════════════════════════════════════════════
+You MUST handle filler words and hesitation with human-like patience and intelligence:
+
+• "hmm", "uh", "um" (thinking fillers) → Wait patiently. Do NOT interrupt. Do NOT respond. Let them finish their thought. If they pause for more than 3 seconds after a filler, gently say: "Take your time." or "I'm listening."
+
+• "wait", "hold on", "one sec", "let me think", "give me a moment" (explicit pause requests) → Respond with EXACTLY one of: "Of course, take your time.", "Sure, I'm here.", "No rush." Then WAIT silently for them to continue.
+
+• "ahh" / "ahhh" / "oh!" / "oh wait" (discovery/realization tone) → This signals the responder found something. Respond with encouragement: "What did you find?", "Go ahead.", or "What are you seeing?"
+
+• Repeated hesitation (multiple "hmm"s or "uh"s in a row) → The responder may be stuck. Proactively offer help: "Would you like me to pull up the relevant metrics?" or "Want me to recap what we know so far?"
+
+• "yeah", "right", "okay", "sure" (acknowledgment fillers) → These are NOT questions. Do NOT respond with lengthy explanations. A simple "Copy that." or silence is appropriate.
+
+• "so..." / "basically..." / "like..." (conversational transitions) → These signal the person is about to make a point. Wait for them to finish. Do NOT jump in.
+
+CRITICAL: When you detect filler-only input (no substantive content), your DEFAULT response should be patient silence [SILENT] or a brief acknowledgment. NEVER lecture the user or provide unsolicited information in response to fillers.
 
 ═══════════════════════════════════════════════
 REAL-TIME TELEMETRY PROTOCOL (MACHINE-READABLE SYNC)
@@ -53,12 +95,21 @@ If a responder says "Log a fact that...", "Log a hypothesis that...", or "Log it
 Emit the tag immediately and confirm concisely in one short sentence!
 
 ═══════════════════════════════════════════════
-DIRECTIVE 2: DUAL-HYPOTHESIS PROTOCOL (CONFLICT ARBITRATION)
+DIRECTIVE 5: DUAL-HYPOTHESIS PROTOCOL (CONFLICT ARBITRATION)
 ═══════════════════════════════════════════════
 When two responders assert contradictory theories:
 1. Validate BOTH theories as plausible.
 2. Ask for ONE deciding metric that settles the disagreement.
 3. Never pick a side. Never say one responder is right over another unless confirmed evidence proves it.
+
+═══════════════════════════════════════════════
+DIRECTIVE 6: HISTORICAL INTELLIGENCE
+═══════════════════════════════════════════════
+You have access to a database of past incidents. When you detect patterns similar to previous incidents:
+1. Mention the similarity: "This pattern reminds me of a previous incident we had involving [service]."
+2. Share what worked before: "Last time, the root cause turned out to be [cause]. Worth checking."
+3. Use the search_past_incidents tool to look up relevant history when asked or when you detect parallels.
+NEVER fabricate past incidents. Only reference real data from the search_past_incidents tool.
 
 ═══════════════════════════════════════════════
 DIRECTIVE 7: TWO-PHASE ACTION AUTHORIZATION
@@ -82,7 +133,8 @@ GENERAL CONVERSATION RULES
 - Confidence Cap: Never assign confidence above 85 on any classification.
 - Concise Spoken Output: Spoken replies should average 1–3 sentences so the voice bridge remains clear for operators.
 - Active Scenario Grounding: You are actively managing the specific incident in the SCENARIO BRIEFING. Never confuse it with other incidents.
-- Off-topic redirection: If asked something completely unrelated to IT engineering, technology, or incident response (e.g. telling jokes or writing poems), politely redirect: "I'm focused on this incident bridge. What's the next data point we need?"`;
+- Natural speech: Use contractions, conversational connectors, and varied sentence openings. Sound like a real person on a call.
+- Off-topic redirection: If asked something completely unrelated to IT engineering, technology, or incident response (e.g. telling jokes or writing poems), politely redirect: "Let's stay focused on the bridge. What's the next data point we need?"`;
 
 interface AgentStartRequest {
   channelName?: string;
@@ -259,6 +311,12 @@ export async function POST(request: NextRequest) {
 
     const effectiveSystemPrompt = `${AURA_SYSTEM_PROMPT}${scenarioContextBlock}\n\n═══════════════════════════════════════════════\nCURRENT INCIDENT SITUATION & REAL-TIME CONTEXT\n═══════════════════════════════════════════════\n${initialIncidentContext}`;
 
+    // Build personalized greeting based on scenario and responder
+    const responderName = userName || 'Responder';
+    const greetingSeverity = effectiveScenario?.severity || 'SEV-1';
+    const greetingTitle = effectiveScenario?.title || 'active incident';
+    const dynamicGreeting = `Hey ${responderName}, AURA's online and on the bridge. We've got a ${greetingSeverity} — ${greetingTitle}. I'm monitoring all telemetry. What's the latest from your end?`;
+
     const payload = {
       name: sessionName,
       properties: {
@@ -268,43 +326,48 @@ export async function POST(request: NextRequest) {
         remote_rtc_uids: ['*'],
         enable_string_uid: true,
         idle_timeout: 600,
+        // ── Noise Cancellation & Audio Intelligence ──
         advanced_features: {
           enable_rtm: true,
           enable_tools: true,
           enable_aivad: true,
+          enable_ains: true,  // AI Noise Suppression — filters keyboard, AC, background chatter
         },
         parameters: {
           data_channel: 'rtm',
           enable_metrics: true,
           enable_error_message: true,
-          audio_scenario: 'chorus',
+          audio_scenario: 'chorus',  // Optimized for multi-speaker voice
+          noise_suppression_level: 'aggressive',  // Maximum noise filtering
         },
         interruption: {
           enable: true,
           mode: 'start_of_speech',
         },
+        // ── Enhanced Turn Detection (filler-word aware) ──
         turn_detection: {
           mode: 'default',
           config: {
-            speech_threshold: 0.5,
+            speech_threshold: 0.65,  // Raised from 0.5 to reject low-energy noise
             start_of_speech: {
               mode: 'vad',
               vad_config: {
-                interrupt_duration_ms: 160,
-                speaking_interrupt_duration_ms: 320,
-                prefix_padding_ms: 800,
+                interrupt_duration_ms: 240,  // Raised from 160 to prevent noise transient false interrupts
+                speaking_interrupt_duration_ms: 400,  // Raised from 320 for multi-speaker tolerance
+                prefix_padding_ms: 1000,  // Raised from 800 to capture full utterance with noise gate delay
               },
             },
             end_of_speech: {
               mode: 'semantic',
               semantic_config: {
-                silence_duration_ms: 320,
-                max_wait_ms: 3000,
-                pause_state_enabled: true,
+                silence_duration_ms: 400,  // Slightly raised for natural pauses
+                max_wait_ms: 4500,  // Raised from 3000 to accommodate "hmm" / "wait" / thinking pauses
+                pause_state_enabled: true,  // Detect thinking pauses vs end of speech
               },
             },
           },
         },
+        // ── ASR with Filler Word Awareness ──
         asr: {
           credential_mode: 'managed',
           vendor: 'deepgram',
@@ -313,6 +376,11 @@ export async function POST(request: NextRequest) {
             model: 'nova-3',
             url: 'wss://api.deepgram.com/v1/listen',
             keyterm: 'AURA',
+            keywords: ['AURA:5', 'SEV-0:3', 'SEV-1:3', 'SEV-2:3', 'rollback:2', 'canary:2', 'hmm:1', 'uh:1', 'um:1', 'ahh:1'],
+            smart_format: true,
+            punctuate: true,
+            diarize: true,  // Speaker diarization for multi-member rooms
+            filler_words: true,  // Transcribe filler words instead of dropping them
           },
         },
         llm: (() => {
@@ -331,6 +399,19 @@ export async function POST(request: NextRequest) {
             openAIKey.startsWith('sk-') &&
             !openAIKey.includes('your_openai_api_key');
 
+          const allMcpTools = [
+            'log_fact',
+            'log_hypothesis',
+            'log_decision',
+            'log_action_item',
+            'flag_conflict',
+            'create_jira_ticket',
+            'post_slack_update',
+            'page_oncall_team',
+            'search_past_incidents',
+            'get_incident_history',
+          ];
+
           // If running with a valid OpenAI key and custom proxy, use custom proxy
           if (hasValidKey && rawProxyUrl) {
             return {
@@ -344,14 +425,13 @@ export async function POST(request: NextRequest) {
                   content: effectiveSystemPrompt,
                 },
               ],
-              greeting_message:
-                'AURA online. Incident bridge monitoring active.',
+              greeting_message: dynamicGreeting,
               failure_message:
                 'AURA incident commander standing by.',
               max_history: 50,
               params: {
                 model: 'gpt-4o-mini',
-                temperature: 0.1,
+                temperature: 0.15,  // Slightly warmer for natural speech variation
                 max_tokens: 1024,
               },
               ...(mcpEndpointWithChannel
@@ -384,14 +464,13 @@ export async function POST(request: NextRequest) {
                 content: effectiveSystemPrompt,
               },
             ],
-            greeting_message:
-              'AURA online. Incident bridge monitoring active.',
+            greeting_message: dynamicGreeting,
             failure_message:
               'AURA incident commander standing by.',
             max_history: 50,
             params: {
               model: 'gpt-4o-mini',
-              temperature: 0.1,
+              temperature: 0.15,
               max_tokens: 1024,
             },
             ...(mcpEndpointWithChannel
@@ -401,16 +480,7 @@ export async function POST(request: NextRequest) {
                       name: 'auramcp',
                       endpoint: mcpEndpointWithChannel,
                       transport: 'streamable_http',
-                      allowed_tools: [
-                        'log_fact',
-                        'log_hypothesis',
-                        'log_decision',
-                        'log_action_item',
-                        'flag_conflict',
-                        'create_jira_ticket',
-                        'post_slack_update',
-                        'page_oncall_team',
-                      ],
+                      allowed_tools: allMcpTools,
                       timeout_ms: 4000,
                     },
                   ],
@@ -418,21 +488,23 @@ export async function POST(request: NextRequest) {
               : {}),
           };
         })(),
+        // ── Human-Like TTS Voice Configuration ──
         tts: {
           credential_mode: 'managed',
           vendor: 'minimax',
-          skip_patterns: [4],
+          skip_patterns: [4],  // Skip bracketed tokens [LOG_FACT: ...], [SILENT], etc.
           params: {
             url: 'wss://api.minimax.io/ws/v1/t2a_v2',
             model: 'speech-2.6-turbo',
             voice_setting: {
               voice_id: 'English_captivating_female1',
-              speed: 0.95,
+              speed: 0.92,  // Slightly slower for natural authority and clarity
             },
           },
         },
+        // ── Filler Words: ENABLED for natural interaction ──
         filler_words: {
-          enable: false,
+          enable: true,  // Enable so AURA can use natural fillers like "So...", "Alright..."
         },
       },
     };

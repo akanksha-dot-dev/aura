@@ -15,6 +15,13 @@ export function LiveCaptions({
 }: LiveCaptionsProps) {
   const hasContent = Boolean(currentSpeakerName || currentTranscript);
 
+  // Detect filler word state for visual indicators
+  const transcriptLower = (currentTranscript || '').trim().toLowerCase();
+  const isThinking = /^(h+m+|u+h+|u+m+|e+r+m*|m+h+m+)\s*\.?\s*$/.test(transcriptLower);
+  const isPausing = /^(wait|hold on|one sec|let me think|give me a moment|hang on)\s*\.?\s*$/.test(transcriptLower);
+  const isDiscovery = /^(a+h+|o+h+!?|oh wait|oh!|aha)\s*\.?\s*$/.test(transcriptLower);
+  const fillerState = isThinking ? 'thinking' : isPausing ? 'pausing' : isDiscovery ? 'discovery' : null;
+
   return (
     <>
       <style>{`
@@ -156,6 +163,67 @@ export function LiveCaptions({
           color: var(--text-primary);
           border-color: var(--border-glass-emphasis);
         }
+
+        .live-captions__filler-indicator {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 2px 8px;
+          border-radius: 10px;
+          font-size: 11px;
+          font-weight: 600;
+          animation: filler-fade-in 0.3s ease;
+          flex-shrink: 0;
+        }
+
+        .live-captions__filler-indicator--thinking {
+          color: #FFA726;
+          background: rgba(255, 167, 38, 0.12);
+        }
+
+        .live-captions__filler-indicator--pausing {
+          color: #42A5F5;
+          background: rgba(66, 165, 245, 0.12);
+        }
+
+        .live-captions__filler-indicator--discovery {
+          color: #66BB6A;
+          background: rgba(102, 187, 106, 0.12);
+          animation: filler-flash 0.6s ease;
+        }
+
+        @keyframes filler-fade-in {
+          from { opacity: 0; transform: translateY(2px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes filler-flash {
+          0% { opacity: 0; transform: scale(0.9); }
+          50% { opacity: 1; transform: scale(1.05); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+
+        .live-captions__thinking-dots {
+          display: inline-flex;
+          gap: 2px;
+          margin-left: 2px;
+        }
+
+        .live-captions__thinking-dots span {
+          width: 3px;
+          height: 3px;
+          border-radius: 50%;
+          background: #FFA726;
+          animation: thinking-bounce 1.2s ease-in-out infinite;
+        }
+
+        .live-captions__thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .live-captions__thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes thinking-bounce {
+          0%, 100% { opacity: 0.3; transform: scale(0.8); }
+          50% { opacity: 1; transform: scale(1.2); }
+        }
       `}</style>
       <div
         className="live-captions"
@@ -188,12 +256,25 @@ export function LiveCaptions({
               <span className="live-captions__text">
                 &ldquo;{currentTranscript}&rdquo;
               </span>
+              {fillerState && (
+                <span className={`live-captions__filler-indicator live-captions__filler-indicator--${fillerState}`} aria-label={`Speaker is ${fillerState}`}>
+                  {fillerState === 'thinking' && (
+                    <>
+                      🤔
+                      <span className="live-captions__thinking-dots"><span /><span /><span /></span>
+                    </>
+                  )}
+                  {fillerState === 'pausing' && '⏸ Paused'}
+                  {fillerState === 'discovery' && '💡 Found something!'}
+                </span>
+              )}
               <span className="live-captions__cursor" aria-hidden="true" />
             </>
           ) : (
             <span className="live-captions__standby">
               Awaiting voice activity on tactical bridge...
             </span>
+
           )}
         </div>
 
