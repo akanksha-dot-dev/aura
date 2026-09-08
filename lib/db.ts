@@ -127,6 +127,47 @@ function initializeSchema(database: Database.Database): void {
       FOREIGN KEY (incident_id) REFERENCES incidents(id) ON DELETE CASCADE
     );
 
+    -- Team/owner attribution for incidents (Pillar 2: Executive Dashboard)
+    CREATE TABLE IF NOT EXISTS incident_teams (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      incident_id TEXT NOT NULL,
+      team_name TEXT NOT NULL,
+      is_primary_owner INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (incident_id) REFERENCES incidents(id) ON DELETE CASCADE
+    );
+
+    -- Root cause categories for pattern analysis (Pillar 2)
+    CREATE TABLE IF NOT EXISTS root_causes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      incident_id TEXT NOT NULL UNIQUE,
+      category TEXT NOT NULL,
+      subcategory TEXT,
+      description TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (incident_id) REFERENCES incidents(id) ON DELETE CASCADE
+    );
+
+    -- Resolution steps that worked — for future suggestion (Pillar 2)
+    CREATE TABLE IF NOT EXISTS resolution_playbook (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      incident_id TEXT NOT NULL,
+      step_order INTEGER NOT NULL,
+      action_text TEXT NOT NULL,
+      was_effective INTEGER DEFAULT 1,
+      duration_ms INTEGER,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (incident_id) REFERENCES incidents(id) ON DELETE CASCADE
+    );
+
+    -- Tags for flexible categorization (Pillar 2)
+    CREATE TABLE IF NOT EXISTS incident_tags (
+      incident_id TEXT NOT NULL,
+      tag TEXT NOT NULL,
+      PRIMARY KEY (incident_id, tag),
+      FOREIGN KEY (incident_id) REFERENCES incidents(id) ON DELETE CASCADE
+    );
+
     -- Indexes for fast lookups
     CREATE INDEX IF NOT EXISTS idx_evidence_incident ON evidence_items(incident_id);
     CREATE INDEX IF NOT EXISTS idx_evidence_category ON evidence_items(category);
