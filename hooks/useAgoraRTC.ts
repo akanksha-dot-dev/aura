@@ -104,8 +104,34 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
           setConnectionState(curState);
           if (curState === 'CONNECTED') {
             setIsJoined(true);
+            reconnectAttemptsRef.current = 0; // Reset on successful connection
+            wasJoinedRef.current = true;
           } else if (curState === 'DISCONNECTED') {
             setIsJoined(false);
+            // Auto-reconnect if we were previously joined and haven't exceeded max attempts
+            if (
+              wasJoinedRef.current &&
+              isMountedRef.current &&
+              reconnectAttemptsRef.current < maxReconnectAttempts &&
+              !isJoiningRef.current
+            ) {
+              reconnectAttemptsRef.current += 1;
+              const backoffMs = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current - 1), 16000);
+              console.warn(
+                `[useAgoraRTC] Connection lost. Reconnecting in ${backoffMs}ms (attempt ${reconnectAttemptsRef.current}/${maxReconnectAttempts})`,
+              );
+              setError(`Connection lost. Reconnecting... (${reconnectAttemptsRef.current}/${maxReconnectAttempts})`);
+              if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+              reconnectTimerRef.current = setTimeout(() => {
+                if (isMountedRef.current && !isJoiningRef.current) {
+                  joinChannel().catch((err) => {
+                    console.warn('[useAgoraRTC] Reconnection failed:', err);
+                  });
+                }
+              }, backoffMs);
+            } else if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
+              setError('Connection lost. Max reconnection attempts reached. Please refresh the page.');
+            }
           }
         });
 
