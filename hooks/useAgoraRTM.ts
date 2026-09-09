@@ -338,19 +338,6 @@ export function useAgoraRTM({
               typeof parsed?.seq === 'number' &&
               parsed?.eventType
             ) {
-              // Deduplicate events by ID to prevent replay after reconnection
-              const eventId = String(parsed.id);
-              if (seenEventIds.has(eventId)) return; // Already processed
-              seenEventIds.add(eventId);
-              // Evict oldest entries when the set grows too large
-              if (seenEventIds.size > MAX_DEDUP_SET_SIZE) {
-                const iterator = seenEventIds.values();
-                for (let i = 0; i < MAX_DEDUP_SET_SIZE / 4; i++) {
-                  const next = iterator.next();
-                  if (next.done) break;
-                  seenEventIds.delete(next.value);
-                }
-              }
               dispatchToSubscribers(parsed as RTMDashboardEvent);
               return;
             }
