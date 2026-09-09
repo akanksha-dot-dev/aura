@@ -318,6 +318,78 @@ const TOOL_DEFINITIONS = [
       required: ['incident_id'],
     },
   },
+  {
+    name: 'search_similar_incidents',
+    description:
+      'Proactively searches for past incidents similar to the current one based on affected services and symptoms. Use when you detect patterns matching previous incidents or to suggest resolution approaches.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        services: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Affected services to match against past incidents',
+        },
+        symptoms: {
+          type: 'string',
+          description: 'Symptom description to match (error messages, metrics, patterns)',
+        },
+        min_score: {
+          type: 'number',
+          description: 'Minimum similarity score threshold (0-100, default 40)',
+        },
+      },
+      required: ['services'],
+    },
+  },
+  {
+    name: 'get_knowledge_base',
+    description:
+      'Retrieves relevant knowledge base entries for the given services or symptoms. The knowledge base contains curated learnings from past incident resolutions.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        services: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Services to search knowledge for',
+        },
+        query: {
+          type: 'string',
+          description: 'Optional keyword query to filter knowledge items',
+        },
+        limit: {
+          type: 'number',
+          description: 'Maximum number of results (default 5)',
+        },
+      },
+      required: ['services'],
+    },
+  },
+  {
+    name: 'resolve_incident',
+    description:
+      'Marks the current incident as resolved. MANDATORY: Get explicit verbal confirmation from the Incident Commander before calling. Triggers: root cause capture, SLA scoring, knowledge extraction, and Slack notification.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        root_cause_category: {
+          type: 'string',
+          enum: ['code-bug', 'infrastructure', 'configuration', 'dependency', 'capacity', 'security', 'process', 'unknown'],
+          description: 'Category of the root cause',
+        },
+        root_cause_description: {
+          type: 'string',
+          description: 'Detailed description of the root cause',
+        },
+        lessons_learned: {
+          type: 'string',
+          description: 'Key lessons learned from this incident',
+        },
+      },
+      required: ['root_cause_category', 'root_cause_description'],
+    },
+  },
 ];
 
 /**
