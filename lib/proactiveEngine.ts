@@ -12,6 +12,8 @@
  */
 
 import type { IncidentState, OODAPhase, EvidenceItem } from './types';
+import { evaluateEscalation, generateEscalationSpeech } from './escalationEngine';
+import { analyzeSimilarIncidents } from './similarIncidentAdvisor';
 
 export type InterventionType =
   | 'silence_watchdog'
@@ -23,7 +25,9 @@ export type InterventionType =
   | 'action_expiry'
   | 'participant_onboarding'
   | 'consensus_check'
-  | 'resolution_nudge';
+  | 'resolution_nudge'
+  | 'sla_breach_warning'
+  | 'similar_incident_suggestion';
 
 export interface ProactiveIntervention {
   type: InterventionType;
@@ -55,6 +59,10 @@ const CONFIG = {
   readbackIntervalMin: 5,
   /** Minutes past ETA before flagging action items */
   actionExpiryGraceMin: 2,
+  /** Minutes before SLA deadline to warn */
+  slaWarningBeforeMin: 5,
+  /** Minimum evidence items before similar incident search */
+  similarIncidentMinEvidence: 3,
   /** Minimum gap between interventions of the same type (ms) */
   defaultCooldownMs: 120_000, // 2 minutes
   /** Whether escalation is enabled for SEV-0/SEV-1 */
@@ -317,6 +325,104 @@ function checkActionExpiry(state: IncidentState): ProactiveIntervention | null {
   };
 }
 
+// ── SLA Breach Warning ───────────────────────────────────────────────────────
+
+const SLA_RESOLVE_MINUTES: Record<string, number> = {
+  'SEV-0': 60,
+  'SEV-1': 240,
+  'SEV-2': 1440,
+  'SEV-3': 4320,
+};
+
+function checkSlaBreachWarning(state: IncidentState): ProactiveIntervention | null {
+  if (state.status === 'resolved') return null;
+  if (isOnCooldown('sla_breach_warning', CONFIG.defaultCooldownMs * 5)) return null;
+
+  const slaMinutes = SLA_RESOLVE_MINUTES[state.severity] ?? 240;
+  const elapsedMin = (Date.now() - state.openedAt) / 60_000;
+  const remainingMin = slaMinutes - elapsedMin;
+
+  // Warn when we're within the warning threshold
+  if (remainingMin > CONFIG.slaWarningBeforeMin || remainingMin < 0) return null;
+
+  markTriggered('sla_breach_warning');
+  return {
+    type: 'sla_breach_warning',
+    priority: 'critical',
+    spokenMessage: `SLA alert: we have approximately ${Math.round(remainingMin)} minutes remaining before the ${state.severity} SLA target of ${slaMinutes} minutes is breached. We should either accelerate toward resolution or prepare an escalation.`,
+    reason: `SLA breach in ${Math.round(remainingMin)} minutes (${state.severity} target: ${slaMinutes}m)`,
+    suggestedActions: [
+      'Escalate to bring in additional expertise',
+      'Focus on the highest-confidence hypothesis',
+      'Consider interim mitigation while root cause is investigated',
+    ],
+    cooldownMs: CONFIG.defaultCooldownMs * 5,
+    generatedAt: Date.now(),
+  };
+}
+
+// ── Similar Incident Suggestion ──────────────────────────────────────────────
+
+function checkSimilarIncidentSuggestion(state: IncidentState): ProactiveIntervention | null {
+  if (state.status === 'resolved') return null;
+  if (state.evidenceItems.length < CONFIG.similarIncidentMinEvidence) return null;
+  if (isOnCooldown('similar_incident_suggestion', CONFIG.defaultCooldownMs * 10)) return null;
+
+  try {
+    const result = analyzeSimilarIncidents(state);
+    if (!result.hasSuggestion || !result.spokenMessage) return null;
+
+    markTriggered('similar_incident_suggestion');
+    return {
+      type: 'similar_incident_suggestion',
+      priority: 'medium',
+      spokenMessage: result.spokenMessage,
+      reason: `Found ${result.suggestions.length} similar past incident(s)`,
+      suggestedActions: result.suggestions.slice(0, 2).map(
+        (s) => `Review ${s.incidentId}: ${s.title} (${s.similarityScore}% match)`,
+      ),
+      cooldownMs: CONFIG.defaultCooldownMs * 10,
+      generatedAt: Date.now(),
+    };
+  } catch (err) {
+    // Non-critical — don't break the engine if advisor fails
+    console.warn('[ProactiveEngine] Similar incident check failed:', err);
+    return null;
+  }
+}
+
+// ── Escalation Integration ───────────────────────────────────────────────────
+
+function checkEscalationPolicy(state: IncidentState): ProactiveIntervention | null {
+  if (state.status === 'resolved') return null;
+  if (isOnCooldown('auto_escalation', CONFIG.defaultCooldownMs * 5)) return null;
+
+  try {
+    const result = evaluateEscalation(state);
+    if (result.action === 'escalated' || result.action === 'bumped') {
+      markTriggered('auto_escalation');
+      const speech = generateEscalationSpeech(result, state);
+      return {
+        type: 'auto_escalation',
+        priority: 'critical',
+        spokenMessage: speech || result.message,
+        reason: result.message,
+        suggestedActions: [
+          'Page additional on-call engineers',
+          'Escalate to engineering leadership',
+          'Bring in vendor support if external dependency',
+        ],
+        cooldownMs: CONFIG.defaultCooldownMs * 5,
+        generatedAt: Date.now(),
+      };
+    }
+  } catch (err) {
+    console.warn('[ProactiveEngine] Escalation check failed:', err);
+  }
+
+  return null;
+}
+
 // ── Main Engine ──────────────────────────────────────────────────────────────
 
 /**
@@ -335,12 +441,14 @@ export function evaluateInterventions(
   if (state.status === 'resolved') return null;
 
   const priorityOrder: Array<() => ProactiveIntervention | null> = [
-    () => checkAutoEscalation(state),
+    () => checkSlaBreachWarning(state),
+    () => checkEscalationPolicy(state),
     () => checkCognitiveOverload(state),
     () => checkContradictionResolver(state),
     () => checkStallDetector(state, phaseEnteredAt),
     () => checkActionExpiry(state),
     () => checkSilenceWatchdog(state, lastSpeechTimestamp),
+    () => checkSimilarIncidentSuggestion(state),
     () => checkReadbackReminder(state),
   ];
 
