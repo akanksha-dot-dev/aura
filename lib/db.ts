@@ -249,6 +249,98 @@ function initializeSchema(database: Database.Database): void {
     // FTS5 may not be available in all SQLite builds
     console.warn('[DB] FTS5 not available, full-text search will use LIKE fallback');
   }
+
+  // Seed default SLA targets if table is empty
+  try {
+    const slaCount = database.prepare('SELECT COUNT(*) as count FROM sla_targets').get() as { count: number };
+    if (slaCount.count === 0) {
+      const slaStmt = database.prepare(
+        'INSERT OR IGNORE INTO sla_targets (severity, acknowledge_minutes, resolve_minutes) VALUES (?, ?, ?)',
+      );
+      slaStmt.run('SEV-0', 15, 60);
+      slaStmt.run('SEV-1', 30, 240);
+      slaStmt.run('SEV-2', 120, 1440);
+      slaStmt.run('SEV-3', 240, 4320);
+      console.log('[DB] Seeded default SLA targets');
+    }
+  } catch {
+    console.warn('[DB] Failed to seed SLA targets');
+  }
+}
+
+// ─── Database Robustness Helpers ───
+
+let writeCount = 0;
+const WAL_CHECKPOINT_INTERVAL = 100;
+
+/**
+ * Wraps a multi-statement operation in a transaction for atomicity.
+ * Automatically retries on SQLITE_BUSY up to 3 times with backoff.
+ */
+export function withTransaction<T>(fn: (db: Database.Database) => T): T {
+  const database = getDb();
+  const maxRetries = 3;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const result = database.transaction(() => fn(database))();
+      writeCount++;
+      // Periodic WAL checkpoint
+      if (writeCount % WAL_CHECKPOINT_INTERVAL === 0) {
+        try {
+          database.pragma('wal_checkpoint(PASSIVE)');
+        } catch {
+          // Non-critical
+        }
+      }
+      return result;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message.includes('SQLITE_BUSY') && attempt < maxRetries) {
+        const backoffMs = attempt * 100;
+        console.warn(`[DB] SQLITE_BUSY, retrying in ${backoffMs}ms (attempt ${attempt}/${maxRetries})`);
+        // Synchronous sleep for SQLite retry
+        const end = Date.now() + backoffMs;
+        while (Date.now() < end) { /* busy-wait */ }
+        continue;
+      }
+      throw err;
+    }
+  }
+  // Should never reach here due to throw in catch
+  throw new Error('Transaction failed after max retries');
+}
+
+/**
+ * Returns database size and health metrics.
+ */
+export function getDatabaseHealth(): {
+  sizeBytes: number;
+  incidentCount: number;
+  evidenceCount: number;
+  transcriptCount: number;
+  knowledgeBaseCount: number;
+  walMode: string;
+} {
+  const database = getDb();
+  const fs = require('fs');
+  const dbPath = getDbPath();
+  let sizeBytes = 0;
+  try {
+    const stats = fs.statSync(dbPath);
+    sizeBytes = stats.size;
+  } catch { /* file may not exist yet */ }
+
+  const counts = {
+    incidentCount: (database.prepare('SELECT COUNT(*) as c FROM incidents').get() as { c: number }).c,
+    evidenceCount: (database.prepare('SELECT COUNT(*) as c FROM evidence_items').get() as { c: number }).c,
+    transcriptCount: (database.prepare('SELECT COUNT(*) as c FROM transcripts').get() as { c: number }).c,
+    knowledgeBaseCount: (database.prepare('SELECT COUNT(*) as c FROM knowledge_base').get() as { c: number }).c,
+  };
+
+  const walMode = String(database.pragma('journal_mode', { simple: true }));
+
+  return { sizeBytes, ...counts, walMode };
 }
 
 // ─── Incident CRUD ───
