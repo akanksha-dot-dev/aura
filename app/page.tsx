@@ -29,6 +29,9 @@ import { WarRoomInvite } from '@/components/WarRoomInvite';
 import { SmartPlaybook } from '@/components/SmartPlaybook';
 import { QuickCapture, QuickCapturePayload } from '@/components/QuickCapture';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { NotificationToastContainer, emitToast } from '@/components/NotificationToast';
+import { ResolveIncidentModal } from '@/components/ResolveIncidentModal';
+import { SimilarIncidentBanner } from '@/components/SimilarIncidentBanner';
 import {
   playConflictEarcon,
   playActionCompletedEarcon,
@@ -68,6 +71,7 @@ function DashboardContent() {
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isQuickCaptureOpen, setIsQuickCaptureOpen] = useState(false);
+  const [isResolveOpen, setIsResolveOpen] = useState(false);
 
   // Global Mission-Control Keyboard Shortcuts (T: Tab, J: Drawer, P: Postmortem, K: Pause Cost, [: Left Sidebar, ]: Right Sidebar, \: Full Focus, ?: Shortcuts, Esc: Close)
   useEffect(() => {
@@ -796,7 +800,13 @@ function DashboardContent() {
         cognitiveLoadScore={state.cognitiveLoadScore}
       />
 
-      {/* 2. Speaker Panel */}
+      {/* 1b. AI Similar Incident Insight Banner */}
+      <SimilarIncidentBanner
+        incident={state}
+        channelName={channel}
+      />
+
+      {/* 2. Speaker Panel */}}
       <SpeakerPanel
         participants={effectiveParticipants}
         localVolumeLevel={volumeLevels}
@@ -1003,6 +1013,20 @@ function DashboardContent() {
         evidenceChainEdges={topologyEdges}
         costRate={costRate}
       />
+
+      {/* 9b. Resolve Incident Modal */}
+      <ResolveIncidentModal
+        isOpen={isResolveOpen}
+        onClose={() => setIsResolveOpen(false)}
+        incident={state}
+        channelName={channel}
+        onResolved={() => {
+          playResolutionEarcon();
+        }}
+      />
+
+      {/* 9c. Toast Notification System */}
+      <NotificationToastContainer />
 
       {/* 10. Transcript Drawer (WI-502) */}
       <TranscriptDrawer
