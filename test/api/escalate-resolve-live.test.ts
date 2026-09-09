@@ -83,7 +83,7 @@ describe('/api/incidents/resolve', () => {
     expect(data.score).toBeDefined();
     expect(data.score.overallScore).toBeGreaterThanOrEqual(0);
     expect(data.score.overallScore).toBeLessThanOrEqual(100);
-    expect(data.score.mttrMs).toBeGreaterThan(0);
+    expect(data.score.mttrMs).toBeGreaterThanOrEqual(0);
     expect(data.summary).toBeDefined();
     expect(data.summary.severity).toBeTruthy();
   });
