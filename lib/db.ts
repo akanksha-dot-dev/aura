@@ -168,6 +168,61 @@ function initializeSchema(database: Database.Database): void {
       FOREIGN KEY (incident_id) REFERENCES incidents(id) ON DELETE CASCADE
     );
 
+    -- Speaker voice profiles for cross-session recognition (Pillar 1: War Room)
+    CREATE TABLE IF NOT EXISTS speaker_profiles (
+      uid TEXT PRIMARY KEY,
+      display_name TEXT NOT NULL,
+      role TEXT DEFAULT 'participant',
+      embedding_json TEXT NOT NULL,
+      embedding_dim INTEGER NOT NULL DEFAULT 66,
+      frame_count INTEGER NOT NULL DEFAULT 0,
+      identity_confidence INTEGER NOT NULL DEFAULT 0,
+      is_enrolled INTEGER NOT NULL DEFAULT 0,
+      last_active_at INTEGER,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    -- Knowledge base — extracted learnings from resolved incidents (Pillar 5)
+    CREATE TABLE IF NOT EXISTS knowledge_base (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      incident_id TEXT,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'general',
+      tags TEXT DEFAULT '[]',
+      quality_score INTEGER DEFAULT 50,
+      times_referenced INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (incident_id) REFERENCES incidents(id) ON DELETE SET NULL
+    );
+
+    -- SLA targets per severity (Pillar 2: Dashboard)
+    CREATE TABLE IF NOT EXISTS sla_targets (
+      severity TEXT PRIMARY KEY,
+      acknowledge_minutes INTEGER NOT NULL,
+      resolve_minutes INTEGER NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    -- Incident response quality scores (Pillar 5: Post-Incident)
+    CREATE TABLE IF NOT EXISTS incident_scores (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      incident_id TEXT NOT NULL UNIQUE,
+      time_to_first_hypothesis_ms INTEGER,
+      time_to_root_cause_ms INTEGER,
+      mttr_ms INTEGER,
+      sla_met INTEGER DEFAULT 0,
+      participant_count INTEGER DEFAULT 0,
+      evidence_count INTEGER DEFAULT 0,
+      action_items_completed INTEGER DEFAULT 0,
+      action_items_total INTEGER DEFAULT 0,
+      overall_score INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (incident_id) REFERENCES incidents(id) ON DELETE CASCADE
+    );
+
     -- Indexes for fast lookups
     CREATE INDEX IF NOT EXISTS idx_evidence_incident ON evidence_items(incident_id);
     CREATE INDEX IF NOT EXISTS idx_evidence_category ON evidence_items(category);
@@ -176,6 +231,9 @@ function initializeSchema(database: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_incidents_severity ON incidents(severity);
     CREATE INDEX IF NOT EXISTS idx_incidents_status ON incidents(status);
     CREATE INDEX IF NOT EXISTS idx_incidents_opened ON incidents(opened_at);
+    CREATE INDEX IF NOT EXISTS idx_speaker_profiles_name ON speaker_profiles(display_name);
+    CREATE INDEX IF NOT EXISTS idx_knowledge_base_category ON knowledge_base(category);
+    CREATE INDEX IF NOT EXISTS idx_knowledge_base_incident ON knowledge_base(incident_id);
   `);
 
   // Full-text search virtual table for evidence content

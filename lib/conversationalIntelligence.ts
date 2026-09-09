@@ -519,3 +519,572 @@ export function shapeResponse(
     followUpQuestion,
   };
 }
+
+// ── Session Memory (Contextual Cross-Referencing) ────────────────────────────
+
+export interface MemoryEntry {
+  text: string;
+  timestamp: number;
+  fillers: FillerCategory[];
+  emotionalState: EmotionalState | null;
+}
+
+/**
+ * Session Memory — Tracks per-speaker utterances within a war room session.
+ *
+ * Enables AURA to reference earlier statements:
+ * "Priya, you mentioned the Redis connection pool 10 minutes ago — does that
+ *  relate to what Mark just found?"
+ */
+export class SessionMemory {
+  /** Speaker UID → list of their utterances (most recent last) */
+  private memory = new Map<string, MemoryEntry[]>();
+  /** Speaker UID → display name mapping */
+  private names = new Map<string, string>();
+  /** Maximum entries per speaker */
+  private readonly maxEntriesPerSpeaker = 50;
+  /** Maximum age of entries to consider for recall (ms) */
+  private readonly recallWindowMs = 30 * 60_000; // 30 minutes
+
+  /**
+   * Record an utterance from a speaker.
+   */
+  record(speakerUid: string, displayName: string, text: string, fillers: FillerCategory[] = [], emotionalState: EmotionalState | null = null): void {
+    this.names.set(speakerUid, displayName);
+
+    if (!this.memory.has(speakerUid)) {
+      this.memory.set(speakerUid, []);
+    }
+
+    const entries = this.memory.get(speakerUid)!;
+    entries.push({
+      text,
+      timestamp: Date.now(),
+      fillers,
+      emotionalState,
+    });
+
+    // Trim old entries
+    if (entries.length > this.maxEntriesPerSpeaker) {
+      entries.shift();
+    }
+  }
+
+  /**
+   * Search for a keyword/phrase in any speaker's past utterances.
+   * Returns matches sorted by recency.
+   */
+  searchContext(query: string, excludeUid?: string): Array<{
+    speakerUid: string;
+    speakerName: string;
+    text: string;
+    timestamp: number;
+    ageMinutes: number;
+  }> {
+    const queryLower = query.toLowerCase();
+    const now = Date.now();
+    const cutoff = now - this.recallWindowMs;
+    const results: Array<{
+      speakerUid: string;
+      speakerName: string;
+      text: string;
+      timestamp: number;
+      ageMinutes: number;
+    }> = [];
+
+    for (const [uid, entries] of this.memory) {
+      if (uid === excludeUid) continue;
+      const name = this.names.get(uid) || 'Unknown';
+
+      for (const entry of entries) {
+        if (entry.timestamp < cutoff) continue;
+        if (entry.text.toLowerCase().includes(queryLower)) {
+          results.push({
+            speakerUid: uid,
+            speakerName: name,
+            text: entry.text,
+            timestamp: entry.timestamp,
+            ageMinutes: Math.round((now - entry.timestamp) / 60_000),
+          });
+        }
+      }
+    }
+
+    return results.sort((a, b) => b.timestamp - a.timestamp);
+  }
+
+  /**
+   * Get the most recent utterances from a specific speaker.
+   */
+  getRecentFromSpeaker(speakerUid: string, limit = 5): MemoryEntry[] {
+    const entries = this.memory.get(speakerUid) || [];
+    return entries.slice(-limit);
+  }
+
+  /**
+   * Build a contextual reference phrase for AURA to use.
+   * E.g., "Priya, you mentioned Redis connection issues about 8 minutes ago"
+   */
+  buildContextReference(query: string, currentSpeakerUid: string): string | null {
+    const matches = this.searchContext(query, currentSpeakerUid);
+    if (matches.length === 0) return null;
+
+    const best = matches[0];
+    const timeAgo = best.ageMinutes < 1
+      ? 'just a moment ago'
+      : best.ageMinutes < 5
+        ? 'a few minutes ago'
+        : `about ${best.ageMinutes} minutes ago`;
+
+    return `${best.speakerName}, you mentioned something related ${timeAgo} — "${best.text.substring(0, 80)}${best.text.length > 80 ? '...' : ''}"`;
+  }
+
+  /**
+   * Get speaker display name.
+   */
+  getSpeakerName(uid: string): string {
+    return this.names.get(uid) || 'Unknown';
+  }
+
+  /**
+   * Get all unique speaker names.
+   */
+  getAllSpeakers(): Array<{ uid: string; name: string; utteranceCount: number }> {
+    const speakers: Array<{ uid: string; name: string; utteranceCount: number }> = [];
+    for (const [uid, entries] of this.memory) {
+      speakers.push({
+        uid,
+        name: this.names.get(uid) || 'Unknown',
+        utteranceCount: entries.length,
+      });
+    }
+    return speakers;
+  }
+
+  reset(): void {
+    this.memory.clear();
+    this.names.clear();
+  }
+}
+
+// ── Consensus Tracker ────────────────────────────────────────────────────────
+
+export interface ConsensusSignal {
+  speakerUid: string;
+  speakerName: string;
+  signalType: 'agreement' | 'acknowledgment';
+  timestamp: number;
+}
+
+export interface ConsensusResult {
+  /** Whether consensus has been detected */
+  hasConsensus: boolean;
+  /** Number of unique speakers who agreed */
+  agreementCount: number;
+  /** List of speakers who agreed */
+  agreeingSpeakers: Array<{ uid: string; name: string }>;
+  /** Time window in which consensus was detected (ms) */
+  windowMs: number;
+  /** Suggested action item text */
+  suggestedAction: string | null;
+}
+
+/**
+ * Tracks multi-speaker agreement signals to detect consensus.
+ *
+ * When 3+ participants say "yes", "agreed", "let's do it", etc. within a
+ * short window, AURA detects consensus and proposes creating an action item.
+ */
+export class ConsensusTracker {
+  private signals: ConsensusSignal[] = [];
+  /** Minimum unique speakers for consensus */
+  private readonly minSpeakers = 3;
+  /** Time window to look for agreement signals (ms) */
+  private readonly windowMs = 30_000; // 30 seconds
+  /** Maximum signals to keep */
+  private readonly maxSignals = 100;
+  /** Last consensus detection timestamp (for cooldown) */
+  private lastConsensusAt = 0;
+  /** Cooldown between consensus detections (ms) */
+  private readonly cooldownMs = 60_000;
+
+  /**
+   * Record an agreement signal from a speaker.
+   */
+  recordAgreement(speakerUid: string, speakerName: string, signalType: 'agreement' | 'acknowledgment' = 'agreement'): void {
+    this.signals.push({
+      speakerUid,
+      speakerName,
+      signalType,
+      timestamp: Date.now(),
+    });
+
+    // Trim old signals
+    if (this.signals.length > this.maxSignals) {
+      this.signals = this.signals.slice(-this.maxSignals);
+    }
+  }
+
+  /**
+   * Check if consensus has been reached.
+   */
+  checkConsensus(): ConsensusResult {
+    const now = Date.now();
+    const cutoff = now - this.windowMs;
+
+    // Don't re-trigger too quickly
+    if (now - this.lastConsensusAt < this.cooldownMs) {
+      return {
+        hasConsensus: false,
+        agreementCount: 0,
+        agreeingSpeakers: [],
+        windowMs: this.windowMs,
+        suggestedAction: null,
+      };
+    }
+
+    // Find unique speakers who agreed within the window
+    const recentSignals = this.signals.filter(s => s.timestamp > cutoff);
+    const uniqueSpeakers = new Map<string, string>();
+    for (const signal of recentSignals) {
+      if (signal.signalType === 'agreement') {
+        uniqueSpeakers.set(signal.speakerUid, signal.speakerName);
+      }
+    }
+
+    const hasConsensus = uniqueSpeakers.size >= this.minSpeakers;
+    if (hasConsensus) {
+      this.lastConsensusAt = now;
+    }
+
+    return {
+      hasConsensus,
+      agreementCount: uniqueSpeakers.size,
+      agreeingSpeakers: Array.from(uniqueSpeakers.entries()).map(([uid, name]) => ({ uid, name })),
+      windowMs: this.windowMs,
+      suggestedAction: hasConsensus
+        ? 'It sounds like we have consensus from the team. Shall I create an action item to capture this decision?'
+        : null,
+    };
+  }
+
+  reset(): void {
+    this.signals = [];
+    this.lastConsensusAt = 0;
+  }
+}
+
+// ── Disagreement Detector ────────────────────────────────────────────────────
+
+export interface DisagreementSignal {
+  speakerAUid: string;
+  speakerAName: string;
+  speakerBUid: string;
+  speakerBName: string;
+  topicText: string;
+  detectedAt: number;
+  /** Whether AURA has already mediated this */
+  mediated: boolean;
+}
+
+/**
+ * Detects when two speakers express opposing views on a topic.
+ *
+ * Triggers AURA's mediation protocol:
+ * "I'm hearing two different perspectives. Let me capture both and we can test them."
+ */
+export class DisagreementDetector {
+  private recentNegations: Array<{ uid: string; name: string; text: string; timestamp: number }> = [];
+  private detectedDisagreements: DisagreementSignal[] = [];
+  /** Window to look for back-to-back negations (ms) */
+  private readonly windowMs = 15_000;
+
+  /**
+   * Record a negation from a speaker.
+   */
+  recordNegation(speakerUid: string, speakerName: string, text: string): void {
+    const now = Date.now();
+    this.recentNegations.push({ uid: speakerUid, name: speakerName, text, timestamp: now });
+
+    // Trim old entries
+    const cutoff = now - this.windowMs;
+    this.recentNegations = this.recentNegations.filter(n => n.timestamp > cutoff);
+  }
+
+  /**
+   * Check if a disagreement has been detected between speakers.
+   *
+   * Looks for pattern: Speaker A says something → Speaker B negates it within 15s
+   */
+  checkDisagreement(latestSpeakerUid: string, latestSpeakerName: string, latestText: string): DisagreementSignal | null {
+    const now = Date.now();
+    const cutoff = now - this.windowMs;
+
+    // Find recent negations from OTHER speakers
+    const otherNegations = this.recentNegations.filter(
+      n => n.uid !== latestSpeakerUid && n.timestamp > cutoff
+    );
+
+    if (otherNegations.length === 0) return null;
+
+    // Check if the latest text is also a negation
+    const negationPatterns = [
+      /\b(no|nope|disagree|wrong|incorrect|not right|actually|but|however)\b/i,
+      /\b(I don't think|that's not|I disagree|not quite|hold on)\b/i,
+    ];
+
+    const isLatestNegation = negationPatterns.some(p => p.test(latestText));
+    if (!isLatestNegation) return null;
+
+    const otherSpeaker = otherNegations[otherNegations.length - 1];
+
+    // Check we haven't already flagged this pair recently
+    const recentDisagreement = this.detectedDisagreements.find(
+      d => (d.speakerAUid === otherSpeaker.uid && d.speakerBUid === latestSpeakerUid) ||
+           (d.speakerAUid === latestSpeakerUid && d.speakerBUid === otherSpeaker.uid)
+    );
+    if (recentDisagreement && !recentDisagreement.mediated && (now - recentDisagreement.detectedAt) < 60_000) {
+      return null; // Already flagged
+    }
+
+    const signal: DisagreementSignal = {
+      speakerAUid: otherSpeaker.uid,
+      speakerAName: otherSpeaker.name,
+      speakerBUid: latestSpeakerUid,
+      speakerBName: latestSpeakerName,
+      topicText: `${otherSpeaker.text} vs. ${latestText}`,
+      detectedAt: now,
+      mediated: false,
+    };
+
+    this.detectedDisagreements.push(signal);
+    return signal;
+  }
+
+  /**
+   * Mark a disagreement as mediated (AURA has spoken about it).
+   */
+  markMediated(detectedAt: number): void {
+    const signal = this.detectedDisagreements.find(d => d.detectedAt === detectedAt);
+    if (signal) signal.mediated = true;
+  }
+
+  /**
+   * Build a mediation phrase for AURA.
+   */
+  buildMediationPhrase(signal: DisagreementSignal): string {
+    return `I'm hearing two different perspectives from ${signal.speakerAName} and ${signal.speakerBName}. Let me capture both viewpoints and we can determine which one the data supports. What metric or evidence would help us decide?`;
+  }
+
+  reset(): void {
+    this.recentNegations = [];
+    this.detectedDisagreements = [];
+  }
+}
+
+// ── Energy Monitor ───────────────────────────────────────────────────────────
+
+export interface RoomEnergy {
+  /** Overall room energy level (0-100) */
+  level: number;
+  /** Trend: rising, falling, or stable */
+  trend: 'rising' | 'falling' | 'stable';
+  /** Whether energy is critically low (team fatigue) */
+  isFatigued: boolean;
+  /** Whether energy is too high (chaos/panic) */
+  isChaotic: boolean;
+  /** Suggested intervention if needed */
+  suggestion: string | null;
+}
+
+/**
+ * Monitors overall room energy across all speakers.
+ *
+ * Combines pitch variance + speech rate + speaking frequency across all
+ * participants to detect team fatigue or escalating chaos.
+ */
+export class EnergyMonitor {
+  private energySamples: Array<{ level: number; timestamp: number }> = [];
+  private readonly windowMs = 5 * 60_000; // 5 minute window
+  private readonly maxSamples = 300;
+  /** Below this level, suggest a break */
+  private readonly fatigueThreshold = 25;
+  /** Above this level, suggest calming down */
+  private readonly chaosThreshold = 85;
+  /** Last suggestion timestamp */
+  private lastSuggestionAt = 0;
+  /** Cooldown between suggestions */
+  private readonly suggestionCooldownMs = 3 * 60_000;
+
+  /**
+   * Record a composite energy reading.
+   *
+   * @param speechRateWPM Average speaking rate across room
+   * @param avgPitchVariance Average pitch variance across room
+   * @param activeSpeakerCount Number of people who spoke in the last 60 seconds
+   * @param totalParticipants Total participants in room
+   */
+  recordSample(
+    speechRateWPM: number,
+    avgPitchVariance: number,
+    activeSpeakerCount: number,
+    totalParticipants: number,
+  ): void {
+    // Normalize components to 0-100 scale
+    const rateEnergy = Math.min(100, (speechRateWPM / 200) * 50); // 200 WPM = high energy
+    const pitchEnergy = Math.min(100, (avgPitchVariance / 80) * 30); // High variance = high energy
+    const participationEnergy = totalParticipants > 0
+      ? (activeSpeakerCount / totalParticipants) * 20
+      : 0;
+
+    const level = Math.max(0, Math.min(100, rateEnergy + pitchEnergy + participationEnergy));
+
+    this.energySamples.push({ level, timestamp: Date.now() });
+    if (this.energySamples.length > this.maxSamples) {
+      this.energySamples.shift();
+    }
+  }
+
+  /**
+   * Get the current room energy assessment.
+   */
+  assess(): RoomEnergy {
+    const now = Date.now();
+    const cutoff = now - this.windowMs;
+    const recentSamples = this.energySamples.filter(s => s.timestamp > cutoff);
+
+    if (recentSamples.length < 5) {
+      return { level: 50, trend: 'stable', isFatigued: false, isChaotic: false, suggestion: null };
+    }
+
+    // Current level = average of last 10 samples
+    const recent = recentSamples.slice(-10);
+    const currentLevel = recent.reduce((sum, s) => sum + s.level, 0) / recent.length;
+
+    // Trend: compare first half vs second half
+    const halfpoint = Math.floor(recentSamples.length / 2);
+    const firstHalf = recentSamples.slice(0, halfpoint);
+    const secondHalf = recentSamples.slice(halfpoint);
+    const firstAvg = firstHalf.reduce((sum, s) => sum + s.level, 0) / Math.max(firstHalf.length, 1);
+    const secondAvg = secondHalf.reduce((sum, s) => sum + s.level, 0) / Math.max(secondHalf.length, 1);
+
+    let trend: RoomEnergy['trend'] = 'stable';
+    if (secondAvg - firstAvg > 10) trend = 'rising';
+    else if (firstAvg - secondAvg > 10) trend = 'falling';
+
+    const isFatigued = currentLevel < this.fatigueThreshold;
+    const isChaotic = currentLevel > this.chaosThreshold;
+
+    // Generate suggestion with cooldown
+    let suggestion: string | null = null;
+    if ((isFatigued || isChaotic) && (now - this.lastSuggestionAt) > this.suggestionCooldownMs) {
+      if (isFatigued) {
+        suggestion = 'Team energy is dropping. Should we take a 2-minute break to regroup, or does anyone need to step out briefly?';
+      } else if (isChaotic) {
+        suggestion = 'We have a lot of energy in the room. Let\'s take a breath and focus on one thread at a time. Who wants to lead the next discussion point?';
+      }
+      this.lastSuggestionAt = now;
+    }
+
+    return {
+      level: Math.round(currentLevel),
+      trend,
+      isFatigued,
+      isChaotic,
+      suggestion,
+    };
+  }
+
+  reset(): void {
+    this.energySamples = [];
+    this.lastSuggestionAt = 0;
+  }
+}
+
+// ── Extended Filler Patterns (Hindi/Regional + Natural Interjections) ────────
+
+export const EXTENDED_FILLER_PATTERNS: Array<{
+  category: FillerCategory;
+  patterns: RegExp[];
+  priority: number;
+}> = [
+  {
+    category: 'agreement',
+    priority: 4,
+    patterns: [
+      // Hindi/regional agreement
+      /^(achha|haan|theek hai|bilkul|sahi|pakka|done|chalo)[.\s]*$/i,
+      // Casual affirmative
+      /\b(you know what.*(?:right|yes)|that's(?:\s+)(?:spot on|on point|the one))\b/i,
+    ],
+  },
+  {
+    category: 'hesitation',
+    priority: 5,
+    patterns: [
+      // Hindi/regional hesitation
+      /^(ek minute|ruko|bas ek second|zara|thoda wait)[.\s]*$/i,
+      // Contextual hesitation
+      /\b(can I jump in|sorry but|actually wait|no no no|before that)\b/i,
+    ],
+  },
+  {
+    category: 'thinking',
+    priority: 2,
+    patterns: [
+      // Hindi/regional thinking
+      /^(matlab|dekho|suno|yaar|bhai)[.\s]*$/i,
+      // Extended thinking patterns
+      /\b(you know what|the thing is|how do I put this|what I mean is)\b/i,
+    ],
+  },
+  {
+    category: 'acknowledgment',
+    priority: 3,
+    patterns: [
+      // Hindi/regional acknowledgment
+      /^(samajh gaya|samajh gayi|pata hai|mil gaya)[.\s]*$/i,
+    ],
+  },
+  {
+    category: 'urgency',
+    priority: 10,
+    patterns: [
+      // Hindi/regional urgency
+      /\b(jaldi|abhi|turant|fatafat|fata fat)\b/i,
+    ],
+  },
+];
+
+/**
+ * Extended filler detection that includes regional/Hindi patterns.
+ * Falls back to the standard detectFillers for English.
+ */
+export function detectFillersExtended(text: string): FillerDetection[] {
+  // First try standard English detection
+  const standardDetections = detectFillers(text);
+
+  // Then try extended patterns
+  const trimmed = text.trim();
+  if (!trimmed || trimmed.length > 200) return standardDetections;
+
+  for (const group of EXTENDED_FILLER_PATTERNS) {
+    for (const pattern of group.patterns) {
+      const match = trimmed.match(pattern);
+      if (match) {
+        // Don't add if we already detected this category
+        if (!standardDetections.find(d => d.category === group.category)) {
+          standardDetections.push({
+            category: group.category,
+            matchedPhrase: match[0],
+            confidence: trimmed.length < 20 ? 85 : 60,
+          });
+        }
+        break;
+      }
+    }
+  }
+
+  return standardDetections;
+}
+
