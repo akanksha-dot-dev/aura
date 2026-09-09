@@ -77,7 +77,6 @@ interface GlobalRtmSession {
 let activeSession: GlobalRtmSession | null = null;
 let connectingPromise: Promise<void> | null = null;
 let teardownTimer: ReturnType<typeof setTimeout> | null = null;
-const seenEventIds = new Set<string>();
 
 // Registry of active subscribers across React hook instances
 const activeSubscribers = new Set<(event: RTMDashboardEvent) => void>();

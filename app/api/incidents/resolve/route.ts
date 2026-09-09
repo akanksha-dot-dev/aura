@@ -6,7 +6,6 @@ import {
 } from '@/lib/incidentStore';
 import {
   getDb,
-  getEvidenceByIncident,
 } from '@/lib/db';
 import {
   formatResolutionNotification,
@@ -55,7 +54,7 @@ const DEFAULT_SLA_RESOLVE_MINUTES: Record<string, number> = {
 // ── Score Computation ────────────────────────────────────────────────────────
 
 function computeIncidentScore(
-  state: typeof import('@/lib/types').IncidentState._type,
+  state: IncidentState,
   resolvedAt: number,
 ): IncidentScore {
   const mttrMs = resolvedAt - state.openedAt;
@@ -145,7 +144,7 @@ function computeIncidentScore(
 // ── Knowledge Extraction ─────────────────────────────────────────────────────
 
 function extractKnowledgeItems(
-  state: typeof import('@/lib/types').IncidentState._type,
+  state: IncidentState,
   rootCause?: ResolveRequest['rootCause'],
   lessonsLearned?: string,
 ): Array<{
