@@ -72,7 +72,7 @@ describe('API Route: /api/mcp/sse (app/api/mcp/sse/route.ts)', () => {
       const data = await res.json();
       const tools = data.result.tools;
 
-      expect(tools).toHaveLength(10);
+      expect(tools).toHaveLength(13);
 
       const toolNames = tools.map((t: { name: string }) => t.name);
       expect(toolNames).toContain('log_fact');
@@ -85,6 +85,9 @@ describe('API Route: /api/mcp/sse (app/api/mcp/sse/route.ts)', () => {
       expect(toolNames).toContain('page_oncall_team');
       expect(toolNames).toContain('search_past_incidents');
       expect(toolNames).toContain('get_incident_history');
+      expect(toolNames).toContain('search_similar_incidents');
+      expect(toolNames).toContain('get_knowledge_base');
+      expect(toolNames).toContain('resolve_incident');
 
       // Verify all tools have descriptions and valid JSON schemas
       tools.forEach((tool: { name: string; description: string; inputSchema: { type: string; properties: unknown } }) => {
