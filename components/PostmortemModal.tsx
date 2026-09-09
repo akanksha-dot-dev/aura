@@ -222,6 +222,32 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
     return incident.evidenceItems.slice(0, 7);
   }, [incident.evidenceItems]);
 
+  const handleExportPDF = () => {
+    // Use the browser print dialog — users can "Save as PDF"
+    const printContents = generateMarkdownReport();
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Postmortem — ${incident.title}</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #1a1a1a; }
+            pre { background: #f5f5f5; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 13px; }
+            h1 { border-bottom: 2px solid #e5e5e5; padding-bottom: 8px; }
+            h2 { margin-top: 32px; color: #333; }
+            table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+            th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+            th { background: #f5f5f5; font-weight: 600; }
+          </style>
+        </head>
+        <body><pre>${printContents.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre></body>
+      </html>
+    `);
+    printWindow.document.close();
+    setTimeout(() => { printWindow.print(); }, 300);
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -679,6 +705,19 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
                     <polyline points="8 6 2 12 8 18" />
                   </svg>
                   <span>JSON</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="sre-action-btn"
+                  onClick={handleExportPDF}
+                  title="Export as PDF (Print)"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                  <span>PDF</span>
                 </button>
 
                 <button

@@ -72,7 +72,7 @@ interface PatternsData {
   timeHeatmap: Array<{ day: number; hour: number; count: number }>;
 }
 
-type TabView = 'overview' | 'teams' | 'patterns';
+type TabView = 'live' | 'overview' | 'teams' | 'patterns';
 
 function formatDuration(ms: number | null): string {
   if (!ms || ms <= 0) return '—';
@@ -99,7 +99,7 @@ const SEV_COLORS: Record<string, string> = {
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function DashboardPage() {
-  const [activeTab, setActiveTab] = useState<TabView>('overview');
+  const [activeTab, setActiveTab] = useState<TabView>('live');
   const [daysBack, setDaysBack] = useState(90);
   const [overview, setOverview] = useState<OverviewData | null>(null);
   const [teamsData, setTeamsData] = useState<TeamsData | null>(null);
@@ -190,16 +190,18 @@ export default function DashboardPage() {
 
         {/* Tab Navigation */}
         <nav className="dash-tabs">
-          {(['overview', 'teams', 'patterns'] as TabView[]).map((tab) => (
+          {(['live', 'overview', 'teams', 'patterns'] as TabView[]).map((tab) => (
             <button
               key={tab}
               className={`dash-tab ${activeTab === tab ? 'dash-tab--active' : ''}`}
               onClick={() => setActiveTab(tab)}
             >
+              {tab === 'live' && '🔴'}
               {tab === 'overview' && '📊'}
               {tab === 'teams' && '👥'}
               {tab === 'patterns' && '🔄'}
-              <span>{tab.charAt(0).toUpperCase() + tab.slice(1)}</span>
+              <span>{tab === 'live' ? 'Live' : tab.charAt(0).toUpperCase() + tab.slice(1)}</span>
+              {tab === 'live' && <span className="dash-tab__live-dot" />}
             </button>
           ))}
         </nav>
@@ -208,6 +210,7 @@ export default function DashboardPage() {
         <main className="dash-content">
           {loading && <div className="dash-loading"><div className="dash-spinner" />Loading intelligence data…</div>}
           {error && <div className="dash-error">⚠️ {error}</div>}
+          {activeTab === 'live' && <LiveTab />}
           {!loading && !error && activeTab === 'overview' && overview && (
             <OverviewTab data={overview} />
           )}
@@ -220,6 +223,123 @@ export default function DashboardPage() {
         </main>
       </div>
     </>
+  );
+}
+
+// ── Live Tab ─────────────────────────────────────────────────────────────────
+
+interface LiveIncident {
+  id: string;
+  title: string;
+  severity: string;
+  status: string;
+  openedAt: string;
+  sla: {
+    targetMinutes: number;
+    elapsedMinutes: number;
+    remainingMinutes: number;
+    status: string;
+  };
+  participantCount: number;
+  evidenceCount: number;
+  latestEvidence: Array<{ category: string; content: string; timestamp: number }>;
+}
+
+function LiveTab() {
+  const [data, setData] = useState<{ incidents: LiveIncident[]; aggregate?: { total: number; slaBreached: number; bySeverity: Record<string, number> } } | null>(null);
+  const [liveLoading, setLiveLoading] = useState(true);
+
+  const fetchLive = async () => {
+    try {
+      const res = await fetch('/api/dashboard/live');
+      if (res.ok) setData(await res.json());
+    } catch { /* silent */ }
+    finally { setLiveLoading(false); }
+  };
+
+  useEffect(() => {
+    fetchLive();
+    const interval = setInterval(fetchLive, 15_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (liveLoading) return <div className="dash-loading"><div className="dash-spinner" />Loading live data…</div>;
+
+  const incidents = data?.incidents || [];
+  const agg = data?.aggregate;
+
+  return (
+    <div className="dash-grid">
+      {/* Live Aggregate Banner */}
+      <div className="dash-live-banner">
+        <div className="dash-live-stat">
+          <span className="dash-live-stat__value" style={{ color: '#F43F5E' }}>{agg?.total || 0}</span>
+          <span className="dash-live-stat__label">Active</span>
+        </div>
+        <div className="dash-live-stat">
+          <span className="dash-live-stat__value" style={{ color: agg?.slaBreached ? '#F43F5E' : '#10B981' }}>{agg?.slaBreached || 0}</span>
+          <span className="dash-live-stat__label">SLA Breached</span>
+        </div>
+        {agg?.bySeverity && Object.entries(agg.bySeverity).map(([sev, count]) => (
+          <div key={sev} className="dash-live-stat">
+            <span className="dash-live-stat__value" style={{ color: SEV_COLORS[sev] || '#71717A' }}>{count}</span>
+            <span className="dash-live-stat__label">{sev}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Incident Cards */}
+      {incidents.length === 0 && (
+        <div className="dash-card" style={{ textAlign: 'center', padding: '48px 24px' }}>
+          <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
+          <p className="dash-empty">All clear — no active incidents</p>
+        </div>
+      )}
+      {incidents.map((inc) => {
+        const slaColor = inc.sla.status === 'breached' ? '#F43F5E' : inc.sla.status === 'warning' ? '#F59E0B' : '#10B981';
+        const slaPct = Math.min(100, Math.round((inc.sla.elapsedMinutes / Math.max(1, inc.sla.targetMinutes)) * 100));
+        return (
+          <div key={inc.id} className="dash-card dash-live-card">
+            <div className="dash-live-card__header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span className="dash-sev-pill" style={{ background: `${SEV_COLORS[inc.severity] || '#71717A'}22`, color: SEV_COLORS[inc.severity], border: `1px solid ${SEV_COLORS[inc.severity]}44` }}>
+                  {inc.severity}
+                </span>
+                <span style={{ fontWeight: 500, color: '#F4F4F6' }}>{inc.title}</span>
+              </div>
+              <a href={`/?channel=${encodeURIComponent(inc.id)}&uid=observer&name=Observer&role=Observer`} className="dash-btn" style={{ fontSize: 11, padding: '4px 10px' }}>
+                Join War Room →
+              </a>
+            </div>
+            {/* SLA Progress */}
+            <div className="dash-sla-progress">
+              <div className="dash-sla-progress__track">
+                <div className="dash-sla-progress__fill" style={{ width: `${slaPct}%`, background: slaColor }} />
+              </div>
+              <span style={{ fontSize: 11, color: slaColor, fontWeight: 600, fontFamily: 'var(--font-mono, monospace)' }}>
+                {inc.sla.remainingMinutes > 0 ? `${inc.sla.remainingMinutes}m left` : 'BREACHED'}
+              </span>
+            </div>
+            {/* Latest Evidence */}
+            {inc.latestEvidence && inc.latestEvidence.length > 0 && (
+              <div className="dash-live-evidence">
+                {inc.latestEvidence.slice(0, 2).map((ev, i) => (
+                  <div key={i} className="dash-live-evidence__item">
+                    <span className="dash-live-evidence__cat">{ev.category}</span>
+                    <span className="dash-live-evidence__text">{ev.content.slice(0, 80)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="dash-live-card__footer">
+              <span>{inc.participantCount} participants</span>
+              <span>{inc.evidenceCount} evidence items</span>
+              <span>{inc.status}</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -765,4 +885,94 @@ const dashboardStyles = `
   }
   .dash-freq-name { font-size: 12px; font-family: 'JetBrains Mono', monospace; color: #a1a1aa; }
   .dash-freq-count { font-size: 14px; font-weight: 700; color: #fafafa; }
+
+  /* Live Tab */
+  .dash-tab__live-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #F43F5E;
+    display: inline-block;
+    margin-left: 4px;
+    animation: livePulse 2s ease-in-out infinite;
+  }
+  @keyframes livePulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(244,63,94,0.5); }
+    50% { opacity: 0.6; box-shadow: 0 0 0 4px rgba(244,63,94,0); }
+  }
+
+  .dash-live-banner {
+    display: flex;
+    gap: 20px;
+    padding: 16px 20px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 8px;
+    margin-bottom: 16px;
+  }
+  .dash-live-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .dash-live-stat__value { font-size: 28px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+  .dash-live-stat__label { font-size: 11px; color: #71717A; text-transform: uppercase; letter-spacing: 0.04em; }
+
+  .dash-live-card { border-left: 3px solid rgba(244,63,94,0.4); }
+  .dash-live-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .dash-sev-pill {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  .dash-sla-progress {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .dash-sla-progress__track {
+    flex: 1;
+    height: 4px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .dash-sla-progress__fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.5s ease;
+  }
+  .dash-live-evidence { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+  .dash-live-evidence__item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    background: rgba(255,255,255,0.02);
+    border-radius: 4px;
+    font-size: 12px;
+  }
+  .dash-live-evidence__cat {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #F59E0B;
+    padding: 1px 5px;
+    background: rgba(245,158,11,0.08);
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .dash-live-evidence__text { color: #a1a1aa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dash-live-card__footer {
+    display: flex;
+    gap: 16px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255,255,255,0.04);
+    font-size: 11px;
+    color: #71717A;
+  }
 `;
