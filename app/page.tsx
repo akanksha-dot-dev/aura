@@ -104,12 +104,15 @@ function DashboardContent() {
       } else if (e.key === '/' && !e.shiftKey) {
         e.preventDefault();
         setIsQuickCaptureOpen((prev) => !prev);
+      } else if (e.key === 'r' || e.key === 'R') {
+        setIsResolveOpen((prev) => !prev);
       } else if (e.key === 'Escape') {
         setIsTranscriptDrawerOpen(false);
         setIsPostmortemOpen(false);
         setIsAnalyticsCollapsed(true);
         setIsShortcutsOpen(false);
         setIsQuickCaptureOpen(false);
+        setIsResolveOpen(false);
       }
     };
 
@@ -806,7 +809,7 @@ function DashboardContent() {
         channelName={channel}
       />
 
-      {/* 2. Speaker Panel */}}
+      {/* 2. Speaker Panel */}
       <SpeakerPanel
         participants={effectiveParticipants}
         localVolumeLevel={volumeLevels}
