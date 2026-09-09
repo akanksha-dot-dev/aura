@@ -801,6 +801,7 @@ function DashboardContent() {
           }
         }}
         cognitiveLoadScore={state.cognitiveLoadScore}
+        onResolve={() => setIsResolveOpen(true)}
       />
 
       {/* 1b. AI Similar Incident Insight Banner */}

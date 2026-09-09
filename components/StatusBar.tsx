@@ -35,6 +35,7 @@ export interface StatusBarProps {
   voiceLang?: string;
   onVoiceLangChange?: (newLang: string) => void;
   cognitiveLoadScore?: number;
+  onResolve?: () => void;
 }
 
 function formatTimer(totalSeconds: number): string {
@@ -65,6 +66,7 @@ export function StatusBar({
   voiceLang = 'en-IN',
   onVoiceLangChange,
   cognitiveLoadScore = 0,
+  onResolve,
 }: StatusBarProps) {
   const [activeElapsed, setActiveElapsed] = useState<number>(0);
   const theme = useSyncExternalStore(subscribeTheme, getThemeSnapshot, getServerThemeSnapshot);
@@ -482,6 +484,69 @@ export function StatusBar({
             </span>
             <span>{formatTimer(elapsedSeconds)}</span>
           </div>
+
+          {/* SLA Badge */}
+          {status !== 'resolved' && (() => {
+            const SLA_MINS: Record<string, number> = { 'SEV-0': 60, 'SEV-1': 240, 'SEV-2': 1440, 'SEV-3': 4320 };
+            const slaMins = SLA_MINS[severity] ?? 240;
+            const elapsedMins = Math.round(elapsedSeconds / 60);
+            const remainingMins = Math.max(0, slaMins - elapsedMins);
+            const pctUsed = Math.min(100, Math.round((elapsedMins / slaMins) * 100));
+            const slaColor = pctUsed >= 100 ? '#F43F5E' : pctUsed >= 75 ? '#F59E0B' : '#10B981';
+            const slaIcon = pctUsed >= 100 ? '🔴' : pctUsed >= 75 ? '⚠️' : '✅';
+            return (
+              <div
+                title={`SLA target: ${slaMins}m — ${remainingMins > 0 ? `${remainingMins}m remaining` : 'BREACHED'}`}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '2px 8px',
+                  borderRadius: 'var(--radius-sm, 4px)',
+                  fontSize: 'var(--text-xs, 11px)',
+                  fontWeight: 600,
+                  fontFamily: 'var(--font-mono)',
+                  background: `${slaColor}11`,
+                  border: `1px solid ${slaColor}33`,
+                  color: slaColor,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <span style={{ fontSize: 10 }}>{slaIcon}</span>
+                <span>{remainingMins > 0 ? `SLA ${remainingMins}m` : 'SLA ❌'}</span>
+              </div>
+            );
+          })()}
+
+          {/* Resolve Button */}
+          {status !== 'resolved' && onResolve && (
+            <button
+              type="button"
+              onClick={onResolve}
+              className="precision-bar__ghost-btn"
+              title="Resolve this incident (R)"
+              style={{
+                padding: '3px 10px',
+                fontSize: 'var(--text-xs, 11px)',
+                fontWeight: 600,
+                color: '#10B981',
+                background: 'rgba(16,185,129,0.08)',
+                border: '1px solid rgba(16,185,129,0.2)',
+                borderRadius: 'var(--radius-sm, 4px)',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.15s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(16,185,129,0.15)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(16,185,129,0.08)';
+              }}
+            >
+              🎯 Resolve
+            </button>
+          )}
 
           <button
             type="button"
