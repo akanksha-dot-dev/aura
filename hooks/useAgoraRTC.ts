@@ -74,6 +74,10 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
   const isMountedRef = useRef<boolean>(true);
   const currentUplinkQualityRef = useRef<number>(1);
   const currentDownlinkQualityRef = useRef<number>(1);
+  const reconnectAttemptsRef = useRef<number>(0);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const maxReconnectAttempts = 5;
+  const wasJoinedRef = useRef<boolean>(false);
 
   // Track component mount status
   useEffect(() => {
