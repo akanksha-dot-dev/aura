@@ -324,10 +324,10 @@ export function getDatabaseHealth(): {
 } {
   const database = getDb();
   const fs = require('fs');
-  const dbPath = getDbPath();
+  const resolvedDbPath = process.env.DATABASE_PATH || path.join(process.cwd(), 'data', 'aura.db');
   let sizeBytes = 0;
   try {
-    const stats = fs.statSync(dbPath);
+    const stats = fs.statSync(resolvedDbPath);
     sizeBytes = stats.size;
   } catch { /* file may not exist yet */ }
 
