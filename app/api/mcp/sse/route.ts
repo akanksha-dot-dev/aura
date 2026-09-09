@@ -1165,6 +1165,152 @@ export async function POST(request: NextRequest) {
           break;
         }
 
+        case 'search_similar_incidents': {
+          const services = Array.isArray(args.services) ? (args.services as string[]) : [];
+          const symptoms = typeof args.symptoms === 'string' ? args.symptoms : undefined;
+
+          if (services.length === 0 && !symptoms) {
+            return NextResponse.json({
+              jsonrpc,
+              id,
+              error: {
+                code: -32602,
+                message: 'search_similar_incidents requires services array or symptoms string',
+              },
+            });
+          }
+
+          try {
+            const { analyzeSimilarIncidents } = await import('@/lib/similarIncidentAdvisor');
+            const { getIncidentState } = await import('@/lib/incidentStore');
+
+            const state = getIncidentState(channelName);
+            const result = analyzeSimilarIncidents(state);
+
+            resultData = {
+              success: true,
+              hasSuggestions: result.hasSuggestion,
+              suggestions: result.suggestions.map((s) => ({
+                incidentId: s.incidentId,
+                title: s.title,
+                severity: s.severity,
+                similarityScore: s.similarityScore,
+                rootCause: s.rootCause,
+                resolutionSteps: s.resolutionSteps,
+                mttrMinutes: s.mttrMinutes,
+              })),
+              message: result.hasSuggestion
+                ? `Found ${result.suggestions.length} similar past incident(s). Top match: "${result.suggestions[0]?.title}" with ${result.suggestions[0]?.similarityScore}% similarity.`
+                : 'No similar past incidents found matching current evidence.',
+            };
+          } catch (simErr) {
+            console.warn('[MCP] search_similar_incidents error:', simErr);
+            resultData = {
+              success: false,
+              message: `Similar incident search failed: ${simErr instanceof Error ? simErr.message : String(simErr)}`,
+            };
+          }
+          break;
+        }
+
+        case 'get_knowledge_base': {
+          const kbServices = Array.isArray(args.services) ? (args.services as string[]) : [];
+          const kbQuery = typeof args.query === 'string' ? args.query : undefined;
+          const kbLimit = typeof args.limit === 'number' ? args.limit : 5;
+
+          if (kbServices.length === 0 && !kbQuery) {
+            return NextResponse.json({
+              jsonrpc,
+              id,
+              error: {
+                code: -32602,
+                message: 'get_knowledge_base requires services array or query string',
+              },
+            });
+          }
+
+          try {
+            const { searchKnowledgeBase } = await import('@/lib/similarIncidentAdvisor');
+            const items = searchKnowledgeBase(kbServices, kbQuery, kbLimit);
+
+            resultData = {
+              success: true,
+              items: items.map((k) => ({
+                title: k.title,
+                content: k.content,
+                category: k.category,
+                qualityScore: k.qualityScore,
+                timesReferenced: k.timesReferenced,
+              })),
+              count: items.length,
+              message: items.length > 0
+                ? `Found ${items.length} knowledge base entries. Top: "${items[0].title}" (quality: ${items[0].qualityScore}).`
+                : 'No relevant knowledge base entries found.',
+            };
+          } catch (kbErr) {
+            console.warn('[MCP] get_knowledge_base error:', kbErr);
+            resultData = {
+              success: false,
+              message: `Knowledge base search failed: ${kbErr instanceof Error ? kbErr.message : String(kbErr)}`,
+            };
+          }
+          break;
+        }
+
+        case 'resolve_incident': {
+          const rootCauseCategory = String(args.root_cause_category || 'unknown');
+          const rootCauseDescription = String(args.root_cause_description || '');
+          const lessonsLearned = typeof args.lessons_learned === 'string' ? args.lessons_learned : undefined;
+
+          if (!rootCauseDescription) {
+            return NextResponse.json({
+              jsonrpc,
+              id,
+              error: {
+                code: -32602,
+                message: 'resolve_incident requires root_cause_description',
+              },
+            });
+          }
+
+          try {
+            const resolveResponse = await fetch(
+              `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/incidents/resolve`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  channelName,
+                  rootCause: {
+                    category: rootCauseCategory,
+                    description: rootCauseDescription,
+                  },
+                  lessonsLearned,
+                }),
+              },
+            );
+
+            const resolveResult = await resolveResponse.json();
+
+            resultData = {
+              success: resolveResult.resolved === true,
+              incidentId: resolveResult.incidentId,
+              score: resolveResult.score,
+              summary: resolveResult.summary,
+              message: resolveResult.resolved
+                ? `Incident resolved successfully. Overall response score: ${resolveResult.score?.overallScore}/100. MTTR: ${resolveResult.summary?.mttrMinutes}m. SLA ${resolveResult.score?.slaMet ? 'MET ✅' : 'BREACHED ❌'}.`
+                : `Resolution failed: ${resolveResult.error || 'Unknown error'}`,
+            };
+          } catch (resolveErr) {
+            console.warn('[MCP] resolve_incident error:', resolveErr);
+            resultData = {
+              success: false,
+              message: `Incident resolution failed: ${resolveErr instanceof Error ? resolveErr.message : String(resolveErr)}`,
+            };
+          }
+          break;
+        }
+
         default:
           return NextResponse.json({
             jsonrpc,
