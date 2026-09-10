@@ -14,6 +14,7 @@ import {
   detectRecurringPatterns,
   predictServiceRisk,
   computeMttrTrend,
+  type IncidentRecord,
   type AiInsight,
   type TeamRiskScore,
   type RecurringPattern,
@@ -59,7 +60,7 @@ export async function GET(request: Request) {
       WHERE opened_at > ?
       ORDER BY opened_at DESC
       LIMIT 500
-    `).all(cutoff) as DbIncidentRow[];
+    `).all(cutoff) as IncidentRecord[];
 
     // All-time for pattern detection
     const allIncidents = db.prepare(`
@@ -69,7 +70,7 @@ export async function GET(request: Request) {
       FROM incidents
       ORDER BY opened_at DESC
       LIMIT 1000
-    `).all() as DbIncidentRow[];
+    `).all() as IncidentRecord[];
 
     // Run all analytics in parallel
     const [insights, teamRisk, patterns, mttrTrend] = await Promise.all([
