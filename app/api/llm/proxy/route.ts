@@ -6,13 +6,19 @@ import { insertTranscript } from '@/lib/db';
 export { buildDynamicContext } from '@/lib/incidentStore';
 export const runtime = 'nodejs';
 
-// ── Filler Word Detection ──
+// ── Filler Word Detection — 6 classes matching AURA system prompt ──────────
 const FILLER_PATTERNS = {
-  thinking: /^\s*(h+m+|u+h+|u+m+|e+r+m*|m+h+m+)\s*\.?\s*$/i,
-  pauseRequest: /^\s*(wait|hold on|one sec|let me think|give me a moment|hang on|just a sec|one moment)\s*\.?\s*$/i,
-  discovery: /^\s*(a+h+|o+h+!?|oh wait|oh!|aha|eureka)\s*\.?\s*$/i,
-  acknowledgment: /^\s*(yeah|right|okay|ok|sure|yep|yup|got it|mm-?hm+|mhm)\s*\.?\s*$/i,
-  transition: /^\s*(so\.{2,}|basically\.{2,}|like\.{2,}|well\.{2,}|anyway\.{2,})\s*$/i,
+  // CLASS A: Thinking fillers — stay silent or "Take your time"
+  thinking:     /^\s*(h+m+|u+h+|u+m+|e+r+m*|m+h+m+|hm|hmm+|um+|uh+|err+|erm+)\s*\.?\s*$/i,
+  // CLASS B: Explicit pause requests — "Of course, take your time."
+  pauseRequest: /^\s*(wait|hold on|one sec|let me think|give me a moment|hang on|just a sec|one moment|let me check|gimme a sec)\s*\.?\s*$/i,
+  // CLASS C: Discovery/realization — "What did you find?"
+  discovery:    /^\s*(a+h+!?|a+a+h+!?|o+h+!?|oh wait|oh!|aha!?|eureka|ohhh+|got it!|wait!)\s*\.?\s*$/i,
+  // CLASS D: Acknowledgment — "Copy that." or [SILENT]
+  acknowledgment: /^\s*(yeah|right|okay|ok|sure|yep|yup|got it|mm-?hm+|mhm|copy|roger|understood|noted)\s*\.?\s*$/i,
+  // CLASS E: Conversational transitions — [SILENT]
+  transition:   /^\s*(so\.{2,}|basically\.{2,}|like\.{2,}|well\.{2,}|anyway\.{2,}|so,?\s*$|and,?\s*$)\s*$/i,
+  // CLASS F handled by consecutive-filler tracking in the session
 };
 
 type FillerType = 'thinking' | 'pauseRequest' | 'discovery' | 'acknowledgment' | 'transition' | null;
@@ -20,7 +26,7 @@ type FillerType = 'thinking' | 'pauseRequest' | 'discovery' | 'acknowledgment' |
 function detectFillerType(text: string): FillerType {
   if (!text || text.trim().length === 0) return null;
   const cleaned = text.trim();
-  if (cleaned.length > 60) return null; // Too long to be a filler
+  if (cleaned.length > 80) return null; // Too long to be a pure filler
   for (const [type, pattern] of Object.entries(FILLER_PATTERNS)) {
     if (pattern.test(cleaned)) return type as FillerType;
   }
@@ -122,17 +128,21 @@ export async function POST(request: NextRequest) {
       stream: isStream,
     };
 
+    // 5. Route to correct upstream LLM
+    // Priority: Gemini 2.0 Flash (fastest TTFT) → OpenAI GPT-4o-mini
+    const geminiKey = process.env.GEMINI_API_KEY;
     const openAIKey = process.env.OPENAI_API_KEY;
-    if (!openAIKey) {
+
+    if (!geminiKey && !openAIKey) {
       return NextResponse.json(
-        { error: 'OPENAI_API_KEY is not configured on the proxy' },
+        { error: 'No LLM API key configured. Set GEMINI_API_KEY or OPENAI_API_KEY.' },
         { status: 502 }
       );
     }
 
     const isPlaceholderKey =
-      openAIKey === 'your_openai_api_key' ||
-      !openAIKey.startsWith('sk-');
+      (!geminiKey && openAIKey === 'your_openai_api_key') ||
+      (!geminiKey && !openAIKey?.startsWith('sk-'));
 
     if (isPlaceholderKey) {
       const lastUserMsg =
@@ -140,8 +150,20 @@ export async function POST(request: NextRequest) {
       return handleAutonomousIncidentResponse(lastUserMsg, isStream);
     }
 
-    // 5. Forward request to OpenAI API
-    let upstreamResponse: Response;
+    // ── Gemini 2.0 Flash via Google's OpenAI-compatible endpoint ────────────
+    // Google provides a drop-in OpenAI-compatible API at:
+    // https://generativelanguage.googleapis.com/v1beta/openai/
+    // This means our proxy forwards in OpenAI format, Google handles it natively.
+    const useGemini = !!(geminiKey && (!openAIKey || !openAIKey.startsWith('sk-')));
+    const upstreamUrl = useGemini
+      ? 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
+      : 'https://api.openai.com/v1/chat/completions';
+    const upstreamKey = useGemini ? geminiKey! : openAIKey!;
+    const upstreamModel = useGemini
+      ? (upstreamPayload.model === 'gpt-4o-mini' ? 'gemini-2.0-flash' : (upstreamPayload.model || 'gemini-2.0-flash'))
+      : upstreamPayload.model;
+
+    const finalUpstreamPayload = { ...upstreamPayload, model: upstreamModel };
     try {
       upstreamResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
