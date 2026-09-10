@@ -1,4 +1,4 @@
-﻿/**
+/**
  * incidentAnalytics.ts â€” Executive intelligence analytics for AURA dashboard.
  *
  * Pure computation layer for management-grade incident metrics:
@@ -26,8 +26,8 @@ export interface IncidentRecord {
   [key: string]: unknown;
 }
 
-// Re-export for backward compatibility with callers that used IncidentRecord
-export type { IncidentRecord as IncidentRecord };
+// Re-export as DbIncident alias for backward compatibility
+export type DbIncident = IncidentRecord;
 
 // â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
