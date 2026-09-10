@@ -59,7 +59,7 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
   const [customRateInput, setCustomRateInput] = React.useState<string>('150');
   const [customName, setCustomName] = React.useState<string>('');
   const [customRole, setCustomRole] = React.useState<string>('');
-  const [demoMode, setDemoMode] = React.useState<'simulation' | 'live'>('simulation');
+  const [demoMode, setDemoMode] = React.useState<'simulation' | 'live'>('live');
   const [isInviteOpen, setIsInviteOpen] = React.useState(false);
   const [voiceLang, setVoiceLang] = React.useState<string>(() => {
     if (typeof window !== 'undefined') {
