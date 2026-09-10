@@ -148,7 +148,7 @@ export async function GET(request: Request) {
 // ── Gemini LLM Enhancement ────────────────────────────────────────────────────
 
 async function generateGeminiInsights(
-  incidents: DbIncidentRow[],
+  incidents: IncidentRecord[],
   teamName: string,
   windowDays: number,
   apiKey: string,
@@ -169,7 +169,7 @@ async function generateGeminiInsights(
       const map = new Map<string, number>();
       for (const i of incidents) {
         try {
-          (JSON.parse(i.affected_services) as string[]).forEach(s => map.set(s, (map.get(s) ?? 0) + 1));
+          (JSON.parse(i.affected_services ?? '[]') as string[]).forEach(s => map.set(s, (map.get(s) ?? 0) + 1));
         } catch { /* ignore */ }
       }
       return Array.from(map.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([s, c]) => `${s}(${c}x)`).join(', ');
