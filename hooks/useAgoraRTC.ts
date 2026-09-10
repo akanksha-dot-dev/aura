@@ -210,8 +210,17 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
           if (!isMountedRef.current) return;
           const levels: Record<string, number> = {};
           volumes.forEach((vol) => {
-            // vol.uid is 0 for local user or string/number for remote user
-            const targetUid = vol.uid === 0 ? uid : String(vol.uid);
+            // Agora volume indicator: vol.uid===0 (number) means LOCAL user microphone.
+            // Remote agent with string UID '0' appears as vol.uid==='0' (string) or vol.uid===0 (number).
+            // We map: numeric 0 → local uid, string '0' → 'aura_agent', other → as-is string.
+            let targetUid: string;
+            if (vol.uid === 0 && typeof vol.uid === 'number') {
+              targetUid = uid; // local user microphone volume
+            } else if (String(vol.uid) === '0') {
+              targetUid = 'aura_agent'; // AURA ConvAI agent audio
+            } else {
+              targetUid = String(vol.uid);
+            }
             levels[targetUid] = Math.round(vol.level);
           });
           setVolumeLevels((prev) => ({ ...prev, ...levels }));
