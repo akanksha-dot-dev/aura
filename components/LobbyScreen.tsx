@@ -1668,25 +1668,49 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
             </div>
           </div>
 
-          {activeScenario.id === 'payment-outage' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <button
               type="button"
               disabled={isConnecting}
               onClick={() => handleJoinPersona(
                 { uid: activeScenario.personas[0].uid, displayName: activeScenario.personas[0].displayName, role: activeScenario.personas[0].role, avatarColor: activeScenario.personas[0].avatarColor },
-                { simulateReplay: true }
+                { simulateReplay: false }
               )}
               className="flightdeck-launch-btn"
+              style={{ background: 'linear-gradient(135deg, #00f0ff 0%, #0070f3 100%)', color: '#040d1a', fontWeight: 700 }}
             >
               <div className="flightdeck-launch-left">
-                <span className="flightdeck-launch-play" aria-hidden="true">▶</span>
+                <span className="flightdeck-launch-play" aria-hidden="true" style={{ fontSize: '14px' }}>🎙</span>
                 <span>
-                  {isConnecting ? 'INITIALIZING SIMULATION...' : 'LAUNCH INCIDENT SIMULATION (RECOMMENDED FOR JUDGES)'}
+                  {isConnecting ? 'CONNECTING TO LIVE BRIDGE...' : 'ENTER LIVE INCIDENT BRIDGE (TALK TO AURA)'}
                 </span>
               </div>
-              <span className="flightdeck-launch-badge">12 EVENTS · SUB-SECOND AGORA VOICE</span>
+              <span className="flightdeck-launch-badge" style={{ background: 'rgba(0, 0, 0, 0.25)', color: '#040d1a', fontWeight: 700 }}>
+                REAL-TIME BIDIRECTIONAL VOICE
+              </span>
             </button>
-          )}
+
+            {activeScenario.id === 'payment-outage' && (
+              <button
+                type="button"
+                disabled={isConnecting}
+                onClick={() => handleJoinPersona(
+                  { uid: activeScenario.personas[0].uid, displayName: activeScenario.personas[0].displayName, role: activeScenario.personas[0].role, avatarColor: activeScenario.personas[0].avatarColor },
+                  { simulateReplay: true }
+                )}
+                className="flightdeck-launch-btn"
+                style={{ background: 'var(--bg-surface-raised)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', padding: '10px 14px' }}
+              >
+                <div className="flightdeck-launch-left">
+                  <span className="flightdeck-launch-play" aria-hidden="true">▶</span>
+                  <span style={{ fontSize: '11px', letterSpacing: '0.04em' }}>
+                    Run Scripted Scenario Simulation (Mock Audio Demo)
+                  </span>
+                </div>
+                <span className="flightdeck-launch-badge" style={{ fontSize: '9px' }}>RECORDED REPLAY</span>
+              </button>
+            )}
+          </div>
         </section>
 
         {/* System Health Diagnostic Checklist */}

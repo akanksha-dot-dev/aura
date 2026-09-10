@@ -135,21 +135,28 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
           }
         });
 
+        const unlockAllAudio = () => {
+          if (clientRef.current) {
+            clientRef.current.remoteUsers.forEach((u) => {
+              if (u.audioTrack && !u.audioTrack.isPlaying) {
+                try {
+                  u.audioTrack.setVolume(100);
+                  u.audioTrack.play();
+                  console.info(`[useAgoraRTC] Audio unblocked on user interaction for: ${u.uid}`);
+                } catch {}
+              }
+            });
+          }
+        };
+        if (typeof window !== 'undefined') {
+          window.addEventListener('click', unlockAllAudio);
+          window.addEventListener('keydown', unlockAllAudio);
+          window.addEventListener('touchstart', unlockAllAudio);
+        }
+
         AgoraRTC.on('autoplay-failed', () => {
           console.info('[useAgoraRTC] Audio autoplay held by browser policy. Click anywhere on page to enable audio.');
-          const unlock = () => {
-            document.removeEventListener('click', unlock);
-            document.removeEventListener('keydown', unlock);
-            if (clientRef.current) {
-              clientRef.current.remoteUsers.forEach((u) => {
-                try {
-                  u.audioTrack?.play();
-                } catch {}
-              });
-            }
-          };
-          document.addEventListener('click', unlock, { once: true });
-          document.addEventListener('keydown', unlock, { once: true });
+          unlockAllAudio();
         });
 
         client.on('user-published', async (user, mediaType) => {
@@ -157,10 +164,14 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
             try {
               await client.subscribe(user, 'audio');
               if (!isMountedRef.current) return;
-              try {
-                user.audioTrack?.play();
-              } catch (playErr) {
-                console.warn('[useAgoraRTC] Audio track play waiting for user gesture:', playErr);
+              if (user.audioTrack) {
+                try {
+                  user.audioTrack.setVolume(100);
+                  user.audioTrack.play();
+                  console.info(`[useAgoraRTC] Audio track playing for remote user: ${user.uid}`);
+                } catch (playErr) {
+                  console.warn('[useAgoraRTC] Audio track play waiting for user gesture:', playErr);
+                }
               }
               setRemoteUsers((prev) => {
                 if (prev.some((u) => u.uid === user.uid)) return prev;
