@@ -37,6 +37,8 @@ interface DbIncidentRow {
   cost_accrued: number | null;
   cognitive_load_score: number | null;
   ooda_phase: string | null;
+  created_at: number;
+  updated_at: number;
 }
 
 export async function GET(request: Request) {
@@ -51,7 +53,8 @@ export async function GET(request: Request) {
     const cutoff = Date.now() - windowDays * 24 * 60 * 60 * 1000;
     const incidents = db.prepare(`
       SELECT id, title, severity, status, channel_name, opened_at, resolved_at,
-             affected_services, incident_commander_uid, cost_accrued, cognitive_load_score, ooda_phase
+             affected_services, incident_commander_uid, cost_accrued, cognitive_load_score, ooda_phase,
+             created_at, updated_at
       FROM incidents
       WHERE opened_at > ?
       ORDER BY opened_at DESC
@@ -61,7 +64,8 @@ export async function GET(request: Request) {
     // All-time for pattern detection
     const allIncidents = db.prepare(`
       SELECT id, title, severity, status, channel_name, opened_at, resolved_at,
-             affected_services, incident_commander_uid, cost_accrued, cognitive_load_score, ooda_phase
+             affected_services, incident_commander_uid, cost_accrued, cognitive_load_score, ooda_phase,
+             created_at, updated_at
       FROM incidents
       ORDER BY opened_at DESC
       LIMIT 1000
