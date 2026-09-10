@@ -325,24 +325,41 @@ export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
                   <line x1="12" y1="19" x2="12" y2="22" />
                 </svg>
               </div>
-              <p className="timeline-feed__empty-title">Awaiting incident telemetry</p>
+              <p className="timeline-feed__empty-title">Awaiting Incident Telemetry</p>
               <p className="timeline-feed__empty-sub">
-                AURA is listening. Speak into the bridge to begin epistemic classification and action extraction.
+                AURA is live on the bridge and listening to your voice. Speak into your microphone to discuss hypotheses, query metrics, or declare actions.
               </p>
-              <button
-                type="button"
-                className="timeline-feed__start-replay-btn"
-                onClick={() => {
-                  router.push('/?persona=sarah_chen&channel=incident-sev1-checkout&__AURA_REPLAY_MOCK_STREAM=true&speed=1.5');
-                  router.refresh();
-                }}
-                title="Start demo incident replay simulation"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
-                  <polygon points="5 3 19 12 5 21 5 3" />
-                </svg>
-                <span>Launch Demo Simulation</span>
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', marginTop: '12px' }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  background: 'rgba(0, 240, 255, 0.08)',
+                  border: '1px solid rgba(0, 240, 255, 0.25)',
+                  borderRadius: 'var(--radius-full)',
+                  fontSize: '11px',
+                  color: 'var(--color-aura)',
+                  fontFamily: 'var(--font-mono)'
+                }}>
+                  <span>🎙 Try saying: &quot;AURA, what is our active incident status?&quot;</span>
+                </div>
+                <button
+                  type="button"
+                  className="timeline-feed__start-replay-btn"
+                  onClick={() => {
+                    router.push('/?persona=sarah_chen&channel=incident-sev1-checkout&__AURA_REPLAY_MOCK_STREAM=true&speed=1.5');
+                    router.refresh();
+                  }}
+                  style={{ opacity: 0.6, fontSize: '10px', marginTop: '4px' }}
+                  title="Switch to scripted demo replay"
+                >
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
+                    <polygon points="5 3 19 12 5 21 5 3" />
+                  </svg>
+                  <span>Or switch to Scripted Demo Replay</span>
+                </button>
+              </div>
             </div>
           ) : filteredItems.length === 0 ? (
             <div className="timeline-feed__no-match">
