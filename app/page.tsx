@@ -507,7 +507,15 @@ function DashboardContent() {
           return;
         }
         const data = await res.json();
-        if (isMounted && data?.agentId) {
+        if (!isMounted && data?.agentId) {
+          fetch('/api/agent/stop', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ agentId: data.agentId }),
+          }).catch(() => {});
+          return;
+        }
+        if (data?.agentId) {
           activeAgentIdRef.current = data.agentId;
           console.info('[Dashboard] AURA agent active in channel:', data.agentId);
         }
