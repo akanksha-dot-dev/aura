@@ -806,6 +806,53 @@ function DashboardContent() {
         isActionsCollapsed ? 'actions-collapsed' : ''
       }`}
     >
+      {/* Simulation Replay Banner with 1-click switch to Live Real-Time Voice */}
+      {isMockReplay && (
+        <div
+          style={{
+            background: 'linear-gradient(90deg, rgba(255, 170, 0, 0.18) 0%, rgba(255, 110, 0, 0.14) 100%)',
+            borderBottom: '1px solid rgba(255, 170, 0, 0.4)',
+            color: '#ffbe3b',
+            padding: '8px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: '12px',
+            fontWeight: 500,
+            zIndex: 999,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '14px' }}>⚠</span>
+            <span>
+              <strong>SCRIPTED SIMULATION REPLAY MODE:</strong> You are currently playing an automated script demo. Real-time microphone input is paused.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const params = new URLSearchParams(window.location.search);
+              params.delete('__AURA_REPLAY_MOCK_STREAM');
+              params.delete('speed');
+              window.location.href = `/?${params.toString()}`;
+            }}
+            style={{
+              background: 'linear-gradient(135deg, #00f0ff 0%, #0070f3 100%)',
+              color: '#000',
+              border: 'none',
+              borderRadius: '4px',
+              padding: '5px 14px',
+              fontWeight: 700,
+              fontSize: '11px',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            🎙 SWITCH TO REAL-TIME VOICE BRIDGE →
+          </button>
+        </div>
+      )}
+
       {/* 1. Status Bar */}
       <StatusBar
         incidentTitle={state.title}
