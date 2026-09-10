@@ -1,8 +1,12 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { RTMDashboardEvent, EvidenceItem } from '@/lib/types';
+import type { RTMDashboardEvent, EvidenceItem, IncidentState } from '@/lib/types';
 import { PERSONAS } from '@/lib/constants';
+import {
+  processTranscriptForConversation,
+  getConversationManager,
+} from '@/lib/auraConversationManager';
 
 export interface RTMTranscriptEntry {
   id: string;
@@ -88,6 +92,16 @@ const processedEpistemicKeys = new Set<string>();
 let activeAgentTurnId: string | null = null;
 let activeUserTurnId: string | null = null;
 
+/**
+ * Module-level ref to current IncidentState.
+ * page.tsx should call setRtmIncidentState(state) on every render
+ * so the conversation manager always has live incident context.
+ */
+let _rtmIncidentState: IncidentState | null = null;
+export function setRtmIncidentState(state: IncidentState): void {
+  _rtmIncidentState = state;
+}
+
 function dispatchTranscriptToSubscribers(entry: RTMTranscriptEntry) {
   activeTranscriptSubscribers.forEach((handler) => {
     try {
@@ -96,6 +110,33 @@ function dispatchTranscriptToSubscribers(entry: RTMTranscriptEntry) {
       console.warn('[useAgoraRTM] Transcript subscriber error:', err);
     }
   });
+
+  // ── Conversation Manager Integration ────────────────────────────────────────
+  // Fire conversation manager for final, human-spoken transcripts
+  // so AURA can respond to filler words, discoveries, frustration, etc.
+  if (
+    entry.isFinal &&
+    entry.speakerName !== 'AURA' &&
+    entry.text.trim().length > 0 &&
+    _rtmIncidentState
+  ) {
+    const state = _rtmIncidentState;
+    const speakerUid = entry.id.split('-')[2] || entry.speakerName;
+
+    // Async: process through conversation manager and speak if needed
+    processTranscriptForConversation(speakerUid, entry.speakerName, entry.text, state)
+      .then((response) => {
+        if (response.shouldSpeak && response.text) {
+          const manager = getConversationManager();
+          manager.speak(response).catch((err) => {
+            console.warn('[RTM] Conversation manager speak error:', err);
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn('[RTM] Conversation manager processing error:', err);
+      });
+  }
 }
 
 // Deduplication cache shared across session

@@ -2,7 +2,7 @@
 import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAgoraRTC } from '@/hooks/useAgoraRTC';
-import { useAgoraRTM } from '@/hooks/useAgoraRTM';
+import { useAgoraRTM, setRtmIncidentState } from '@/hooks/useAgoraRTM';
 import { useIncidentState } from '@/hooks/useIncidentState';
 import { Participant, TopologyNode, TopologyEdge } from '@/lib/types';
 import { startMockReplay } from '@/lib/mockReplay';
@@ -174,6 +174,8 @@ function DashboardContent() {
 
   // Keep incidentStatusRef in sync so keyboard shortcut handler can safely read it
   incidentStatusRef.current = state.status;
+  // Keep RTM conversation manager context current
+  setRtmIncidentState(state);
 
   // Auto-open postmortem modal 2 seconds after resolution + play resolution chime
   const prevStatusRef = useRef(state.status);
