@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { RtcTokenBuilder, RtcRole } from 'agora-token';
 import { getIncidentState, buildDynamicContext, initializeLiveIncident } from '@/lib/incidentStore';
 import { PRESET_SCENARIOS } from '@/lib/scenarios';
@@ -332,7 +332,6 @@ function buildLlmConfig(
     style: 'openai',
     url: 'https://api.openai.com/v1/chat/completions',
     params: { model: 'gpt-4o-mini', temperature: 0.12, max_tokens: 512 },
-  };
   };
 }
 
