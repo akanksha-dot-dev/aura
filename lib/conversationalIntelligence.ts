@@ -21,7 +21,9 @@ export type FillerCategory =
   | 'urgency'
   | 'negation'
   | 'acknowledgment'
-  | 'frustration';
+  | 'frustration'
+  | 'long_monologue'
+  | 'multi_speaker_confusion';
 
 export interface FillerDetection {
   category: FillerCategory;
