@@ -1741,22 +1741,23 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
                 <button
                   type="button"
                   role="radio"
-                  aria-checked={demoMode === 'simulation'}
-                  className={`flightdeck-mode-btn ${demoMode === 'simulation' ? 'flightdeck-mode-btn--active' : ''}`}
-                  onClick={() => setDemoMode('simulation')}
-                  title="Streams realistic 12-event multi-responder incident timeline with voice transcripts and postmortem"
+                  aria-checked={demoMode === 'live'}
+                  className={`flightdeck-mode-btn ${demoMode === 'live' ? 'flightdeck-mode-btn--active flightdeck-mode-btn--live' : ''}`}
+                  onClick={() => setDemoMode('live')}
+                  title="Connects to Agora RTC channel for live microphone streaming — speak in real-time with AURA"
                 >
-                  <span>⚡ Interactive Simulation</span>
+                  <span>🎙 Live Microphone</span>
+                  {demoMode === 'live' && <span className="flightdeck-live-dot">● LIVE</span>}
                 </button>
                 <button
                   type="button"
                   role="radio"
-                  aria-checked={demoMode === 'live'}
-                  className={`flightdeck-mode-btn ${demoMode === 'live' ? 'flightdeck-mode-btn--active' : ''}`}
-                  onClick={() => setDemoMode('live')}
-                  title="Connects to Agora RTC channel for live microphone streaming"
+                  aria-checked={demoMode === 'simulation'}
+                  className={`flightdeck-mode-btn ${demoMode === 'simulation' ? 'flightdeck-mode-btn--active' : ''}`}
+                  onClick={() => setDemoMode('simulation')}
+                  title="Streams a pre-recorded 12-event incident simulation — no microphone needed"
                 >
-                  <span>🎙 Live Microphone</span>
+                  <span>⚡ Demo Simulation</span>
                 </button>
               </div>
             </div>
