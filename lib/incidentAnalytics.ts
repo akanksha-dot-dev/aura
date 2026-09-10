@@ -466,7 +466,7 @@ export function generateComputedInsights(
         action: `Schedule a reliability review for ${service}`,
         incidentIds: recent
           .filter(i => {
-            try { return (JSON.parse(i.affected_services) as string[]).includes(service); } catch { return false; }
+            try { return (JSON.parse(i.affected_services ?? '[]') as string[]).includes(service); } catch { return false; }
           })
           .slice(0, 5)
           .map(i => i.id),
