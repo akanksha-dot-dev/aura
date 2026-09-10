@@ -440,14 +440,14 @@ export function VoiceCancellationControl({
                 label="Suppress keyboard typing"
                 checked={suppressKeyboard}
                 onChange={(v) => onToggle('suppressKeyboard', v)}
-                disabled={level === 'off'}
+                disabled={false}
               />
               <ToggleRow
                 id="vc-toggle-chatter"
                 label="Suppress background chatter"
                 checked={suppressChatter}
                 onChange={(v) => onToggle('suppressChatter', v)}
-                disabled={level === 'off'}
+                disabled={false}
               />
               <ToggleRow
                 id="vc-toggle-echo"
