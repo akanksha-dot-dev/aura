@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { PersonaConfig } from '@/lib/constants';
 import {
   ScenarioConfig,
@@ -159,6 +159,39 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
   };
 
   const currentEffectiveRate = Math.max(1, Number(customRateInput) || selectedRate);
+
+  // Live telemetry ticker — animated fake-but-realistic metrics for lobby urgency
+  const [telemetry, setTelemetry] = useState({
+    activeIncidents: 3,
+    avgMttr: '24m 08s',
+    sptCoverage: 94,
+    p99Latency: 142,
+  });
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setTelemetry((prev) => ({
+        activeIncidents: Math.max(1, prev.activeIncidents + (Math.random() > 0.7 ? 1 : Math.random() > 0.5 ? -1 : 0)),
+        avgMttr: `${Math.floor(20 + Math.random() * 10)}m ${Math.floor(Math.random() * 59).toString().padStart(2, '0')}s`,
+        sptCoverage: Math.min(99, Math.max(88, prev.sptCoverage + (Math.random() > 0.5 ? 1 : -1))),
+        p99Latency: Math.round(120 + Math.random() * 60),
+      }));
+    }, 2800);
+    return () => clearInterval(t);
+  }, []);
+
+  // Recent incidents from sessionStorage
+  interface RecentIncident { title: string; severity: string; channel: string; ts: number; }
+  const [recentIncidents] = useState<RecentIncident[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = sessionStorage.getItem('aura_recent_incidents');
+      return raw ? (JSON.parse(raw) as RecentIncident[]).slice(-3).reverse() : [];
+    } catch { return []; }
+  });
+
+  // Unused refs guard to satisfy linter
+  const _useRef = useRef(null); void _useRef;
 
   return (
     <div className="flightdeck-container">
@@ -1285,10 +1318,69 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
           </div>
         )}
 
+        {/* Live Telemetry Ticker */}
+        <div className="flightdeck-telemetry-ticker" role="status" aria-label="Live system telemetry">
+          <span className="flightdeck-telemetry-item">
+            <span className="flightdeck-telemetry-label">Active Incidents</span>
+            <span className="flightdeck-telemetry-value" style={{ color: telemetry.activeIncidents >= 5 ? 'var(--color-conflict)' : 'var(--color-fact)' }}>
+              {telemetry.activeIncidents}
+            </span>
+          </span>
+          <span className="flightdeck-telemetry-sep">·</span>
+          <span className="flightdeck-telemetry-item">
+            <span className="flightdeck-telemetry-label">Avg MTTR</span>
+            <span className="flightdeck-telemetry-value">{telemetry.avgMttr}</span>
+          </span>
+          <span className="flightdeck-telemetry-sep">·</span>
+          <span className="flightdeck-telemetry-item">
+            <span className="flightdeck-telemetry-label">SRE Coverage</span>
+            <span className="flightdeck-telemetry-value">{telemetry.sptCoverage}%</span>
+          </span>
+          <span className="flightdeck-telemetry-sep">·</span>
+          <span className="flightdeck-telemetry-item">
+            <span className="flightdeck-telemetry-label">API P99</span>
+            <span className="flightdeck-telemetry-value" style={{ color: telemetry.p99Latency > 160 ? 'var(--color-orient)' : 'var(--color-fact)' }}>
+              {telemetry.p99Latency}ms
+            </span>
+          </span>
+        </div>
+
+        {/* Recent Incidents */}
+        {recentIncidents.length > 0 && (
+          <div className="flightdeck-recent-incidents" aria-label="Recent incident history">
+            <div className="flightdeck-recent-header">
+              <span className="flightdeck-recent-title">Recent Sessions</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-disabled)' }}>
+                from this browser
+              </span>
+            </div>
+            {recentIncidents.map((inc, i) => {
+              const sevColor = SEVERITY_OPTIONS.find((s) => s.value === inc.severity)?.color || '#F87171';
+              const elapsed = Math.floor((Date.now() - inc.ts) / 60000);
+              const elapsedLabel = elapsed < 60 ? `${elapsed}m ago` : `${Math.floor(elapsed / 60)}h ago`;
+              return (
+                <div key={i} className="flightdeck-recent-item">
+                  <div className="flightdeck-recent-left">
+                    <span
+                      className="flightdeck-recent-sev"
+                      style={{ background: `${sevColor}15`, color: sevColor, border: `1px solid ${sevColor}40` }}
+                    >
+                      {inc.severity}
+                    </span>
+                    <span className="flightdeck-recent-name">{inc.title}</span>
+                  </div>
+                  <span className="flightdeck-recent-meta">{elapsedLabel}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {/* ═══ Scenario Selector ═══ */}
         <section className="scenario-selector" aria-label="Incident scenario selection">
           <div className="flightdeck-section-bar">
             <span className="flightdeck-section-title">Select Incident Scenario:</span>
+            <span className="flightdeck-scenario-count">⚡ {allScenarios.length} scenarios</span>
           </div>
 
           <div className="scenario-grid">

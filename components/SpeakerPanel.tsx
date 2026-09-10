@@ -1,12 +1,71 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Participant } from '@/lib/types';
 import { VoiceBadge } from './VoiceBadge';
 import { SilenceCounter } from './SilenceCounter';
 import { CognitiveLoadMeter } from './CognitiveLoadMeter';
 import { TempoIndicator } from './TempoIndicator';
 import { useVoiceWaveform } from '@/hooks/useVoiceWaveform';
+
+/** Animated SVG neural ring drawn around the AURA avatar when speaking */
+function AuraNeuralRing({ isSpeaking, radius = 20 }: { isSpeaking: boolean; radius?: number }) {
+  const circumference = 2 * Math.PI * radius;
+  return (
+    <span className="aura-speaking-ring" aria-hidden="true">
+      <svg
+        className="aura-speaking-ring__svg"
+        viewBox={`0 0 ${(radius + 6) * 2} ${(radius + 6) * 2}`}
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <circle
+          className="aura-speaking-ring__track"
+          cx={radius + 6}
+          cy={radius + 6}
+          r={radius}
+        />
+        <circle
+          className={`aura-speaking-ring__arc${isSpeaking ? ' aura-speaking-ring__arc--active' : ''}`}
+          cx={radius + 6}
+          cy={radius + 6}
+          r={radius}
+          strokeDasharray={circumference}
+          strokeDashoffset={isSpeaking ? undefined : circumference}
+        />
+      </svg>
+    </span>
+  );
+}
+
+/** Animated three-dot processing indicator */
+function AuraProcessingIndicator() {
+  return (
+    <span className="aura-processing-indicator" aria-label="AURA is analyzing">
+      <span className="aura-processing-dot" />
+      <span className="aura-processing-dot" />
+      <span className="aura-processing-dot" />
+      <span style={{ marginLeft: 3 }}>Analyzing</span>
+    </span>
+  );
+}
+
+/** Relative time e.g. "5s ago", "2m ago" */
+function useRelativeTime(timestamp: number) {
+  const [label, setLabel] = useState('');
+  useEffect(() => {
+    const update = () => {
+      const diff = Math.floor((Date.now() - timestamp) / 1000);
+      if (diff < 5) setLabel('just now');
+      else if (diff < 60) setLabel(`${diff}s ago`);
+      else setLabel(`${Math.floor(diff / 60)}m ago`);
+    };
+    update();
+    const t = setInterval(update, 1000);
+    return () => clearInterval(t);
+  }, [timestamp]);
+  return label;
+}
 
 export interface SpeakerPanelProps {
   participants: Record<string, Participant>;
@@ -586,63 +645,13 @@ export function SpeakerPanel({
             )}
 
             {/* AURA Agent Row (Always Present) */}
-            <div
-              className={`speaker-row speaker-row--aura ${collapsed ? 'speaker-row--collapsed' : ''}`}
-              title={collapsed ? "AURA (AI Incident Commander)" : undefined}
-            >
-              <div className="speaker-row__header">
-                <div className="speaker-row__meta">
-                  <div
-                    className={`speaker-row__avatar-wrap ${
-                      agentIsSpeaking ? 'speaker-row__avatar-wrap--speaking' : ''
-                    }`}
-                  >
-                    <VoiceBadge
-                      displayName="AURA"
-                      avatarColor="var(--color-aura)"
-                      isSpeaking={agentIsSpeaking}
-                    />
-                  </div>
-                  {!collapsed && (
-                    <div className="speaker-row__info">
-                      <div className="speaker-row__name-row">
-                        <span
-                          className="speaker-row__name"
-                          style={{ color: 'var(--color-aura)' }}
-                        >
-                          AURA
-                        </span>
-                        <span className="speaker-row__ic-badge" style={{ borderColor: 'var(--color-aura)' }}>
-                          AI
-                        </span>
-                      </div>
-                      <span className="speaker-row__role-tag speaker-row__role-tag--aura">
-                        AI Incident Commander
-                      </span>
-                    </div>
-                  )}
-                </div>
-                {!collapsed && (
-                  <SilenceCounter
-                    agentLastSpokeAt={agentLastSpokeAt}
-                    agentIsSpeaking={agentIsSpeaking}
-                  />
-                )}
-              </div>
-
-              {/* Golden Voice Waveform */}
-              {!collapsed && (
-                <div className="speaker-row__waveform-wrap">
-                  <canvas
-                    ref={waveformCanvasRef}
-                    className="speaker-row__waveform"
-                    width={210}
-                    height={24}
-                    aria-label="AURA voice activity waveform"
-                  />
-                </div>
-              )}
-            </div>
+            <AuraAgentRow
+              agentUid={agentUid}
+              agentIsSpeaking={agentIsSpeaking}
+              agentLastSpokeAt={agentLastSpokeAt}
+              collapsed={collapsed}
+              waveformCanvasRef={waveformCanvasRef}
+            />
           </div>
         </div>
 
@@ -672,5 +681,95 @@ export function SpeakerPanel({
         )}
       </aside>
     </>
+  );
+}
+
+/** AURA Agent row with neural ring, processing indicator, and relative time */
+function AuraAgentRow({
+  agentIsSpeaking,
+  agentLastSpokeAt,
+  collapsed,
+  waveformCanvasRef,
+}: {
+  agentUid: string;
+  agentIsSpeaking: boolean;
+  agentLastSpokeAt: number;
+  collapsed: boolean;
+  waveformCanvasRef: React.RefObject<HTMLCanvasElement | null>;
+}) {
+  const relativeTime = useRelativeTime(agentLastSpokeAt);
+  const isActive = agentIsSpeaking;
+  const isProcessing = !agentIsSpeaking && agentLastSpokeAt > 0 && (Date.now() - agentLastSpokeAt) < 4000;
+
+  return (
+    <div
+      className={`speaker-row speaker-row--aura ${collapsed ? 'speaker-row--collapsed' : ''}`}
+      title={collapsed ? 'AURA (AI Incident Commander)' : undefined}
+    >
+      <div className="speaker-row__header">
+        <div className="speaker-row__meta">
+          {/* Avatar with neural ring overlay */}
+          <div
+            style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+          >
+            {isActive && <AuraNeuralRing isSpeaking={isActive} radius={18} />}
+            <VoiceBadge
+              displayName="AURA"
+              avatarColor="var(--color-aura)"
+              isSpeaking={isActive}
+            />
+          </div>
+          {!collapsed && (
+            <div className="speaker-row__info">
+              <div className="speaker-row__name-row">
+                <span className="speaker-row__name" style={{ color: 'var(--color-aura)' }}>AURA</span>
+                <span className="speaker-row__ic-badge" style={{ borderColor: 'var(--color-aura)' }}>AI</span>
+                {isActive && (
+                  <span style={{
+                    marginLeft: 4,
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 9,
+                    fontWeight: 700,
+                    color: 'var(--color-aura)',
+                    letterSpacing: '0.05em',
+                    textTransform: 'uppercase',
+                    animation: 'aura-neural-pulse 1.5s ease-in-out infinite',
+                  }}>
+                    ● LIVE
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
+                {isProcessing ? (
+                  <AuraProcessingIndicator />
+                ) : (
+                  <span className="speaker-row__role-tag speaker-row__role-tag--aura">
+                    AI Incident Commander
+                  </span>
+                )}
+                {!isActive && agentLastSpokeAt > 0 && (
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-disabled)', flexShrink: 0 }}>
+                    {relativeTime}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Golden Voice Waveform */}
+      {!collapsed && (
+        <div className="speaker-row__waveform-wrap">
+          <canvas
+            ref={waveformCanvasRef}
+            className="speaker-row__waveform"
+            width={210}
+            height={24}
+            aria-label="AURA voice activity waveform"
+          />
+        </div>
+      )}
+    </div>
   );
 }

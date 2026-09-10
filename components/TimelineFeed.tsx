@@ -15,7 +15,9 @@ type TimelineFilter = 'all' | ClassificationType;
 export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
   const router = useRouter();
   const feedRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const [filter, setFilter] = useState<TimelineFilter>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const el = feedRef.current;
@@ -42,9 +44,14 @@ export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
     { id: 'hypothesis', label: 'Hypotheses', dotColor: 'var(--color-hypothesis)', count: counts.hypothesis },
   ];
 
-  const filteredItems = evidenceItems.filter(
-    (item) => filter === 'all' || item.category === filter
-  );
+  const filteredItems = evidenceItems.filter((item) => {
+    const matchesCategory = filter === 'all' || item.category === filter;
+    const q = searchQuery.trim().toLowerCase();
+    const matchesSearch = !q || item.content.toLowerCase().includes(q) || (item.speakerName ?? '').toLowerCase().includes(q);
+    return matchesCategory && matchesSearch;
+  });
+
+  const hasSearch = searchQuery.trim().length > 0;
 
   return (
     <>
@@ -253,6 +260,54 @@ export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
                 <span className="timeline-filter-pill__count">{tab.count}</span>
               </button>
             ))}
+          </div>
+        )}
+
+        {/* Search Bar (visible when there are items) */}
+        {evidenceItems.length > 0 && (
+          <div className="timeline-search-bar" role="search">
+            <div className="timeline-search-wrap">
+              <svg
+                className="timeline-search-icon"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input
+                ref={searchRef}
+                id="timeline-search"
+                type="search"
+                className="timeline-search-input"
+                placeholder="Search evidence, speakers…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                aria-label="Search timeline evidence"
+              />
+            </div>
+            {hasSearch && (
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', flexShrink: 0 }}>
+                {filteredItems.length} / {evidenceItems.length}
+              </span>
+            )}
+            {hasSearch && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 11, padding: '0 4px', flexShrink: 0 }}
+                aria-label="Clear search"
+              >
+                ✕
+              </button>
+            )}
           </div>
         )}
 

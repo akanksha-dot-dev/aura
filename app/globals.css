@@ -3616,3 +3616,827 @@ input, textarea, select {
 .wrs-footer-text { font-size: var(--text-xs); color: var(--text-disabled); }
 .wrs-aura-credit { display: flex; align-items: center; gap: var(--space-1); font-size: var(--text-xs); color: var(--text-muted); }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   AURA Enhancement Pack — Visual Polish & New Components
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ─── Animated Dot-Grid Background for Lobby ─── */
+@keyframes flightdeck-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+@keyframes flightdeck-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes aura-grid-shift {
+  0% { background-position: 0 0; }
+  100% { background-position: 40px 40px; }
+}
+
+@keyframes aura-glow-breathe {
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.08); }
+}
+
+@keyframes aura-scan-line {
+  0% { transform: translateY(-100%); opacity: 0; }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.4; }
+  100% { transform: translateY(200vh); opacity: 0; }
+}
+
+@keyframes aura-neural-ring {
+  0% { stroke-dashoffset: 251; opacity: 0.6; }
+  50% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: -251; opacity: 0.6; }
+}
+
+@keyframes aura-neural-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4), 0 0 0 0 rgba(245, 158, 11, 0.2); }
+  50% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.0), 0 0 24px 4px rgba(245, 158, 11, 0.25); }
+}
+
+@keyframes aura-processing-dots {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes evidence-slide-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes signal-bar-grow {
+  from { transform: scaleY(0.2); opacity: 0.2; }
+  to { transform: scaleY(1); opacity: 1; }
+}
+
+/* ─── Lobby Animated Dot-Grid Background ─── */
+.flightdeck-container::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: radial-gradient(circle, rgba(245, 158, 11, 0.08) 1px, transparent 1px);
+  background-size: 32px 32px;
+  animation: aura-grid-shift 8s linear infinite;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 30%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 30%, transparent 100%);
+}
+
+/* Ambient glow orb behind the hero title */
+.flightdeck-hero-glow {
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 300px;
+  background: radial-gradient(ellipse, rgba(245, 158, 11, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+  animation: aura-glow-breathe 4s ease-in-out infinite;
+}
+
+/* ─── Enhanced Lobby Brand Typography ─── */
+.flightdeck-brand-title {
+  background: linear-gradient(135deg, #F4F4F6 0%, var(--color-aura) 60%, #F4F4F6 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: aura-text-shimmer 4s linear infinite;
+}
+
+@keyframes aura-text-shimmer {
+  0% { background-position: 0% center; }
+  50% { background-position: 100% center; }
+  100% { background-position: 0% center; }
+}
+
+/* ─── AURA Agent Neural Speaking Ring (SpeakerPanel) ─── */
+.aura-speaking-ring {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.aura-speaking-ring__svg {
+  position: absolute;
+  inset: -6px;
+  width: calc(100% + 12px);
+  height: calc(100% + 12px);
+  pointer-events: none;
+  transform: rotate(-90deg);
+}
+
+.aura-speaking-ring__track {
+  fill: none;
+  stroke: rgba(245, 158, 11, 0.12);
+  stroke-width: 2;
+}
+
+.aura-speaking-ring__arc {
+  fill: none;
+  stroke: var(--color-aura);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 251;
+  stroke-dashoffset: 251;
+  transition: stroke-dashoffset 0.3s ease;
+}
+
+.aura-speaking-ring__arc--active {
+  animation: aura-neural-ring 2s ease-in-out infinite;
+}
+
+.aura-agent-avatar--speaking {
+  animation: aura-neural-pulse 1.8s ease-in-out infinite;
+}
+
+/* ─── AURA Processing Indicator ─── */
+.aura-processing-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--color-aura);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.aura-processing-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--color-aura);
+}
+
+.aura-processing-dot:nth-child(1) { animation: aura-processing-dots 1.2s ease-in-out infinite 0s; }
+.aura-processing-dot:nth-child(2) { animation: aura-processing-dots 1.2s ease-in-out infinite 0.2s; }
+.aura-processing-dot:nth-child(3) { animation: aura-processing-dots 1.2s ease-in-out infinite 0.4s; }
+
+/* ─── Enhanced Network Quality Signal Bars ─── */
+.signal-bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+}
+
+.signal-bar {
+  width: 3px;
+  border-radius: 1px;
+  background: var(--border-emphasis);
+  transform-origin: bottom;
+  transition: background 0.3s ease, transform 0.4s ease;
+}
+
+.signal-bar:nth-child(1) { height: 4px; }
+.signal-bar:nth-child(2) { height: 7px; }
+.signal-bar:nth-child(3) { height: 11px; }
+.signal-bar:nth-child(4) { height: 14px; }
+
+.signal-bar--active {
+  animation: signal-bar-grow 0.4s var(--ease-arrive) both;
+}
+
+.signal-bars--excellent .signal-bar--active { background: var(--color-fact); }
+.signal-bars--good .signal-bar--active { background: var(--color-hypothesis); }
+.signal-bars--poor .signal-bar--active { background: var(--color-conflict); }
+
+/* ─── AURA Agent Status Pill in StatusBar ─── */
+.aura-agent-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  border: 1px solid;
+  transition: all var(--duration-normal) var(--ease-standard);
+}
+
+.aura-agent-status--online {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.25);
+  color: var(--color-aura);
+}
+
+.aura-agent-status--speaking {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.5);
+  color: var(--color-aura);
+  animation: aura-neural-pulse 1.5s ease-in-out infinite;
+}
+
+.aura-agent-status--processing {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.25);
+  color: var(--color-decision);
+}
+
+.aura-agent-status--offline {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--border-hairline);
+  color: var(--text-disabled);
+}
+
+.aura-status-pip {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.aura-agent-status--online .aura-status-pip {
+  background: var(--color-aura);
+  box-shadow: 0 0 4px var(--color-aura);
+  animation: flightdeck-pulse 2s ease-in-out infinite;
+}
+
+.aura-agent-status--speaking .aura-status-pip {
+  background: var(--color-aura);
+  box-shadow: 0 0 8px var(--color-aura);
+  animation: flightdeck-pulse 0.8s ease-in-out infinite;
+}
+
+.aura-agent-status--processing .aura-status-pip {
+  background: var(--color-decision);
+  animation: aura-processing-dots 1.2s ease-in-out infinite;
+}
+
+/* ─── Timeline Search & Filter Bar ─── */
+.timeline-search-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.timeline-search-input {
+  flex: 1;
+  height: 28px;
+  background: var(--bg-surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-2) 0 28px;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  outline: none;
+  transition: border-color var(--duration-fast), background var(--duration-fast);
+}
+
+.timeline-search-input::placeholder {
+  color: var(--text-disabled);
+}
+
+.timeline-search-input:focus {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: var(--bg-surface-hover);
+}
+
+.timeline-search-icon {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.timeline-search-wrap {
+  position: relative;
+  flex: 1;
+}
+
+.timeline-filter-chips {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.timeline-filter-chip {
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface-raised);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all var(--duration-fast) var(--ease-standard);
+  white-space: nowrap;
+}
+
+.timeline-filter-chip:hover {
+  border-color: var(--border-emphasis);
+  color: var(--text-primary);
+}
+
+.timeline-filter-chip--active-fact {
+  background: var(--color-fact-dim);
+  border-color: var(--color-fact-border);
+  color: var(--color-fact);
+}
+.timeline-filter-chip--active-hypothesis {
+  background: var(--color-hypothesis-dim);
+  border-color: var(--color-hypothesis-border);
+  color: var(--color-hypothesis);
+}
+.timeline-filter-chip--active-decision {
+  background: var(--color-decision-dim);
+  border-color: var(--color-decision-border);
+  color: var(--color-decision);
+}
+.timeline-filter-chip--active-action {
+  background: var(--color-action-dim);
+  border-color: var(--color-action-border);
+  color: var(--color-action);
+}
+.timeline-filter-chip--active-conflict {
+  background: var(--color-conflict-dim);
+  border-color: var(--color-conflict-border);
+  color: var(--color-conflict);
+}
+
+/* ─── War Room Summary Card ─── */
+.wrsummary-card {
+  position: fixed;
+  bottom: 80px;
+  right: 16px;
+  width: 280px;
+  background: var(--bg-glass-panel);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 0 1px rgba(245,158,11,0.05);
+  z-index: var(--z-overlay);
+  overflow: hidden;
+  animation: card-arrive 0.3s var(--ease-arrive) both;
+}
+
+.wrsummary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  background: rgba(245, 158, 11, 0.06);
+  border-bottom: 1px solid rgba(245,158,11,0.12);
+}
+
+.wrsummary-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.wrsummary-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-sm);
+  background: rgba(245,158,11,0.15);
+  border: 1px solid rgba(245,158,11,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.wrsummary-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-aura);
+}
+
+.wrsummary-dismiss {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-fast);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.wrsummary-dismiss:hover {
+  background: rgba(255,255,255,0.08);
+  color: var(--text-primary);
+}
+
+.wrsummary-body {
+  padding: var(--space-2) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.wrsummary-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-1h);
+}
+
+.wrsummary-metric {
+  background: var(--bg-surface-raised);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1h) var(--space-2);
+  text-align: center;
+}
+
+.wrsummary-metric-value {
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--text-primary);
+  display: block;
+  line-height: 1.2;
+}
+
+.wrsummary-metric-label {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: block;
+  margin-top: 2px;
+}
+
+.wrsummary-insight {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background: rgba(245, 158, 11, 0.05);
+  border: 1px solid rgba(245, 158, 11, 0.1);
+  border-radius: var(--radius-sm);
+}
+
+.wrsummary-insight-icon {
+  font-size: 11px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.wrsummary-insight-text {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  line-height: var(--leading-normal);
+  margin: 0;
+}
+
+.wrsummary-insight-text strong {
+  color: var(--color-aura);
+  font-weight: 600;
+}
+
+/* ─── Promote-to-Decision Button on Timeline Cards ─── */
+.timeline-card__promote-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  background: var(--color-decision-dim);
+  border: 1px solid var(--color-decision-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-decision);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-standard);
+  flex-shrink: 0;
+}
+
+.timeline-card__promote-btn:hover {
+  background: rgba(99, 102, 241, 0.18);
+  border-color: var(--color-decision);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+}
+
+/* ─── Recent Incidents Section in Lobby ─── */
+.flightdeck-recent-incidents {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.flightdeck-recent-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-hairline);
+  background: var(--bg-surface-raised);
+}
+
+.flightdeck-recent-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.flightdeck-recent-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-hairline);
+  gap: 12px;
+  animation: evidence-slide-in var(--duration-normal) var(--ease-arrive) both;
+}
+
+.flightdeck-recent-item:last-child { border-bottom: none; }
+
+.flightdeck-recent-item:hover {
+  background: var(--bg-surface-hover);
+}
+
+.flightdeck-recent-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.flightdeck-recent-sev {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.flightdeck-recent-name {
+  font-size: 12px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.flightdeck-recent-meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.flightdeck-recent-empty {
+  padding: 16px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-disabled);
+  font-family: var(--font-mono);
+}
+
+/* ─── Live Telemetry Ticker for Lobby ─── */
+.flightdeck-telemetry-ticker {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 6px 16px;
+  background: var(--bg-surface-raised);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  position: relative;
+}
+
+.flightdeck-telemetry-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.flightdeck-telemetry-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.flightdeck-telemetry-value {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-fact);
+  font-variant-numeric: tabular-nums;
+}
+
+.flightdeck-telemetry-sep {
+  color: var(--border-emphasis);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+/* ─── Scenario Count Badge Enhancement ─── */
+.flightdeck-scenario-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--color-aura);
+  letter-spacing: 0.05em;
+}
+
+/* ─── SEV-0 Critical Flash for NotificationToast ─── */
+@keyframes sev0-critical-flash {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0), border-color: rgba(244, 63, 94, 0.3); }
+  25% { box-shadow: 0 0 24px 4px rgba(244, 63, 94, 0.35); border-color: rgba(244, 63, 94, 0.8); }
+  75% { box-shadow: 0 0 12px 2px rgba(244, 63, 94, 0.2); border-color: rgba(244, 63, 94, 0.5); }
+}
+
+.toast--sev0-critical {
+  border-left: 3px solid var(--color-conflict) !important;
+  animation: sev0-critical-flash 2s ease-in-out infinite !important;
+}
+
+.toast--sev0-critical .toast__icon {
+  color: var(--color-conflict) !important;
+}
+
+/* ─── Scenario Card Visual Distinction for SEV-0 ─── */
+.flightdeck-scenario-card--sev0 {
+  border-color: rgba(244, 63, 94, 0.25) !important;
+  background: linear-gradient(135deg, var(--bg-surface) 0%, rgba(244, 63, 94, 0.03) 100%) !important;
+}
+
+.flightdeck-scenario-card--sev0:hover {
+  border-color: rgba(244, 63, 94, 0.5) !important;
+}
+
+/* ─── Analytics Dashboard Enhancements ─── */
+.analytics-section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.analytics-section__title {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-aura);
+  border-bottom: 1px solid var(--border-hairline);
+  padding-bottom: var(--space-1);
+}
+
+.analytics-velocity-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 40px;
+  padding: var(--space-1) 0;
+}
+
+.analytics-velocity-bar {
+  flex: 1;
+  border-radius: 2px 2px 0 0;
+  min-height: 3px;
+  background: rgba(245, 158, 11, 0.35);
+  transition: height 0.5s var(--ease-arrive), background 0.3s;
+  position: relative;
+}
+
+.analytics-velocity-bar:hover {
+  background: rgba(245, 158, 11, 0.7);
+}
+
+.analytics-velocity-bar--peak {
+  background: var(--color-aura);
+}
+
+.analytics-speaker-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.analytics-speaker-bar-track {
+  flex: 1;
+  height: 6px;
+  background: var(--bg-surface-raised);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.analytics-speaker-bar-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.8s var(--ease-arrive);
+}
+
+.analytics-speaker-name {
+  width: 60px;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.analytics-speaker-pct {
+  width: 32px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ─── Keyboard Hint HUD improvements ─── */
+.keyboard-hint-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  background: var(--bg-surface-raised);
+  border: 1px solid var(--border-emphasis);
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-muted);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* ─── AURA Scan Line effect for lobby (cinematic detail) ─── */
+.flightdeck-container::after {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(to right, transparent, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.08), transparent);
+  pointer-events: none;
+  z-index: 0;
+  animation: aura-scan-line 12s ease-in-out infinite;
+}
+

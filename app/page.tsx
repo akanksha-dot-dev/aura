@@ -32,6 +32,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { NotificationToastContainer, emitToast } from '@/components/NotificationToast';
 import { ResolveIncidentModal } from '@/components/ResolveIncidentModal';
 import { SimilarIncidentBanner } from '@/components/SimilarIncidentBanner';
+import { WarRoomSummaryCard } from '@/components/WarRoomSummaryCard';
 import {
   playConflictEarcon,
   playActionCompletedEarcon,
@@ -72,6 +73,10 @@ function DashboardContent() {
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isQuickCaptureOpen, setIsQuickCaptureOpen] = useState(false);
   const [isResolveOpen, setIsResolveOpen] = useState(false);
+  const [isWarRoomSummaryDismissed, setIsWarRoomSummaryDismissed] = useState(false);
+
+  // Ref to hold current incident status for keyboard shortcut handler (avoids dependency ordering issues)
+  const incidentStatusRef = useRef<string>('active');
 
   // Global Mission-Control Keyboard Shortcuts (T: Tab, J: Drawer, P: Postmortem, K: Pause Cost, [: Left Sidebar, ]: Right Sidebar, \: Full Focus, ?: Shortcuts, Esc: Close)
   useEffect(() => {
@@ -106,6 +111,15 @@ function DashboardContent() {
         setIsQuickCaptureOpen((prev) => !prev);
       } else if (e.key === 'r' || e.key === 'R') {
         setIsResolveOpen((prev) => !prev);
+      } else if (e.key === 'a' || e.key === 'A') {
+        setMainViewTab((prev) => prev === 'analytics' ? 'timeline' : 'analytics');
+        } else if (e.key === 'g' || e.key === 'G') {
+        // G opens postmortem only when incident is resolved
+        if (incidentStatusRef.current === 'resolved') {
+          setIsPostmortemOpen((prev) => !prev);
+        } else {
+          emitToast({ type: 'info', title: 'Incident not resolved', description: 'Postmortem report is available after the incident is resolved (press R to resolve).' });
+        }
       } else if (e.key === 'Escape') {
         setIsTranscriptDrawerOpen(false);
         setIsPostmortemOpen(false);
@@ -118,6 +132,7 @@ function DashboardContent() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 0. Synchronously resolve scenario config from sessionStorage or URL query params (set by lobby)
@@ -156,6 +171,9 @@ function DashboardContent() {
 
   const { state, processEvent, dispatchStateUpdate, claimIC, updateActionStatus } =
     useIncidentState(scenarioInitialState);
+
+  // Keep incidentStatusRef in sync so keyboard shortcut handler can safely read it
+  incidentStatusRef.current = state.status;
 
   // Auto-open postmortem modal 2 seconds after resolution + play resolution chime
   const prevStatusRef = useRef(state.status);
@@ -1008,6 +1026,14 @@ function DashboardContent() {
           />
         </div>
       </footer>
+      {/* War Room Summary Card — floating at bottom-right after 5 evidence items */}
+      {state.evidenceItems.length >= 5 && !isWarRoomSummaryDismissed && state.status !== 'resolved' && (
+        <WarRoomSummaryCard
+          incident={state}
+          actions={actions}
+          onDismiss={() => setIsWarRoomSummaryDismissed(true)}
+        />
+      )}
 
       {/* 9. SRE Postmortem Report Modal (Star 7) */}
       <PostmortemModal
