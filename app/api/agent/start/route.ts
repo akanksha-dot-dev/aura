@@ -146,18 +146,24 @@ When asked for a comprehensive status update, format it as SBAR (Situation, Back
 - R â€” RECOMMENDATION: Immediate next investigative step or action.
 
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+- S — SITUATION: Active incident name, severity, elapsed time.
+- B — BACKGROUND: Affected services, symptoms observed so far.
+- A — ASSESSMENT: Leading hypothesis with confidence, active conflicts or disproven paths.
+- R — RECOMMENDATION: Immediate next investigative step or action.
+
+═══ 
 GENERAL CONVERSATION RULES
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+═══ 
 - Confidence Cap: Never assign confidence above 85 on any classification.
-- Concise Spoken Output: Spoken replies should average 1â€“3 sentences so the voice bridge remains clear for operators.
+- Concise Spoken Output: Spoken replies should average 1–3 sentences so the voice bridge remains clear for operators.
 - Active Scenario Grounding: You are actively managing the specific incident in the SCENARIO BRIEFING. Never confuse it with other incidents.
 - Natural speech: Use contractions, conversational connectors, and varied sentence openings. Sound like a real person on a call.
 - Off-topic redirection: If asked something completely unrelated to IT engineering, technology, or incident response (e.g. telling jokes or writing poems), politely redirect: "Let's stay focused on the bridge. What's the next data point we need?"`;
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ────────────────────────────────────────────────────────────────────────────────────
 // TTS Configuration Factory
-// Priority: Google Cloud TTS â†’ MiniMax speech-2.6-turbo â†’ Agora managed
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Priority: Google Cloud TTS → MiniMax speech-2.6-turbo → Agora managed
+// ────────────────────────────────────────────────────────────────────────────────────
 
 type TtsConfig = {
   credential_mode?: string;
@@ -170,7 +176,7 @@ function buildTtsConfig(): TtsConfig {
   const googleTtsKey = process.env.GOOGLE_TTS_API_KEY || process.env.GOOGLE_APPLICATION_CREDENTIALS;
   const minimaxKey = process.env.MINIMAX_API_KEY;
 
-  // â”€â”€ Tier 1: Google Cloud TTS (Gradium / Neural2 / Journey voices) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Tier 1: Google Cloud TTS (Gradium / Neural2 / Journey voices) ────
   // Agora ConvAI v2 supports Google Cloud TTS via vendor: 'google'
   // Journey voices are the most human-sounding for incident commander use
   if (googleTtsKey) {
@@ -178,7 +184,7 @@ function buildTtsConfig(): TtsConfig {
       vendor: 'google',
       skip_patterns: [4], // Skip [LOG_FACT: ...], [SILENT], etc.
       params: {
-        // Use Gemini-era Journey voices â€” deepest naturalness, lowest latency
+        // Use Gemini-era Journey voices — deepest naturalness, lowest latency
         // en-US-Journey-F: authoritative female, calm under pressure
         // en-US-Journey-D: deep authoritative male
         // en-US-Neural2-F: fallback if Journey unavailable
@@ -279,58 +285,54 @@ function buildLlmConfig(
   };
 
   // â”€â”€ Tier 1: Gemini 2.0 Flash via AURA proxy â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // Gemini Flash is the fastest frontier LLM for real-time voice â€” < 300ms TTFT
-  const geminiProxyUrl = !isLocalhostRequest
-    ? `${dynamicOrigin}/api/llm/proxy`
-    : rawProxyUrl;
-
-  if (geminiKey && geminiProxyUrl && !geminiProxyUrl.includes('localhost') === false) {
-    // Always route Gemini through our proxy (OpenAI-compatible format)
-    if (geminiProxyUrl || !isLocalhostRequest) {
-      return {
-        ...baseConfig,
-        vendor: 'custom',
-        style: 'openai',
-        url: isLocalhostRequest ? (rawProxyUrl || geminiProxyUrl) : `${dynamicOrigin}/api/llm/proxy`,
-        api_key: process.env.INTERNAL_PROXY_SECRET || '',
-        params: {
-          // Gemini 2.0 Flash: best speed/quality for voice at < 300ms TTFT
-          model: 'gemini-2.0-flash',
-          temperature: 0.12,   // Very low for consistent, predictable incident responses
-          max_tokens: 512,     // Short responses for voice â€” 1-3 sentences max
-        },
-      };
-    }
+  // On localhost: Agora cloud servers cannot reach localhost:3001
+  // Always use Agora Managed OpenAI -- works with zero external proxy
+  if (isLocalhostRequest) {
+    console.info('[AgentStart] Localhost -> Agora Managed OpenAI');
+    return {
+      ...baseConfig,
+      credential_mode: 'managed',
+      vendor: 'openai',
+      style: 'openai',
+      url: 'https://api.openai.com/v1/chat/completions',
+      params: { model: 'gpt-4o-mini', temperature: 0.12, max_tokens: 512 },
+    };
   }
 
-  // â”€â”€ Tier 2: OpenAI GPT-4o-mini via AURA proxy (best if Gemini unavailable) â”€
-  if (hasValidOpenAI && rawProxyUrl) {
+  // Production: route through AURA proxy
+  const proxyUrl = `${dynamicOrigin}/api/llm/proxy`;
+
+  if (geminiKey && !geminiKey.startsWith('your_')) {
     return {
       ...baseConfig,
       vendor: 'custom',
       style: 'openai',
-      url: rawProxyUrl,
+      url: proxyUrl,
       api_key: process.env.INTERNAL_PROXY_SECRET || '',
-      params: {
-        model: 'gpt-4o-mini',
-        temperature: 0.12,
-        max_tokens: 512,
-      },
+      params: { model: 'gemini-2.0-flash', temperature: 0.12, max_tokens: 512 },
     };
   }
 
-  // â”€â”€ Tier 3: Agora Managed OpenAI (zero config, zero keys required) â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  if (hasValidOpenAI) {
+    return {
+      ...baseConfig,
+      vendor: 'custom',
+      style: 'openai',
+      url: proxyUrl,
+      api_key: process.env.INTERNAL_PROXY_SECRET || '',
+      params: { model: 'gpt-4o-mini', temperature: 0.12, max_tokens: 512 },
+    };
+  }
+
+  // Agora Managed OpenAI fallback
   return {
     ...baseConfig,
     credential_mode: 'managed',
     vendor: 'openai',
     style: 'openai',
     url: 'https://api.openai.com/v1/chat/completions',
-    params: {
-      model: 'gpt-4o-mini',
-      temperature: 0.12,
-      max_tokens: 512,
-    },
+    params: { model: 'gpt-4o-mini', temperature: 0.12, max_tokens: 512 },
+  };
   };
 }
 
@@ -687,10 +689,20 @@ export async function POST(request: NextRequest) {
         // â”€â”€ TTS: Google Journey â†’ MiniMax â†’ Agora managed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         tts: buildTtsConfig(),
 
-        // â”€â”€ Natural filler words in AURA's own speech â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        // AURA can say "So...", "Alright..." naturally
+        // Natural filler words in AURA's own speech
+        // Agora ConvAI v2 requires static_config.phrases when enable:true
         filler_words: {
           enable: true,
+          content: {
+            mode: 'static',
+            static_config: {
+              phrases: [
+                'So...', 'Alright...', 'Let me check that.',
+                'One moment.', 'Got it.', 'Okay so...',
+                'Right, so...', "I'm on it.", 'Understood.',
+              ],
+            },
+          },
         },
       },
     };
@@ -756,4 +768,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
