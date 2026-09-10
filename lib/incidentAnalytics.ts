@@ -11,7 +11,23 @@
  * 7. Repeat offender detection with actionable recommendations
  */
 
-import type { DbIncident } from './db';
+// ── Minimal incident shape accepted by this module ───────────────────────────
+// Intentionally looser than DbIncident so callers can pass raw SQLite rows.
+export interface IncidentRecord {
+  id: string;
+  title: string;
+  severity: string;
+  status: string;
+  channel_name?: string;
+  opened_at: number;
+  resolved_at?: number | null;
+  affected_services?: string | null;
+  cost_accrued?: number | null;
+  [key: string]: unknown;
+}
+
+// Re-export for backward compatibility with callers that used DbIncident
+export type { IncidentRecord as DbIncident };
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
