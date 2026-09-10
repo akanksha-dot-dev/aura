@@ -165,6 +165,17 @@ GENERAL CONVERSATION RULES
 // Priority: Google Cloud TTS → MiniMax speech-2.6-turbo → Agora managed
 // ────────────────────────────────────────────────────────────────────────────────────
 
+function isValidKey(key: string | undefined): boolean {
+  if (!key) return false;
+  const trimmed = key.trim();
+  return (
+    trimmed.length > 10 &&
+    !trimmed.startsWith('your_') &&
+    !trimmed.includes('placeholder') &&
+    !trimmed.includes('replace_with')
+  );
+}
+
 type TtsConfig = {
   credential_mode?: string;
   vendor: string;
@@ -172,79 +183,62 @@ type TtsConfig = {
   params: Record<string, unknown>;
 };
 
-function buildTtsConfig(): TtsConfig {
-  const googleTtsKey = process.env.GOOGLE_TTS_API_KEY || process.env.GOOGLE_APPLICATION_CREDENTIALS;
+function buildTtsConfig(): { config: TtsConfig; name: string } {
   const minimaxKey = process.env.MINIMAX_API_KEY;
+  const hasValidMinimax = isValidKey(minimaxKey);
 
-  // ── Tier 1: Google Cloud TTS (Gradium / Neural2 / Journey voices) ────
-  // Agora ConvAI v2 supports Google Cloud TTS via vendor: 'google'
-  // Journey voices are the most human-sounding for incident commander use
-  if (googleTtsKey) {
+  // Tier 1: BYOK MiniMax if user configured a real key
+  if (hasValidMinimax) {
     return {
-      vendor: 'google',
-      skip_patterns: [4], // Skip [LOG_FACT: ...], [SILENT], etc.
-      params: {
-        // Use Gemini-era Journey voices — deepest naturalness, lowest latency
-        // en-US-Journey-F: authoritative female, calm under pressure
-        // en-US-Journey-D: deep authoritative male
-        // en-US-Neural2-F: fallback if Journey unavailable
-        voice_name: 'en-US-Journey-F',
-        language_code: 'en-US',
-        speaking_rate: 0.95,    // Slightly slower = more authoritative, clearer diction
-        pitch: -1.0,            // Slightly lower pitch = more gravitas, less "assistant-y"
-        volume_gain_db: 1.0,    // Marginally louder for clarity over noisy calls
-        effects_profile_id: ['headphone-class-device'], // Optimized EQ for voice calls
-        // Fallback voice chain if Journey unavailable
-        fallback_voice_names: ['en-US-Neural2-F', 'en-US-Wavenet-F', 'en-US-Standard-F'],
+      name: 'minimax-byok',
+      config: {
+        vendor: 'minimax',
+        skip_patterns: [4],
+        params: {
+          url: 'wss://api.minimax.io/ws/v1/t2a_v2',
+          api_key: minimaxKey,
+          model: 'speech-2.6-turbo',
+          voice_setting: {
+            voice_id: 'English_captivating_female1',
+            speed: 0.95,
+            vol: 1.0,
+            pitch: 0,
+          },
+          audio_setting: {
+            sample_rate: 24000,
+            bitrate: 128000,
+            format: 'pcm',
+            channel: 1,
+          },
+        },
       },
     };
   }
 
-  // â”€â”€ Tier 2: MiniMax speech-2.6-turbo (ultra-low latency, ~120ms TTFF) â”€â”€â”€â”€â”€â”€
-  if (minimaxKey) {
-    return {
+  // Default: Agora Managed MiniMax (Zero keys required, ultra-low latency, crystal-clear voice)
+  // Verified with Agora ConvAI v2 REST API: returns 200 RUNNING natively
+  return {
+    name: 'agora-managed-minimax',
+    config: {
+      credential_mode: 'managed',
       vendor: 'minimax',
       skip_patterns: [4],
       params: {
         url: 'wss://api.minimax.io/ws/v1/t2a_v2',
-        api_key: minimaxKey,
         model: 'speech-2.6-turbo',
         voice_setting: {
           voice_id: 'English_captivating_female1',
-          speed: 0.92,
-          vol: 1.0,
-          pitch: 0,
+          speed: 0.95,
         },
-        audio_setting: {
-          sample_rate: 24000,
-          bitrate: 128000,
-          format: 'pcm',
-          channel: 1,
-        },
-      },
-    };
-  }
-
-  // â”€â”€ Tier 3: Agora Managed MiniMax (zero-key fallback) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  return {
-    credential_mode: 'managed',
-    vendor: 'minimax',
-    skip_patterns: [4],
-    params: {
-      url: 'wss://api.minimax.io/ws/v1/t2a_v2',
-      model: 'speech-2.6-turbo',
-      voice_setting: {
-        voice_id: 'English_captivating_female1',
-        speed: 0.92,
       },
     },
   };
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ────────────────────────────────────────────────────────────────────────────────────
 // LLM Configuration Factory
-// Priority: Gemini 2.0 Flash (via proxy) â†’ GPT-4o-mini (via proxy) â†’ Agora managed
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Priority: Gemini 2.0 Flash (via proxy) → GPT-4o-mini (via proxy) → Agora managed
+// ────────────────────────────────────────────────────────────────────────────────────
 
 type LlmConfig = Record<string, unknown>;
 
@@ -255,10 +249,11 @@ function buildLlmConfig(
   dynamicGreeting: string,
   mcpEndpointWithChannel: string,
   dynamicOrigin: string,
-): LlmConfig {
+): { config: LlmConfig; name: string } {
   const geminiKey = process.env.GEMINI_API_KEY;
   const openAIKey = process.env.OPENAI_API_KEY;
-  const hasValidOpenAI = openAIKey?.startsWith('sk-') && !openAIKey.includes('your_openai_api_key');
+  const hasValidGemini = isValidKey(geminiKey);
+  const hasValidOpenAI = isValidKey(openAIKey) && openAIKey!.startsWith('sk-');
 
   const allMcpTools = [
     'log_fact', 'log_hypothesis', 'log_decision', 'log_action_item',
@@ -284,54 +279,65 @@ function buildLlmConfig(
     ...mcpBlock,
   };
 
-  // â”€â”€ Tier 1: Gemini 2.0 Flash via AURA proxy â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // On localhost: Agora cloud servers cannot reach localhost:3001
-  // Always use Agora Managed OpenAI -- works with zero external proxy
+  // Always use Agora Managed OpenAI -- works with zero external proxy and zero keys
   if (isLocalhostRequest) {
     console.info('[AgentStart] Localhost -> Agora Managed OpenAI');
     return {
-      ...baseConfig,
-      credential_mode: 'managed',
-      vendor: 'openai',
-      style: 'openai',
-      url: 'https://api.openai.com/v1/chat/completions',
-      params: { model: 'gpt-4o-mini', temperature: 0.12, max_tokens: 512 },
+      name: 'agora-managed-openai',
+      config: {
+        ...baseConfig,
+        credential_mode: 'managed',
+        vendor: 'openai',
+        style: 'openai',
+        url: 'https://api.openai.com/v1/chat/completions',
+        params: { model: 'gpt-4o-mini', temperature: 0.12, max_tokens: 512 },
+      },
     };
   }
 
   // Production: route through AURA proxy
   const proxyUrl = `${dynamicOrigin}/api/llm/proxy`;
 
-  if (geminiKey && !geminiKey.startsWith('your_')) {
+  if (hasValidGemini) {
     return {
-      ...baseConfig,
-      vendor: 'custom',
-      style: 'openai',
-      url: proxyUrl,
-      api_key: process.env.INTERNAL_PROXY_SECRET || '',
-      params: { model: 'gemini-2.0-flash', temperature: 0.12, max_tokens: 512 },
+      name: 'gemini-2.0-flash',
+      config: {
+        ...baseConfig,
+        vendor: 'custom',
+        style: 'openai',
+        url: proxyUrl,
+        api_key: process.env.INTERNAL_PROXY_SECRET || '',
+        params: { model: 'gemini-2.0-flash', temperature: 0.12, max_tokens: 512 },
+      },
     };
   }
 
   if (hasValidOpenAI) {
     return {
-      ...baseConfig,
-      vendor: 'custom',
-      style: 'openai',
-      url: proxyUrl,
-      api_key: process.env.INTERNAL_PROXY_SECRET || '',
-      params: { model: 'gpt-4o-mini', temperature: 0.12, max_tokens: 512 },
+      name: 'gpt-4o-mini',
+      config: {
+        ...baseConfig,
+        vendor: 'custom',
+        style: 'openai',
+        url: proxyUrl,
+        api_key: process.env.INTERNAL_PROXY_SECRET || '',
+        params: { model: 'gpt-4o-mini', temperature: 0.12, max_tokens: 512 },
+      },
     };
   }
 
   // Agora Managed OpenAI fallback
   return {
-    ...baseConfig,
-    credential_mode: 'managed',
-    vendor: 'openai',
-    style: 'openai',
-    url: 'https://api.openai.com/v1/chat/completions',
-    params: { model: 'gpt-4o-mini', temperature: 0.12, max_tokens: 512 },
+    name: 'agora-managed-openai',
+    config: {
+      ...baseConfig,
+      credential_mode: 'managed',
+      vendor: 'openai',
+      style: 'openai',
+      url: 'https://api.openai.com/v1/chat/completions',
+      params: { model: 'gpt-4o-mini', temperature: 0.12, max_tokens: 512 },
+    },
   };
 }
 
@@ -637,7 +643,17 @@ export async function POST(request: NextRequest) {
       ? `${dynamicOrigin}/api/llm/proxy`
       : (process.env.PROXY_URL || '');
 
-    // â”€â”€ Build final Agora ConvAI payload â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    const selectedLlm = buildLlmConfig(
+      rawProxyUrl,
+      isLocalhostRequest,
+      effectiveSystemPrompt,
+      dynamicGreeting,
+      mcpEndpointWithChannel,
+      dynamicOrigin,
+    );
+    const selectedTts = buildTtsConfig();
+
+    // ── Build final Agora ConvAI payload ──────────────────────────────
     const payload = {
       name: sessionName,
       properties: {
@@ -648,11 +664,11 @@ export async function POST(request: NextRequest) {
         enable_string_uid: true,
         idle_timeout: 600,
 
-        // â”€â”€ Agora Advanced Features (AI pipeline) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Agora Advanced Features (AI pipeline) ──────────────────────────
         advanced_features: {
           enable_rtm: true,           // RTM transcript broadcasting
-          enable_tools: true,          // MCP tool execution
-          enable_aivad: true,          // AI Voice Activity Detection â€” more robust than energy VAD
+          enable_tools: Boolean(mcpEndpointWithChannel), // MCP tool execution when endpoint available
+          enable_aivad: true,          // AI Voice Activity Detection — more robust than energy VAD
           enable_ains: true,           // AI Noise Suppression: removes keyboard, HVAC, background
           enable_aiaec: true,          // AI Acoustic Echo Cancellation: removes AURA's own TTS echo
         },
@@ -666,27 +682,20 @@ export async function POST(request: NextRequest) {
           noise_suppression_level: 'aggressive',
         },
 
-        // â”€â”€ Interruption: tuned for filler-word robustness â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Interruption: tuned for filler-word robustness ─────────────────
         interruption: buildInterruptionConfig(),
 
-        // â”€â”€ Turn detection: semantic EOS + thinking-pause awareness â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Turn detection: semantic EOS + thinking-pause awareness ────────
         turn_detection: buildTurnDetectionConfig(),
 
-        // â”€â”€ ASR: Deepgram Nova-3 + filler_words:true â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── ASR: Deepgram Nova-3 + filler_words:true ──────────────────────
         asr: buildAsrConfig(language || ''),
 
-        // â”€â”€ LLM: Gemini 2.0 Flash â†’ GPT-4o-mini â†’ Agora managed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        llm: buildLlmConfig(
-          rawProxyUrl,
-          isLocalhostRequest,
-          effectiveSystemPrompt,
-          dynamicGreeting,
-          mcpEndpointWithChannel,
-          dynamicOrigin,
-        ),
+        // ── LLM: Agora Managed OpenAI (localhost) or Gemini/OpenAI proxy ───
+        llm: selectedLlm.config,
 
-        // â”€â”€ TTS: Google Journey â†’ MiniMax â†’ Agora managed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        tts: buildTtsConfig(),
+        // ── TTS: Agora Managed MiniMax (or MiniMax BYOK) ───────────────────
+        tts: selectedTts.config,
 
         // Natural filler words in AURA's own speech
         // Agora ConvAI v2 requires static_config.phrases when enable:true
@@ -707,6 +716,47 @@ export async function POST(request: NextRequest) {
     };
 
     const authHeader = `Basic ${Buffer.from(`${customerKey}:${customerSecret}`).toString('base64')}`;
+
+    // ── Prevent Agent Collision: Stop any existing agents in this channel first ──
+    try {
+      const listRes = await fetch(
+        `https://api.agora.io/api/conversational-ai-agent/v2/projects/${appId}/agents`,
+        { headers: { Authorization: authHeader } }
+      );
+      if (listRes.ok) {
+        const listData = await listRes.json();
+        const activeList = listData?.data?.list || [];
+        const cleanChannelKey = channelName.replace(/[^a-zA-Z0-9-]/g, '-');
+        for (const ag of activeList) {
+          try {
+            const detailRes = await fetch(
+              `https://api.agora.io/api/conversational-ai-agent/v2/projects/${appId}/agents/${ag.agent_id}`,
+              { headers: { Authorization: authHeader } }
+            );
+            if (detailRes.ok) {
+              const detail = await detailRes.json();
+              if (
+                detail?.channel === channelName ||
+                (typeof detail?.name === 'string' && detail.name.includes(cleanChannelKey))
+              ) {
+                console.info(`[AgentStart] Clearing stale agent ${ag.agent_id} in channel ${channelName}`);
+                await fetch(
+                  `https://api.agora.io/api/conversational-ai-agent/v2/projects/${appId}/agents/${ag.agent_id}/leave`,
+                  {
+                    method: 'POST',
+                    headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
+                  }
+                ).catch(() => {});
+              }
+            }
+          } catch {
+            // Ignore individual agent detail error
+          }
+        }
+      }
+    } catch (cleanupErr) {
+      console.warn('[AgentStart] Channel pre-cleanup notice:', cleanupErr);
+    }
 
     const agoraResponse = await fetch(
       `https://api.agora.io/api/conversational-ai-agent/v2/projects/${appId}/join`,
@@ -737,20 +787,14 @@ export async function POST(request: NextRequest) {
                     (responseData as Record<string, unknown>)['agentId'] ||
                     'aura_agent_active';
 
-    // Expose which TTS + LLM tier was selected for observability
-    const geminiKey = process.env.GEMINI_API_KEY;
-    const googleTtsKey = process.env.GOOGLE_TTS_API_KEY || process.env.GOOGLE_APPLICATION_CREDENTIALS;
-    const openAIKey = process.env.OPENAI_API_KEY;
-    const minimaxKey = process.env.MINIMAX_API_KEY;
-
     return NextResponse.json({
       agentId,
       agent_id: agentId,
       channelName,
       status: 'started',
       stack: {
-        tts: googleTtsKey ? 'google-journey' : minimaxKey ? 'minimax-2.6-turbo' : 'agora-managed-minimax',
-        llm: geminiKey ? 'gemini-2.0-flash' : openAIKey?.startsWith('sk-') ? 'gpt-4o-mini' : 'agora-managed-openai',
+        tts: selectedTts.name,
+        llm: selectedLlm.name,
         asr: 'deepgram-nova-3',
         vad: 'agora-aivad',
         ains: true,
