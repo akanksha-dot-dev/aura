@@ -532,7 +532,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const agentUid = 'aura_agent';
+    const agentUid = '0'; // Agora ConvAI agents must use numeric UID; '0' is the reserved agent slot
     const expireTimeInSeconds = 3600;
 
     const agentToken = RtcTokenBuilder.buildTokenWithRtm(
@@ -661,7 +661,7 @@ export async function POST(request: NextRequest) {
         token: agentToken,
         agent_rtc_uid: agentUid,
         remote_rtc_uids: ['*'],
-        enable_string_uid: true,
+        enable_string_uid: false, // Agent uses numeric UID '0'; string UIDs are for human participants only
         idle_timeout: 600,
 
         // ── Agora Advanced Features (AI pipeline) ──────────────────────────

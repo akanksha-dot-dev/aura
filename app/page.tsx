@@ -456,7 +456,10 @@ function DashboardContent() {
   const isStartingAgentRef = useRef<boolean>(false);
 
   useEffect(() => {
-    if (isMockReplay || !channel) return;
+    // CRITICAL: Only launch the agent AFTER the user has joined the RTC channel.
+    // If we launch before isJoined, Agora ConvAI immediately fails with "RTC connection error"
+    // because there is no existing session for it to connect to.
+    if (isMockReplay || !channel || !isJoined) return;
 
     let isMounted = true;
 
@@ -464,6 +467,11 @@ function DashboardContent() {
       if (isStartingAgentRef.current || activeAgentIdRef.current) return;
       isStartingAgentRef.current = true;
       try {
+        // Brief delay to let the Agora RTC session fully propagate to Agora's servers
+        // before the ConvAI agent tries to join the same channel.
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        if (!isMounted) return;
+
         const activeScenario =
           scenarioConfig ||
           (typeof window !== 'undefined' ? loadScenarioConfig() : null) ||
@@ -517,7 +525,7 @@ function DashboardContent() {
         }
         if (data?.agentId) {
           activeAgentIdRef.current = data.agentId;
-          console.info('[Dashboard] AURA agent active in channel:', data.agentId);
+          console.info('[Dashboard] AURA agent active in channel:', data.agentId, '| Stack:', data.stack);
         }
       } catch (err) {
         console.warn('[Dashboard] AURA agent launch network notice:', err);
@@ -540,7 +548,9 @@ function DashboardContent() {
         }).catch(() => {});
       }
     };
-  }, [isMockReplay, channel, uid, name, role, voiceLang, scenarioConfig, scenarioId]);
+  // isJoined is intentionally in deps — agent must wait until user is in the channel
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMockReplay, channel, isJoined, uid, name, role, voiceLang, scenarioConfig, scenarioId]);
 
   // Merge local user into participant list if not yet dispatched via RTM
   const effectiveParticipants: Record<string, Participant> = useMemo(() => {
