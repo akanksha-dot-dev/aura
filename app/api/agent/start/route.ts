@@ -661,7 +661,7 @@ export async function POST(request: NextRequest) {
         token: agentToken,
         agent_rtc_uid: agentUid,
         remote_rtc_uids: ['*'],
-        enable_string_uid: false, // Agent uses numeric UID '0'; string UIDs are for human participants only
+        enable_string_uid: true, // Must match human participant mode; agent UID '0' is valid in string mode
         idle_timeout: 600,
 
         // ── Agora Advanced Features (AI pipeline) ──────────────────────────
