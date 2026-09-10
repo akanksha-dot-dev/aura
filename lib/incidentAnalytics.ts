@@ -1,5 +1,5 @@
-/**
- * incidentAnalytics.ts — Executive intelligence analytics for AURA dashboard.
+﻿/**
+ * incidentAnalytics.ts â€” Executive intelligence analytics for AURA dashboard.
  *
  * Pure computation layer for management-grade incident metrics:
  * 1. MTTR trend computation (per week/month window)
@@ -11,8 +11,8 @@
  * 7. Repeat offender detection with actionable recommendations
  */
 
-// ── Minimal incident shape accepted by this module ───────────────────────────
-// Intentionally looser than DbIncident so callers can pass raw SQLite rows.
+// â”€â”€ Minimal incident shape accepted by this module â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Intentionally looser than IncidentRecord so callers can pass raw SQLite rows.
 export interface IncidentRecord {
   id: string;
   title: string;
@@ -26,10 +26,10 @@ export interface IncidentRecord {
   [key: string]: unknown;
 }
 
-// Re-export for backward compatibility with callers that used DbIncident
-export type { IncidentRecord as DbIncident };
+// Re-export for backward compatibility with callers that used IncidentRecord
+export type { IncidentRecord as IncidentRecord };
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface TrendPoint {
   /** ISO date label (e.g., "2026-09-01" for daily or "2026-W36" for weekly) */
@@ -118,13 +118,13 @@ export interface AiInsight {
   action?: string;
 }
 
-// ── MTTR Trend ────────────────────────────────────────────────────────────────
+// â”€â”€ MTTR Trend â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * Compute MTTR trend points over a sliding window.
  */
 export function computeMttrTrend(
-  incidents: DbIncident[],
+  incidents: IncidentRecord[],
   windowDays = 30,
   granularity: 'daily' | 'weekly' = 'weekly',
 ): TrendPoint[] {
@@ -175,14 +175,14 @@ export function computeMttrTrend(
     }));
 }
 
-// ── Team Risk Score ───────────────────────────────────────────────────────────
+// â”€â”€ Team Risk Score â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * Compute a 0-100 risk score for a team based on their recent incident record.
  */
 export function computeTeamRiskScore(
   teamName: string,
-  incidents: DbIncident[],
+  incidents: IncidentRecord[],
   windowDays = 30,
 ): TeamRiskScore {
   const cutoff = Date.now() - windowDays * 24 * 60 * 60 * 1000;
@@ -241,22 +241,22 @@ export function computeTeamRiskScore(
       { factor: 'Avg MTTR', weight: 40, value: avgMttrMin > 0 ? `${Math.round(avgMttrMin)}m` : 'N/A' },
       { factor: 'Incident frequency', weight: 30, value: `${recent.length} / ${windowDays}d` },
       { factor: 'SEV-0/1 ratio', weight: 20, value: `${sev0Count + sev1Count} critical` },
-      { factor: 'Repeat services', weight: 10, value: maxServiceHits > 1 ? `${maxServiceHits}× repeat` : 'None' },
+      { factor: 'Repeat services', weight: 10, value: maxServiceHits > 1 ? `${maxServiceHits}Ã— repeat` : 'None' },
     ],
   };
 }
 
-// ── Recurring Pattern Detection ───────────────────────────────────────────────
+// â”€â”€ Recurring Pattern Detection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * Detect recurring incident patterns by clustering on service + root-cause keywords.
  */
 export function detectRecurringPatterns(
-  incidents: DbIncident[],
+  incidents: IncidentRecord[],
   minOccurrences = 2,
 ): RecurringPattern[] {
-  // Build a service→incidents map
-  const serviceIncidents = new Map<string, DbIncident[]>();
+  // Build a serviceâ†’incidents map
+  const serviceIncidents = new Map<string, IncidentRecord[]>();
 
   for (const incident of incidents) {
     try {
@@ -275,7 +275,7 @@ export function detectRecurringPatterns(
     if (svcIncidents.length < minOccurrences) continue;
 
     // Group by inferred root cause keyword
-    const causeGroups = new Map<string, DbIncident[]>();
+    const causeGroups = new Map<string, IncidentRecord[]>();
 
     for (const incident of svcIncidents) {
       const cause = inferRootCauseKeyword(incident.title);
@@ -344,7 +344,7 @@ function generatePatternRecommendation(
   return occurrences >= 5 ? `URGENT: ${base}` : base;
 }
 
-// ── Next-Incident Probability Prediction ─────────────────────────────────────
+// â”€â”€ Next-Incident Probability Prediction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * Predict probability of an incident for a service within the next 7 days.
@@ -352,7 +352,7 @@ function generatePatternRecommendation(
  */
 export function predictServiceRisk(
   service: string,
-  incidents: DbIncident[],
+  incidents: IncidentRecord[],
 ): ServiceRiskPrediction {
   const serviceIncidents = incidents
     .filter(i => {
@@ -393,7 +393,7 @@ export function predictServiceRisk(
   let prob = 10; // baseline
   if (avgIntervalDays !== null) {
     const ratio = daysSinceLast / avgIntervalDays;
-    // Logistic-inspired: approaches 90% as ratio → 1.5
+    // Logistic-inspired: approaches 90% as ratio â†’ 1.5
     prob = Math.min(90, Math.round(90 * (1 - Math.exp(-2 * ratio))));
   } else {
     // Single data point: base on recency
@@ -427,14 +427,14 @@ export function predictServiceRisk(
   };
 }
 
-// ── AI Insight Generation ─────────────────────────────────────────────────────
+// â”€â”€ AI Insight Generation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * Generate actionable AI insights from incident history.
  * Used when LLM is not available (pure rule-based computation).
  */
 export function generateComputedInsights(
-  incidents: DbIncident[],
+  incidents: IncidentRecord[],
   windowDays = 90,
 ): AiInsight[] {
   const insights: AiInsight[] = [];
@@ -497,7 +497,7 @@ export function generateComputedInsights(
       insights.push({
         type: 'achievement',
         title: 'MTTR is improving',
-        detail: `Average resolution time decreased by ${Math.round(Math.abs(degradation))}% — from ${Math.round(avgFirst)}m to ${Math.round(avgSecond)}m. Keep it up!`,
+        detail: `Average resolution time decreased by ${Math.round(Math.abs(degradation))}% â€” from ${Math.round(avgFirst)}m to ${Math.round(avgSecond)}m. Keep it up!`,
         severity: 'positive',
         actionable: false,
       });
@@ -556,13 +556,13 @@ export function generateComputedInsights(
   });
 }
 
-// ── Resolution Playbook Generator ─────────────────────────────────────────────
+// â”€â”€ Resolution Playbook Generator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * Generate a step-by-step resolution playbook from similar past incidents.
  */
 export function generateResolutionPlaybook(
-  similarIncidents: DbIncident[],
+  similarIncidents: IncidentRecord[],
   currentTitle: string,
 ): GeneratedPlaybook {
   const rootCause = inferRootCauseKeyword(currentTitle);
@@ -633,3 +633,4 @@ export function generateResolutionPlaybook(
     estimatedMttrMin: avgMttr,
   };
 }
+
