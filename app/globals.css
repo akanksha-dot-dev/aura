@@ -3029,7 +3029,7 @@ input, textarea, select {
 
 .playbook-step-main {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
   cursor: pointer;
@@ -3058,24 +3058,39 @@ input, textarea, select {
   background: var(--color-fact-dim);
 }
 
-.playbook-step-info { flex: 1; min-width: 0; }
-.playbook-step-meta { display: flex; align-items: center; gap: var(--space-2); margin-bottom: 2px; }
+.playbook-step-info {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.playbook-step-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px var(--space-2);
+  margin-bottom: 3px;
+}
 .playbook-step-phase {
   font-size: 9px;
   font-weight: var(--weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.06em;
+  white-space: nowrap;
 }
-.playbook-step-priority { font-size: 9px; font-weight: var(--weight-semibold); }
+.playbook-step-priority {
+  font-size: 9px;
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+}
 .playbook-step-title {
   font-size: var(--text-sm);
   color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.4;
+  word-break: break-word;
+  white-space: normal;
 }
 .playbook-step-title--done { color: var(--text-muted); }
-.playbook-step-chevron { color: var(--text-muted); font-size: 12px; flex-shrink: 0; }
+.playbook-step-chevron { color: var(--text-muted); font-size: 12px; flex-shrink: 0; margin-top: 2px; }
 
 .playbook-step-detail {
   padding: var(--space-3);
