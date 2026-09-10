@@ -164,24 +164,45 @@ export async function POST(request: NextRequest) {
       : upstreamPayload.model;
 
     const finalUpstreamPayload = { ...upstreamPayload, model: upstreamModel };
+
+    // 6. Execute the upstream request
+    let upstreamResponse: Response;
     try {
-      upstreamResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      upstreamResponse = await fetch(upstreamUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${openAIKey}`,
+          Authorization: `Bearer ${upstreamKey}`,
         },
-        body: JSON.stringify(upstreamPayload),
+        body: JSON.stringify(finalUpstreamPayload),
         signal: request.signal,
       });
     } catch (err) {
-      return NextResponse.json(
-        {
-          error: 'Failed to connect to OpenAI API',
-          details: err instanceof Error ? err.message : String(err),
-        },
-        { status: 502 }
-      );
+      // If Gemini fails and OpenAI is available, fallback automatically
+      if (useGemini && openAIKey?.startsWith('sk-')) {
+        console.warn('[LLM Proxy] Gemini unreachable, falling back to OpenAI:', err);
+        try {
+          upstreamResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${openAIKey}`,
+            },
+            body: JSON.stringify({ ...finalUpstreamPayload, model: 'gpt-4o-mini' }),
+            signal: request.signal,
+          });
+        } catch (fallbackErr) {
+          return NextResponse.json(
+            { error: 'Failed to connect to Gemini and OpenAI', details: String(fallbackErr) },
+            { status: 502 }
+          );
+        }
+      } else {
+        return NextResponse.json(
+          { error: 'Failed to connect to LLM API', details: err instanceof Error ? err.message : String(err) },
+          { status: 502 }
+        );
+      }
     }
 
     if (!upstreamResponse.ok) {
