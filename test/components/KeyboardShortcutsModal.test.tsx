@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { KeyboardShortcutsModal } from '@/components/KeyboardShortcutsModal';
+import { KeyboardShortcutsModal } from '@/components/modals/KeyboardShortcutsModal';
 
 describe('KeyboardShortcutsModal (components/KeyboardShortcutsModal.tsx)', () => {
   it('does not render when isOpen is false', () => {

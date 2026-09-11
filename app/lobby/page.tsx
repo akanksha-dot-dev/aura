@@ -2,8 +2,8 @@
 
 import React, { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { LobbyScreen } from '@/components/LobbyScreen';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { LobbyScreen } from '@/components/lobby/LobbyScreen';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { PersonaConfig } from '@/lib/constants';
 import { ScenarioConfig, storeScenarioConfig, PRESET_SCENARIOS } from '@/lib/scenarios';
 

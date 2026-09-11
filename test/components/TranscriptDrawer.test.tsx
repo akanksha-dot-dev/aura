@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { TranscriptDrawer, TranscriptEntry } from '@/components/TranscriptDrawer';
+import { TranscriptDrawer, TranscriptEntry } from '@/components/modals/TranscriptDrawer';
 
 describe('TranscriptDrawer Component (components/TranscriptDrawer.tsx)', () => {
   const mockEntries: TranscriptEntry[] = [

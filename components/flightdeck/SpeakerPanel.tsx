@@ -2,9 +2,9 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { Participant } from '@/lib/types';
-import { VoiceBadge } from './VoiceBadge';
-import { CognitiveLoadMeter } from './CognitiveLoadMeter';
-import { TempoIndicator } from './TempoIndicator';
+import { VoiceBadge } from '@/components/indicators/VoiceBadge';
+import { CognitiveLoadMeter } from '@/components/indicators/CognitiveLoadMeter';
+import { TempoIndicator } from '@/components/indicators/TempoIndicator';
 import { useVoiceWaveform } from '@/hooks/useVoiceWaveform';
 
 /** Animated SVG neural ring drawn around the AURA avatar when speaking */

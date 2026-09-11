@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useSyncExternalStore } from 'react';
 import { Severity, IncidentStatus, OODAPhase } from '@/lib/types';
-import { CostCounter } from './CostCounter';
+import { CostCounter } from '@/components/indicators/CostCounter';
 import styles from './StatusBar.module.css';
 
 const subscribeTheme = (callback: () => void) => {

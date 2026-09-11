@@ -4,8 +4,8 @@ import React, { useState } from 'react';
 import { EvidenceItem, TopologyNode, TopologyEdge, IncidentState } from '@/lib/types';
 import { TimelineFeed } from './TimelineFeed';
 import { IncidentTopology } from './IncidentTopology';
-import { AnalyticsDashboard } from './AnalyticsDashboard';
-import { SimilarIncidentBanner } from './SimilarIncidentBanner';
+import { AnalyticsDashboard } from '@/components/common/AnalyticsDashboard';
+import { SimilarIncidentBanner } from '@/components/indicators/SimilarIncidentBanner';
 
 export interface MainViewProps {
   evidenceItems: EvidenceItem[];

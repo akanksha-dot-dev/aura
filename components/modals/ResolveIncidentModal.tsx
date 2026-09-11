@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { IncidentState } from '@/lib/types';
-import { emitToast } from './NotificationToast';
+import { emitToast } from '@/components/indicators/NotificationToast';
 
 export interface ResolveIncidentModalProps {
   isOpen: boolean;

@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { StatusBar } from '@/components/StatusBar';
+import { StatusBar } from '@/components/flightdeck/StatusBar';
 
 describe('StatusBar Component (components/StatusBar.tsx)', () => {
   it('renders incident header, severity badge, and title correctly', () => {

@@ -1,7 +1,7 @@
 import React, { act } from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { PostmortemModal } from '@/components/PostmortemModal';
+import { PostmortemModal } from '@/components/modals/PostmortemModal';
 import { IncidentState } from '@/lib/types';
 
 describe('PostmortemModal Component (components/PostmortemModal.tsx)', () => {

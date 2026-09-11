@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { TimelineFeed } from '@/components/TimelineFeed';
+import { TimelineFeed } from '@/components/flightdeck/TimelineFeed';
 import { EvidenceItem } from '@/lib/types';
 
 describe('TimelineFeed & TimelineCard Components (components/TimelineFeed.tsx)', () => {

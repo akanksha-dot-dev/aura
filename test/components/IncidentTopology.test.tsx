@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import { IncidentTopology } from '@/components/IncidentTopology';
+import { IncidentTopology } from '@/components/flightdeck/IncidentTopology';
 import { TopologyNode, TopologyEdge } from '@/lib/types';
 
 describe('IncidentTopology Component (components/IncidentTopology.tsx)', () => {

@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { ActionTracker } from '@/components/ActionTracker';
+import { ActionTracker } from '@/components/flightdeck/ActionTracker';
 import { EvidenceItem } from '@/lib/types';
 
 describe('ActionTracker Component (components/ActionTracker.tsx)', () => {

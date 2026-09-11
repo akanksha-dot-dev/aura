@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { SpeakerPanel } from '@/components/SpeakerPanel';
+import { SpeakerPanel } from '@/components/flightdeck/SpeakerPanel';
 import { Participant } from '@/lib/types';
 
 describe('SpeakerPanel Component & Telemetry Sub-meters (components/SpeakerPanel.tsx)', () => {

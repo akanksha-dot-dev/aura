@@ -11,7 +11,7 @@ import {
   getAvatarColor,
 } from '@/lib/scenarios';
 import type { Severity } from '@/lib/types';
-import { WarRoomInvite } from '@/components/WarRoomInvite';
+import { WarRoomInvite } from '@/components/modals/WarRoomInvite';
 
 export interface LobbyScreenProps {
   onJoin: (

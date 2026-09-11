@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { EvidenceItem } from '@/lib/types';
 import { springs } from '@/lib/springs';
-import { VoiceBadge } from './VoiceBadge';
+import { VoiceBadge } from '@/components/indicators/VoiceBadge';
 
 export interface TimelineCardProps {
   item: EvidenceItem;
