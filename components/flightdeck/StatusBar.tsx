@@ -522,9 +522,20 @@ export function StatusBar({
             const pctUsed = Math.min(100, Math.round((elapsedMins / slaMins) * 100));
             const slaColor = pctUsed >= 100 ? '#F43F5E' : pctUsed >= 75 ? '#F59E0B' : '#10B981';
             const slaIcon = pctUsed >= 100 ? '🔴' : pctUsed >= 75 ? '⚠️' : '✅';
+
+            const formatSlaRemaining = (mins: number): string => {
+              if (mins <= 0) return 'SLA ❌';
+              if (mins >= 60) {
+                const h = Math.floor(mins / 60);
+                const m = mins % 60;
+                return m > 0 ? `SLA ${h}h ${m}m` : `SLA ${h}h`;
+              }
+              return `SLA ${mins}m`;
+            };
+
             return (
               <div
-                title={`SLA target: ${slaMins}m — ${remainingMins > 0 ? `${remainingMins}m remaining` : 'BREACHED'}`}
+                title={`SLA target: ${slaMins >= 60 ? `${Math.floor(slaMins / 60)}h` : `${slaMins}m`} — ${remainingMins > 0 ? `${remainingMins}m remaining` : 'BREACHED'}`}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -542,7 +553,7 @@ export function StatusBar({
                 }}
               >
                 <span style={{ fontSize: 10 }}>{slaIcon}</span>
-                <span>{remainingMins > 0 ? `SLA ${remainingMins}m` : 'SLA ❌'}</span>
+                <span>{formatSlaRemaining(remainingMins)}</span>
               </div>
             );
           })()}
@@ -593,12 +604,25 @@ export function StatusBar({
             <button
               type="button"
               className="precision-bar__ghost-btn"
-              style={{ width: 'auto', padding: '0 6px', fontSize: '10px', gap: '4px', fontFamily: 'var(--font-mono)' }}
+              style={{ width: 'auto', padding: '0 7px', height: '26px', fontSize: '11px', gap: '4px', fontFamily: 'var(--font-mono)' }}
               onClick={() => onVoiceLangChange(voiceLang === 'en-IN' ? 'en-US' : 'en-IN')}
               title={`Voice Model: ${voiceLang === 'en-IN' ? 'Indian English (en-IN)' : 'US English (en-US)'}. Click to toggle.`}
               aria-label="Toggle voice model language"
             >
-              <span>{voiceLang === 'en-IN' ? '🇮🇳 IN' : '🇺🇸 US'}</span>
+              <span
+                style={{
+                  fontSize: '9px',
+                  fontWeight: 700,
+                  padding: '1px 3px',
+                  borderRadius: '2px',
+                  background: 'rgba(212, 168, 83, 0.15)',
+                  color: 'var(--color-aura)',
+                  letterSpacing: '0.04em',
+                }}
+              >
+                {voiceLang === 'en-IN' ? 'IN' : 'US'}
+              </span>
+              <span>{voiceLang === 'en-IN' ? 'en-IN' : 'en-US'}</span>
             </button>
           )}
 
