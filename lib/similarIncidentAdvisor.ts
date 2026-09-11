@@ -288,8 +288,6 @@ export function searchKnowledgeBase(
     const params: unknown[] = [];
 
     if (services.length > 0) {
-      const placeholders = services.map(() => '?').join(', ');
-      conditions.push(`(tags LIKE '%' || ? || '%')`);
       // Simplify: match any service in tags
       for (const s of services) {
         conditions.push(`tags LIKE '%${s.replace(/'/g, "''")}%'`);

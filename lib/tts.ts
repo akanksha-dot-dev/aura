@@ -10,6 +10,9 @@
 let voicesLoaded = false;
 
 function ensureVoices(): Promise<SpeechSynthesisVoice[]> {
+  if (voicesLoaded) {
+    return Promise.resolve(window.speechSynthesis.getVoices());
+  }
   return new Promise((resolve) => {
     const voices = window.speechSynthesis.getVoices();
     if (voices.length > 0) {

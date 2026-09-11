@@ -97,6 +97,9 @@ let _rtmIncidentState: IncidentState | null = null;
 export function setRtmIncidentState(state: IncidentState): void {
   _rtmIncidentState = state;
 }
+export function getRtmIncidentState(): IncidentState | null {
+  return _rtmIncidentState;
+}
 
 function dispatchTranscriptToSubscribers(entry: RTMTranscriptEntry) {
   activeTranscriptSubscribers.forEach((handler) => {
@@ -447,7 +450,9 @@ export function useAgoraRTM({
                 (typeof streamId === 'number' && streamId > 0) ||
                 (typeof streamId === 'string' && streamId !== '0' && streamId !== '')
               ) {
-                const finalUid = (rawUid && rawUid !== '0' && rawUid !== 'aura_agent') ? rawUid : (localUid || 'operator');
+                const finalUid = (rawUid && rawUid !== '0' && rawUid !== 'aura_agent')
+                  ? rawUid
+                  : (publisher && publisher !== '0' ? publisher : (localUid || 'operator'));
                 if (finalUid === localUid || finalUid === uid) {
                   return {
                     speakerUid: localUid,
@@ -785,7 +790,7 @@ export function useAgoraRTM({
     })();
 
     await connectingPromise;
-  }, [channelName, uid]);
+  }, [channelName, uid, userName]);
 
   const disconnect = useCallback(async () => {
     // If no active subscribers remain after a grace period, teardown the session

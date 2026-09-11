@@ -124,7 +124,6 @@ const evidenceStore = new Map<string, DbEvidenceItem[]>();
 const participantsStore = new Map<string, Map<string, DbParticipant>>();
 const transcriptsStore = new Map<string, DbTranscript[]>();
 const postmortemsStore = new Map<string, DbPostmortem>();
-const incidentScoresStore = new Map<string, DbIncidentScore>();
 const knowledgeBaseStore: DbKnowledgeItem[] = [];
 
 let transcriptSeq = 1;

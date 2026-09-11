@@ -72,6 +72,7 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
   const localTrackRef = useRef<ILocalAudioTrack | null>(null);
   const isJoiningRef = useRef<boolean>(false);
   const joinPromiseRef = useRef<Promise<void> | null>(null);
+  const joinChannelRef = useRef<() => Promise<void>>(async () => {});
   const isMountedRef = useRef<boolean>(true);
   const currentUplinkQualityRef = useRef<number>(1);
   const currentDownlinkQualityRef = useRef<number>(1);
@@ -125,7 +126,7 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
               if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
               reconnectTimerRef.current = setTimeout(() => {
                 if (isMountedRef.current && !isJoiningRef.current) {
-                  joinChannel().catch((err) => {
+                  joinChannelRef.current().catch((err) => {
                     console.warn('[useAgoraRTC] Reconnection failed:', err);
                   });
                 }
@@ -525,6 +526,10 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
 
     await joinPromiseRef.current;
   }, [channelName, uid, propAppId]);
+
+  useEffect(() => {
+    joinChannelRef.current = joinChannel;
+  }, [joinChannel]);
 
   const leaveChannel = useCallback(async () => {
     isJoiningRef.current = false;

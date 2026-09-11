@@ -3,7 +3,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Participant } from '@/lib/types';
 import { VoiceBadge } from './VoiceBadge';
-import { SilenceCounter } from './SilenceCounter';
 import { CognitiveLoadMeter } from './CognitiveLoadMeter';
 import { TempoIndicator } from './TempoIndicator';
 import { useVoiceWaveform } from '@/hooks/useVoiceWaveform';
@@ -699,7 +698,20 @@ function AuraAgentRow({
 }) {
   const relativeTime = useRelativeTime(agentLastSpokeAt);
   const isActive = agentIsSpeaking;
-  const isProcessing = !agentIsSpeaking && agentLastSpokeAt > 0 && (Date.now() - agentLastSpokeAt) < 4000;
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    if (agentIsSpeaking || agentLastSpokeAt <= 0) {
+      setIsProcessing(false);
+      return;
+    }
+    const check = () => {
+      setIsProcessing((Date.now() - agentLastSpokeAt) < 4000);
+    };
+    check();
+    const timer = setInterval(check, 500);
+    return () => clearInterval(timer);
+  }, [agentIsSpeaking, agentLastSpokeAt]);
 
   return (
     <div

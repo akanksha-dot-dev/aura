@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { IncidentState } from '@/lib/types';
 import { springs } from '@/lib/springs';
@@ -36,8 +36,16 @@ export function WarRoomSummaryCard({ incident, actions, onDismiss }: WarRoomSumm
     const sorted = [...activeHypotheses].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0));
     return sorted[0];
   }, [activeHypotheses]);
+  const [elapsedMin, setElapsedMin] = useState(() =>
+    Math.floor((Date.now() - incident.openedAt) / 60000)
+  );
 
-  const elapsedMin = Math.floor((Date.now() - incident.openedAt) / 60000);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setElapsedMin(Math.floor((Date.now() - incident.openedAt) / 60000));
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [incident.openedAt]);
 
   return (
     <motion.div
