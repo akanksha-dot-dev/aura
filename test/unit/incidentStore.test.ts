@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   initializeLiveIncident,
-  getIncidentState,
   buildDynamicContext,
   getSpeakerDisplayName,
 } from '@/lib/incidentStore';

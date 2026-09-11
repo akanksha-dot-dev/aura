@@ -1,15 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getIncidentState, updateIncidentState, addEvidenceToIncident, addParticipantToIncident } from '@/lib/incidentStore';
+import { PRESET_SCENARIOS } from '@/lib/scenarios';
+import { buildEffectiveSystemPrompt } from '@/lib/promptBuilder';
+import { EvidenceItem, IncidentState } from '@/lib/types';
 
 export const runtime = 'nodejs';
 
 /**
- * POST /api/agent/update — Hot-update the ConvAI agent's context when participants change.
- * Sends updated participant roster and incident context to the active agent.
+ * POST /api/agent/update — Hot-update the ConvAI agent's context when participants or evidence change.
+ * Sends updated participant roster and rich incident context to the active agent while preserving
+ * all 16 directives, voice rules, SBAR protocols, and telemetry syntax.
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { agentId, channelName, participants, incidentContext } = body;
+    const {
+      agentId,
+      channelName,
+      participants,
+      incidentState,
+      evidenceItems,
+      scenario,
+      operatorUid,
+    } = body;
 
     if (!agentId || !channelName) {
       return NextResponse.json(
@@ -33,28 +46,70 @@ export async function POST(request: NextRequest) {
       `${customerKey}:${customerSecret}`
     ).toString('base64')}`;
 
-    // Build the context update message for the agent
-    const participantRoster = Array.isArray(participants)
-      ? participants
-          .map(
-            (p: { displayName: string; role: string; uid: string }) =>
-              `${p.displayName} (UID: "${p.uid}", Role: ${p.role})`
-          )
-          .join(', ')
-      : 'No participants';
+    // 1. Resolve or sync server-side incident state
+    let currentState: IncidentState = getIncidentState(channelName);
 
-    const contextUpdate = incidentContext
-      ? `[PARTICIPANT UPDATE] Active responders on bridge: ${participantRoster}\n${incidentContext}`
-      : `[PARTICIPANT UPDATE] Active responders on bridge: ${participantRoster}`;
+    if (incidentState && typeof incidentState === 'object') {
+      currentState = updateIncidentState(channelName, (prev) => ({
+        ...prev,
+        ...incidentState,
+        participants: incidentState.participants || prev.participants,
+        evidenceItems: incidentState.evidenceItems || prev.evidenceItems,
+      }));
+    } else {
+      // Sync incoming evidence items if sent directly
+      if (Array.isArray(evidenceItems)) {
+        for (const item of evidenceItems) {
+          if (item && item.id && !currentState.evidenceItems.some((e) => e.id === item.id)) {
+            currentState = addEvidenceToIncident(channelName, item as EvidenceItem);
+          }
+        }
+      }
 
-    // Use Agora's agent update API to push new context
+      // Sync incoming participants if sent directly
+      if (Array.isArray(participants)) {
+        for (const p of participants) {
+          if (p && p.uid && !currentState.participants[p.uid]) {
+            currentState = addParticipantToIncident(channelName, p);
+          }
+        }
+      }
+    }
+
+    // 2. Resolve scenario briefing
+    const cleanChannel = channelName.trim().toLowerCase();
+    const matchedPreset = PRESET_SCENARIOS.find(
+      (s) =>
+        s.channelName.toLowerCase() === cleanChannel ||
+        s.id.toLowerCase() === cleanChannel ||
+        cleanChannel.includes(s.id.toLowerCase())
+    );
+
+    const effectiveScenario = scenario || (matchedPreset ? {
+      title: matchedPreset.title,
+      severity: matchedPreset.severity,
+      affectedServices: matchedPreset.affectedServices,
+      description: matchedPreset.description,
+      impact: matchedPreset.impact,
+      suspectedCause: matchedPreset.suspectedCause,
+      personas: matchedPreset.personas,
+    } : undefined);
+
+    // 3. Build the full, rich system prompt with updated real-time incident context
+    const effectiveSystemPrompt = buildEffectiveSystemPrompt({
+      incidentState: currentState,
+      scenario: effectiveScenario,
+      operatorUid,
+    });
+
+    // 4. Use Agora's agent update API to push updated prompt
     const updatePayload = {
       properties: {
         llm: {
           system_messages: [
             {
               role: 'system',
-              content: contextUpdate,
+              content: effectiveSystemPrompt,
             },
           ],
         },
@@ -80,17 +135,20 @@ export async function POST(request: NextRequest) {
         `[AgentUpdate] Agora update returned HTTP ${agoraResponse.status}:`,
         responseData
       );
-      // Non-critical — agent will pick up context from the next proxy turn
       return NextResponse.json({
         status: 'context_queued',
         note: 'Agent update queued; context will sync on next turn',
+        evidenceCount: currentState.evidenceItems.length,
         details: responseData,
       });
     }
 
     return NextResponse.json({
       status: 'updated',
-      participantCount: Array.isArray(participants) ? participants.length : 0,
+      agentId,
+      evidenceCount: currentState.evidenceItems.length,
+      participantCount: Object.keys(currentState.participants).length,
+      currentOODAPhase: currentState.currentOODAPhase,
       details: responseData,
     });
   } catch (error) {

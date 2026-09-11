@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server';
 import { POST as startAgent } from '@/app/api/agent/start/route';
 import { POST as stopAgent } from '@/app/api/agent/stop/route';
 import { POST as interruptAgent } from '@/app/api/agent/interrupt/route';
+import { POST as updateAgent } from '@/app/api/agent/update/route';
 
 describe('API Route: /api/agent (app/api/agent/start, stop & interrupt routes)', () => {
   const originalEnv = process.env;
@@ -234,6 +235,115 @@ describe('API Route: /api/agent (app/api/agent/start, stop & interrupt routes)',
       const data = await res.json();
       expect(data.agentId).toBe('aura_agent_12345');
       expect(data.status).toBe('interrupted');
+    });
+  });
+
+  describe('/api/agent/update POST', () => {
+    it('returns 400 when agentId or channelName is missing', async () => {
+      const req = new NextRequest('http://localhost:3000/api/agent/update', {
+        method: 'POST',
+        body: JSON.stringify({}),
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const res = await updateAgent(req);
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error).toBe('Missing agentId or channelName');
+    });
+
+    it('returns 500 when Agora credentials are missing', async () => {
+      delete process.env.AGORA_APP_ID;
+      const req = new NextRequest('http://localhost:3000/api/agent/update', {
+        method: 'POST',
+        body: JSON.stringify({ agentId: 'ag-123', channelName: 'incident-war-room' }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const res = await updateAgent(req);
+      expect(res.status).toBe(500);
+      const data = await res.json();
+      expect(data.error).toContain('Agora credentials not configured');
+    });
+
+    it('pushes rich dynamic incident context while preserving all directives', async () => {
+      process.env.AGORA_APP_ID = '970ca35de60c44645bbae8a215061b33';
+      process.env.AGORA_CUSTOMER_KEY = 'test_key';
+      process.env.AGORA_CUSTOMER_SECRET = 'test_secret';
+
+      let capturedUpdatePayload: any = null;
+      global.fetch = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+        if (url.includes('/update')) {
+          capturedUpdatePayload = JSON.parse(init?.body as string);
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ code: 0, message: 'Updated' }),
+          } as Response;
+        }
+        return { ok: false, status: 404 } as Response;
+      });
+
+      const updatedEvidence = [
+        {
+          id: 'evt-dyn-101',
+          category: 'fact',
+          content: 'Database connection pool reached 100% saturation',
+          speakerUid: 'operator_1',
+          speakerName: 'Operator Kai',
+          confidence: 85,
+          timestamp: Date.now(),
+          serviceAffected: 'postgres-primary',
+          relatedTo: [],
+          status: 'confirmed',
+        },
+        {
+          id: 'evt-dyn-102',
+          category: 'hypothesis',
+          content: 'Leaked connections from unclosed cursor in billing service',
+          speakerUid: 'operator_1',
+          speakerName: 'Operator Kai',
+          confidence: 80,
+          timestamp: Date.now(),
+          serviceAffected: 'postgres-primary',
+          relatedTo: ['evt-dyn-101'],
+          status: 'active',
+          decidingMetric: 'pg_stat_activity idle in transaction count',
+        },
+      ];
+
+      const req = new NextRequest('http://localhost:3000/api/agent/update', {
+        method: 'POST',
+        body: JSON.stringify({
+          agentId: 'ag-test-hot-update-456',
+          channelName: 'incident-hot-update',
+          operatorUid: 'operator_1',
+          evidenceItems: updatedEvidence,
+          participants: [
+            {
+              uid: 'operator_1',
+              displayName: 'Operator Kai',
+              role: 'Staff SRE',
+              isIncidentCommander: true,
+            },
+          ],
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const res = await updateAgent(req);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.status).toBe('updated');
+      expect(data.agentId).toBe('ag-test-hot-update-456');
+      expect(data.evidenceCount).toBeGreaterThanOrEqual(2);
+
+      // Verify the updated system prompt was built and contains both the core directives AND the live evidence
+      const updatedPrompt = capturedUpdatePayload?.properties?.llm?.system_messages?.[0]?.content;
+      expect(updatedPrompt).toBeDefined();
+      expect(updatedPrompt).toContain('DIRECTIVE 1: SHADOW MONITOR MODE');
+      expect(updatedPrompt).toContain('DIRECTIVE 13: SBAR SPOKEN SUMMARY STRUCTURE');
+      expect(updatedPrompt).toContain('Database connection pool reached 100% saturation');
+      expect(updatedPrompt).toContain('Leaked connections from unclosed cursor in billing service');
+      expect(updatedPrompt).toContain('Active Responders on Bridge: Operator Kai');
     });
   });
 });

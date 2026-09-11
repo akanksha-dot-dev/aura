@@ -1,5 +1,6 @@
 import { IncidentState, calculateCognitiveLoad, classifyOODAPhase, EvidenceItem } from './types';
 import { PRESET_SCENARIOS } from './scenarios';
+import { buildDynamicIncidentContext } from './promptBuilder';
 import {
   upsertIncident,
   insertEvidence as dbInsertEvidence,
@@ -7,16 +8,6 @@ import {
   persistFullIncidentSnapshot,
   insertTranscript,
 } from './db';
-
-/**
- * Format milliseconds into human-readable elapsed duration (e.g. "6m 12s").
- */
-function formatElapsedTime(ms: number): string {
-  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
-}
 
 /**
  * Creates a clean live incident state for a real operator without mock personas.
@@ -70,8 +61,8 @@ export function initializeLiveIncident(
     }
   }
 
-  // Add scenario personas (they won't be duplicated because the operator is separate)
-  if (scenarioOverrides?.personas) {
+  // Add scenario personas ONLY when no live human operator is provided (e.g. mock/test environments)
+  if (!operator && scenarioOverrides?.personas) {
     for (const p of scenarioOverrides.personas) {
       if (participants[p.uid]) continue; // Don't override operator or AURA
       const isIC =
@@ -503,68 +494,6 @@ export function getSpeakerDisplayName(channelName: string, uid?: string): string
   return uid;
 }
 
-export function buildDynamicContext(state: IncidentState): string {
-  const elapsed = formatElapsedTime(Date.now() - state.openedAt);
-  const ic = state.incidentCommanderUid
-    ? state.participants[state.incidentCommanderUid]?.displayName ?? state.incidentCommanderUid
-    : 'Unassigned';
-
-  const humanParticipants = Object.values(state.participants)
-    .filter((p) => p.uid !== 'aura_agent')
-    .map((p) => {
-      const silentFor = Math.round((Date.now() - p.lastSpokeAt) / 1000);
-      return `${p.displayName} (UID: "${p.uid}", Role: ${p.role}${p.isIncidentCommander ? ', Incident Commander' : ''}, silent ${Math.max(0, silentFor)}s)`;
-    })
-    .join(', ');
-
-  const recentEvents =
-    state.evidenceItems
-      .slice(-6)
-      .map(
-        (e) =>
-          `  [${e.id}] ${e.category.toUpperCase()}: "${e.content}" (by ${e.speakerName}, confidence ${e.confidence})`
-      )
-      .join('\n') || '  None yet. Awaiting initial telemetry and observations from responders.';
-
-  const conflicts =
-    state.evidenceItems
-      .filter((e) => e.category === 'conflict' && e.status === 'active')
-      .map(
-        (e) =>
-          `  ${e.hypothesisA ?? 'Theory A'} vs ${e.hypothesisB ?? 'Theory B'} — deciding metric: ${e.decidingMetric ?? 'None'}`
-      )
-      .join('\n') || '  None';
-
-  const pendingActions =
-    state.evidenceItems
-      .filter(
-        (e) =>
-          e.category === 'action' &&
-          (e.actionStatus === 'pending' || e.actionStatus === 'in_progress')
-      )
-      .map(
-        (e) =>
-          `  ${e.content} → ${e.assignedTo ?? 'unassigned'} (${e.actionStatus ?? 'pending'})`
-      )
-      .join('\n') || '  None';
-
-  const secsSinceReadback = Math.round((Date.now() - state.lastReadbackAt) / 1000);
-
-  return `[INCIDENT CONTEXT — INJECTED AT ${new Date().toISOString()}]
-Incident: ${state.title} | Severity: ${state.severity} | Status: ${state.status} | Elapsed: ${elapsed}
-IC: ${ic} | Current OODA Phase: ${state.currentOODAPhase}
-Active Responders on Bridge: ${humanParticipants || 'None currently detected'}
-Telemetry & Epistemic Counts: Facts: ${state.evidenceItems.filter((e) => e.category === 'fact').length} | Active Hypotheses: ${state.evidenceItems.filter((e) => e.category === 'hypothesis' && e.status === 'active').length} | Decisions: ${state.evidenceItems.filter((e) => e.category === 'decision').length} | Pending Actions: ${state.evidenceItems.filter((e) => e.category === 'action' && (e.actionStatus === 'pending' || e.actionStatus === 'in_progress')).length} | Unresolved Conflicts: ${state.evidenceItems.filter((e) => e.category === 'conflict' && e.status === 'active').length}
-Last verbal readback: ${Math.max(0, secsSinceReadback)}s ago
-Sweller Cognitive Load: ${calculateCognitiveLoad(state)}/100
-
-Recent verified evidence:
-${recentEvents}
-
-Active conflicts:
-${conflicts}
-
-Pending action items:
-${pendingActions}
-[END INCIDENT CONTEXT]`;
+export function buildDynamicContext(state: IncidentState, operatorUid?: string): string {
+  return buildDynamicIncidentContext(state, operatorUid);
 }

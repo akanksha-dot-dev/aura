@@ -214,9 +214,9 @@ function DashboardContent() {
   const [liveTranscriptSpeaker, setLiveTranscriptSpeaker] = useState<string | null>(null);
   const [voiceLang, setVoiceLang] = useState<string>(() => {
     if (typeof window !== 'undefined') {
-      return sessionStorage.getItem('aura_voice_lang') || 'en-IN';
+      return sessionStorage.getItem('aura_voice_lang') || 'en-US';
     }
-    return 'en-IN';
+    return 'en-US';
   });
 
   useAgoraRTM({
@@ -569,6 +569,55 @@ function DashboardContent() {
     return list;
   }, [state.participants, uid, name, role, state.incidentCommanderUid, state.openedAt]);
 
+  // Hot-sync dynamic incident state to active Agora ConvAI agent whenever evidence, actions, or status change
+  const lastSyncedEvidenceSeqRef = useRef<number>(-1);
+  const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (isMockReplay || !channel || !activeAgentIdRef.current) return;
+
+    if (syncTimeoutRef.current) {
+      clearTimeout(syncTimeoutRef.current);
+    }
+
+    syncTimeoutRef.current = setTimeout(() => {
+      const agentId = activeAgentIdRef.current;
+      if (!agentId) return;
+
+      // Don't re-sync if sequence hasn't advanced
+      if (lastSyncedEvidenceSeqRef.current === state.eventSeq) return;
+      lastSyncedEvidenceSeqRef.current = state.eventSeq;
+
+      fetch('/api/agent/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentId,
+          channelName: channel,
+          incidentState: state,
+          participants: Object.values(effectiveParticipants),
+          operatorUid: uid,
+          scenario: scenarioConfig ? {
+            title: scenarioConfig.title,
+            severity: scenarioConfig.severity,
+            affectedServices: scenarioConfig.affectedServices,
+            description: scenarioConfig.description,
+            impact: scenarioConfig.impact,
+            suspectedCause: scenarioConfig.suspectedCause,
+          } : undefined,
+        }),
+      }).catch((err) => {
+        console.warn('[Dashboard] Agent context hot-sync notice:', err);
+      });
+    }, 1200);
+
+    return () => {
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+    };
+  }, [state.eventSeq, state.evidenceItems.length, state.status, state.incidentCommanderUid, effectiveParticipants, channel, isMockReplay, scenarioConfig, uid]);
+
   // Find active conflict for conditional ConflictBanner
   const activeConflict = useMemo(() => {
     return state.evidenceItems.find(
@@ -884,6 +933,11 @@ function DashboardContent() {
           if (typeof window !== 'undefined') {
             sessionStorage.setItem('aura_voice_lang', newLang);
           }
+          emitToast({
+            type: 'info',
+            title: 'ASR Model Switched',
+            description: `Voice recognition switched to ${newLang === 'en-IN' ? 'Indian English (en-IN)' : 'US English (en-US)'}.`,
+          });
         }}
         cognitiveLoadScore={state.cognitiveLoadScore}
         onResolve={() => setIsResolveOpen(true)}
@@ -962,22 +1016,33 @@ function DashboardContent() {
             steps={scenarioConfig.playbook}
             incidentStatus={state.status}
             onCreateAction={(title, detail) => {
+              const actionItem = {
+                id: `playbook-action-${Date.now()}`,
+                category: 'action' as const,
+                content: `${title} — ${detail}`,
+                speakerUid: uid,
+                speakerName: name,
+                confidence: 80,
+                timestamp: Date.now(),
+                actionStatus: 'pending' as const,
+              };
               processEvent({
                 type: 'dashboard_event',
-                id: `playbook-action-${Date.now()}`,
+                id: actionItem.id,
                 seq: state.eventSeq + 1,
                 timestamp: Date.now(),
                 eventType: 'evidence_added',
-                payload: {
-                  id: `playbook-action-${Date.now()}`,
-                  category: 'action',
-                  content: `${title} — ${detail}`,
-                  speakerUid: uid,
-                  speakerName: name,
-                  confidence: 80,
-                  timestamp: Date.now(),
-                  actionStatus: 'pending',
-                },
+                payload: actionItem,
+              });
+              fetch('/api/incident/event', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ channelName: channel, item: actionItem }),
+              }).catch(() => {});
+              emitToast({
+                type: 'info',
+                title: 'Playbook Action Created',
+                description: `${title}: ${detail}`,
               });
             }}
           />
@@ -1150,22 +1215,33 @@ function DashboardContent() {
         onClose={() => setIsQuickCaptureOpen(false)}
         speakerName={name}
         onSubmit={(payload: QuickCapturePayload) => {
+          const newItem = {
+            id: `qc-${Date.now()}`,
+            category: payload.category,
+            content: payload.content,
+            speakerUid: uid,
+            speakerName: name,
+            confidence: 75,
+            timestamp: Date.now(),
+            ...(payload.category === 'action' ? { actionStatus: 'pending' as const } : {}),
+          };
           processEvent({
             type: 'dashboard_event',
-            id: `qc-${Date.now()}`,
+            id: newItem.id,
             seq: state.eventSeq + 1,
             timestamp: Date.now(),
             eventType: 'evidence_added',
-            payload: {
-              id: `qc-${Date.now()}`,
-              category: payload.category,
-              content: payload.content,
-              speakerUid: uid,
-              speakerName: name,
-              confidence: 75,
-              timestamp: Date.now(),
-              ...(payload.category === 'action' ? { actionStatus: 'pending' } : {}),
-            },
+            payload: newItem,
+          });
+          fetch('/api/incident/event', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ channelName: channel, item: newItem }),
+          }).catch(() => {});
+          emitToast({
+            type: 'info',
+            title: `${payload.category.toUpperCase()} Logged`,
+            description: payload.content,
           });
         }}
       />
