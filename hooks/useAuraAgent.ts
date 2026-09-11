@@ -147,6 +147,9 @@ export function useAuraAgent({
       const chan = activeAgentChannelRef.current || channel;
       if (!id && !chan) return;
 
+      activeAgentIdRef.current = null;
+      activeAgentChannelRef.current = null;
+
       const payload = JSON.stringify({ agentId: id || undefined, channelName: chan || undefined });
       if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
         const blob = new Blob([payload], { type: 'application/json' });

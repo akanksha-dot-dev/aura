@@ -13,7 +13,8 @@ export async function POST(request: NextRequest) {
   try {
     let body: AgentStopRequest;
     try {
-      body = await request.json();
+      const rawText = await request.text();
+      body = rawText ? JSON.parse(rawText) : {};
     } catch {
       return NextResponse.json(
         { error: 'Invalid JSON request body' },
