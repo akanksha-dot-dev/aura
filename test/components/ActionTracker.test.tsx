@@ -123,4 +123,43 @@ describe('ActionTracker Component (components/ActionTracker.tsx)', () => {
     fireEvent.click(pendingRailBtn);
     expect(onStatusChange).toHaveBeenCalledWith('act-1', 'in_progress');
   });
+
+  it('renders unified tactical tabs when playbookSteps are provided', () => {
+    const onStatusChange = vi.fn();
+    const onCreateAction = vi.fn();
+    const mockSteps = [
+      {
+        id: 'step-1',
+        phase: 'diagnose' as const,
+        title: 'Check database connection pool headroom',
+        detail: 'Run SELECT count(*) from pg_stat_activity',
+        priority: 'critical' as const,
+        command: 'SELECT count(*) FROM pg_stat_activity;',
+      },
+    ];
+
+    render(
+      <ActionTracker
+        actions={[]}
+        onStatusChange={onStatusChange}
+        playbookSteps={mockSteps}
+        onCreateAction={onCreateAction}
+      />
+    );
+
+    // Should render tabs
+    expect(screen.getByRole('tab', { name: /runbook/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /actions/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /hypotheses/i })).toBeInTheDocument();
+
+    // Default tab is runbook: renders the playbook step
+    expect(screen.getByText('Check database connection pool headroom')).toBeInTheDocument();
+
+    // Switch to Actions tab
+    fireEvent.click(screen.getByRole('tab', { name: /actions/i }));
+    expect(screen.getByText('Mitigation Actions')).toBeInTheDocument();
+    expect(
+      screen.getByText(/AURA AI synthesizes verbal tasks into Jira & Slack action items/i)
+    ).toBeInTheDocument();
+  });
 });

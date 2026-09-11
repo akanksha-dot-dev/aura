@@ -1,7 +1,7 @@
-'use client';
-
 import React, { useState } from 'react';
 import { EvidenceItem, ActionStatus } from '@/lib/types';
+import { PlaybookStep } from '@/lib/scenarios';
+import { SmartPlaybook } from './SmartPlaybook';
 
 export interface ActionTrackerProps {
   actions: EvidenceItem[];
@@ -10,6 +10,9 @@ export interface ActionTrackerProps {
   onStatusChange: (actionId: string, newStatus: ActionStatus) => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  playbookSteps?: PlaybookStep[];
+  onCreateAction?: (title: string, detail: string) => void;
+  incidentStatus?: 'investigating' | 'identified' | 'monitoring' | 'resolved';
 }
 
 export function ActionTracker({
@@ -19,9 +22,17 @@ export function ActionTracker({
   onStatusChange,
   isCollapsed: externalIsCollapsed,
   onToggleCollapse: externalOnToggleCollapse,
+  playbookSteps,
+  onCreateAction,
+  incidentStatus,
 }: ActionTrackerProps) {
   const [internalCollapsed, setInternalCollapsed] = useState(false);
   const isCollapsed = externalIsCollapsed !== undefined ? externalIsCollapsed : internalCollapsed;
+
+  const hasPlaybook = Boolean(playbookSteps && playbookSteps.length > 0);
+  const [activeTab, setActiveTab] = useState<'playbook' | 'actions' | 'hypotheses'>(
+    hasPlaybook ? 'playbook' : 'actions'
+  );
 
   const toggleCollapse = () => {
     if (externalOnToggleCollapse) {
@@ -58,8 +69,10 @@ export function ActionTracker({
           border-left: 1px solid var(--border-subtle);
           display: flex;
           flex-direction: column;
-          padding: 12px 14px;
+          padding: 10px 10px;
           overflow-y: auto;
+          overflow-x: hidden;
+          box-sizing: border-box;
           user-select: none;
           gap: 12px;
           box-shadow: inset 1px 0 0 0 rgba(255, 255, 255, 0.02);
@@ -579,6 +592,77 @@ export function ActionTracker({
           line-height: 1.35;
           color: var(--text-muted);
         }
+
+        /* ─── Segmented Tabs for Unified Tactical Operations ─── */
+        .action-tracker__tab-bar {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          background: rgba(255, 255, 255, 0.03);
+          padding: 3px;
+          border-radius: var(--radius-md, 6px);
+          border: 1px solid var(--border-hairline);
+          flex-shrink: 0;
+        }
+
+        .action-tracker__tab-btn {
+          flex: 1;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          padding: 4px 6px;
+          border-radius: var(--radius-sm, 4px);
+          border: 1px solid transparent;
+          background: transparent;
+          color: var(--text-muted);
+          font-family: var(--font-sans);
+          font-size: 10.5px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all var(--duration-fast, 120ms) ease;
+          white-space: nowrap;
+          user-select: none;
+        }
+
+        .action-tracker__tab-btn:hover {
+          color: var(--text-primary);
+          background: rgba(255, 255, 255, 0.05);
+        }
+
+        .action-tracker__tab-btn--active {
+          background: var(--bg-surface-raised, #18161E);
+          color: var(--color-aura, #D4A853);
+          font-weight: 600;
+          border-color: rgba(212, 168, 83, 0.3);
+          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .action-tracker__tab-badge {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          padding: 1px 4px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.06);
+          color: inherit;
+        }
+
+        .action-tracker__tab-btn--active .action-tracker__tab-badge {
+          background: rgba(212, 168, 83, 0.2);
+          color: var(--color-aura, #D4A853);
+        }
+
+        .action-tracker__pane {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          flex: 1;
+          min-height: 0;
+          overflow-y: auto;
+          overflow-x: hidden;
+          box-sizing: border-box;
+          width: 100%;
+        }
       `}</style>
 
       <section
@@ -588,11 +672,13 @@ export function ActionTracker({
         <div className={`action-tracker__header ${isCollapsed ? 'action-tracker__header--collapsed' : ''}`}>
           {!isCollapsed && (
             <div className="action-tracker__title-group">
-              <span className="action-tracker__title">Mitigation Actions</span>
+              <span className="action-tracker__title">
+                {hasPlaybook ? 'Tactical Operations' : 'Mitigation Actions'}
+              </span>
             </div>
           )}
           <div className="action-tracker__controls">
-            {!isCollapsed && (
+            {!isCollapsed && !hasPlaybook && (
               <span className="action-tracker__count-badge">
                 {doneCount} of {actions.length} Done
               </span>
@@ -658,152 +744,286 @@ export function ActionTracker({
           </div>
         ) : (
           <>
-            <div className="action-tracker__progress-wrap">
-              <div className="action-tracker__progress-track">
-                <div
-                  className="action-tracker__progress-fill"
-                  style={{ width: `${progressPercent}%` }}
+            {hasPlaybook && (
+              <div className="action-tracker__tab-bar" role="tablist" aria-label="Tactical operations tabs">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === 'playbook'}
+                  className={`action-tracker__tab-btn ${activeTab === 'playbook' ? 'action-tracker__tab-btn--active' : ''}`}
+                  onClick={() => setActiveTab('playbook')}
+                >
+                  <span>Runbook</span>
+                  <span className="action-tracker__tab-badge">{playbookSteps?.length ?? 0}</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === 'actions'}
+                  className={`action-tracker__tab-btn ${activeTab === 'actions' ? 'action-tracker__tab-btn--active' : ''}`}
+                  onClick={() => setActiveTab('actions')}
+                >
+                  <span>Actions</span>
+                  <span className="action-tracker__tab-badge">{actions.length}</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-label="Hypotheses"
+                  title="Active Hypotheses & Findings"
+                  aria-selected={activeTab === 'hypotheses'}
+                  className={`action-tracker__tab-btn ${activeTab === 'hypotheses' ? 'action-tracker__tab-btn--active' : ''}`}
+                  onClick={() => setActiveTab('hypotheses')}
+                >
+                  <span>Hypotheses</span>
+                  <span className="action-tracker__tab-badge">
+                    {hypotheses.length > 0 ? hypotheses.length : suspectedCause ? 1 : 0}
+                  </span>
+                </button>
+              </div>
+            )}
+
+            {/* Panel 1: Playbook (Runbook) */}
+            {hasPlaybook && activeTab === 'playbook' && (
+              <div className="action-tracker__pane">
+                <SmartPlaybook
+                  steps={playbookSteps!}
+                  onCreateAction={(title, detail) => {
+                    onCreateAction?.(title, detail);
+                  }}
+                  incidentStatus={incidentStatus ?? 'investigating'}
                 />
               </div>
-            </div>
+            )}
 
-            <div className="action-tracker__list">
-          {actions.length === 0 ? (
-            <div className="action-tracker__empty-state">
-              <div className="action-tracker__empty-icon">
-                <span className="action-tracker__empty-pulse" />
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                  <line x1="12" y1="19" x2="12" y2="22" />
-                </svg>
-              </div>
-              <div className="action-tracker__empty-text">
-                <span className="action-tracker__empty-headline">Listening for Directives</span>
-                <span className="action-tracker__empty-sub">
-                  AURA AI synthesizes verbal tasks into Jira &amp; Slack action items in real time.
-                </span>
-              </div>
-            </div>
-          ) : (
-            actions.map((act) => {
-              const status = act.actionStatus ?? 'pending';
-              const ticketNumber = (act.id.replace(/[^0-9]/g, '') || '492').slice(-3);
-
-              return (
-                <div
-                  key={act.id}
-                  className={`action-item action-item--${status}`}
-                  onClick={() => handleCycleStatus(act)}
-                  title="Click to advance status (Pending → Active → Done)"
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      handleCycleStatus(act);
-                    }
-                  }}
-                >
-                  <div className="action-item__ring" aria-hidden="true">
-                    {status === 'done' && (
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    )}
+            {/* Panel 2: Mitigation Actions */}
+            {(!hasPlaybook || activeTab === 'actions') && (
+              <div className="action-tracker__pane">
+                {hasPlaybook && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2px' }}>
+                    <span className="action-tracker__title" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                      Mitigation Actions
+                    </span>
+                    <span className="action-tracker__count-badge">
+                      {doneCount} of {actions.length} Done
+                    </span>
                   </div>
+                )}
 
-                  <div className="action-item__body">
-                    <div className="action-item__top">
-                      <span className="action-item__ticket">ACT-{ticketNumber}</span>
-                      <span className="action-item__sla">
-                        {act.eta
-                          ? `${Math.max(1, Math.round((act.eta - act.timestamp) / 60000))}m SLA`
-                          : '15m SLA'}
-                      </span>
-                    </div>
-
-                    <p className="action-item__title">{act.content}</p>
-
-                    <div className="action-item__footer">
-                      <span className="action-item__assignee" title={`Assigned to ${act.assignedTo || 'Unassigned'}`}>
-                        {act.assignedTo ? `@${act.assignedTo}` : '@unassigned'}
-                      </span>
-                    </div>
+                <div className="action-tracker__progress-wrap">
+                  <div className="action-tracker__progress-track">
+                    <div
+                      className="action-tracker__progress-fill"
+                      style={{ width: `${progressPercent}%` }}
+                    />
                   </div>
                 </div>
-              );
-            })
-          )}
-        </div>
 
-            <div className="hypothesis-board">
-              <div className="hypothesis-board__header">
-                <span>Active Hypotheses &amp; Findings</span>
-                <span className="hypothesis-board__badge">
-                  {hypotheses.length > 0
-                    ? `${hypotheses.length} tracked`
-                    : suspectedCause
-                    ? '1 tracked'
-                    : '0 tracked'}
-                </span>
-              </div>
-              <div className="hypothesis-board__list">
-                {hypotheses.length > 0 ? (
-                  hypotheses.map((hyp) => {
-                    const statusClass =
-                      hyp.status === 'confirmed'
-                        ? 'hypothesis-item--confirmed'
-                        : hyp.status === 'disproven'
-                        ? 'hypothesis-item--disproven'
-                        : 'hypothesis-item--active';
-                    const icon =
-                      hyp.status === 'confirmed'
-                        ? '✓'
-                        : hyp.status === 'disproven'
-                        ? '✕'
-                        : '●';
-                    return (
-                      <div key={hyp.id} className={`hypothesis-item ${statusClass}`}>
-                        <span className="hypothesis-item__icon">{icon}</span>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
-                          <span>{hyp.content}</span>
-                          {hyp.decidingMetric && (
-                            <span style={{ fontSize: '9px', opacity: 0.7, fontFamily: 'var(--font-mono)' }}>
-                              Metric: {hyp.decidingMetric}
-                            </span>
-                          )}
-                        </div>
+                <div className="action-tracker__list">
+                  {actions.length === 0 ? (
+                    <div className="action-tracker__empty-state">
+                      <div className="action-tracker__empty-icon">
+                        <span className="action-tracker__empty-pulse" />
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                          <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                          <line x1="12" y1="19" x2="12" y2="22" />
+                        </svg>
                       </div>
-                    );
-                  })
-                ) : suspectedCause ? (
-                  <div className="hypothesis-item hypothesis-item--active">
-                    <span className="hypothesis-item__icon">●</span>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
-                      <span>{suspectedCause}</span>
-                      <span style={{ fontSize: '9px', opacity: 0.7, fontFamily: 'var(--font-mono)' }}>
-                        Initial suspected cause from incident briefing
+                      <div className="action-tracker__empty-text">
+                        <span className="action-tracker__empty-headline">Listening for Directives</span>
+                        <span className="action-tracker__empty-sub">
+                          AURA AI synthesizes verbal tasks into Jira &amp; Slack action items in real time.
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    actions.map((act) => {
+                      const status = act.actionStatus ?? 'pending';
+                      const ticketNumber = (act.id.replace(/[^0-9]/g, '') || '492').slice(-3);
+
+                      return (
+                        <div
+                          key={act.id}
+                          className={`action-item action-item--${status}`}
+                          onClick={() => handleCycleStatus(act)}
+                          title="Click to advance status (Pending → Active → Done)"
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handleCycleStatus(act);
+                            }
+                          }}
+                        >
+                          <div className="action-item__ring" aria-hidden="true">
+                            {status === 'done' && (
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                            )}
+                          </div>
+
+                          <div className="action-item__body">
+                            <div className="action-item__top">
+                              <span className="action-item__ticket">ACT-{ticketNumber}</span>
+                              <span className="action-item__sla">
+                                {act.eta
+                                  ? `${Math.max(1, Math.round((act.eta - act.timestamp) / 60000))}m SLA`
+                                  : '15m SLA'}
+                              </span>
+                            </div>
+
+                            <p className="action-item__title">{act.content}</p>
+
+                            <div className="action-item__footer">
+                              <span className="action-item__assignee" title={`Assigned to ${act.assignedTo || 'Unassigned'}`}>
+                                {act.assignedTo ? `@${act.assignedTo}` : '@unassigned'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {!hasPlaybook && (
+                  <div className="hypothesis-board">
+                    <div className="hypothesis-board__header">
+                      <span>Active Hypotheses &amp; Findings</span>
+                      <span className="hypothesis-board__badge">
+                        {hypotheses.length > 0
+                          ? `${hypotheses.length} tracked`
+                          : suspectedCause
+                          ? '1 tracked'
+                          : '0 tracked'}
                       </span>
                     </div>
-                  </div>
-                ) : (
-                  <div className="hypothesis-item" style={{ opacity: 0.6, fontStyle: 'italic' }}>
-                    <span className="hypothesis-item__icon">○</span>
-                    <span>Awaiting hypothesis formulation from bridge responders...</span>
+                    <div className="hypothesis-board__list">
+                      {hypotheses.length > 0 ? (
+                        hypotheses.map((hyp) => {
+                          const statusClass =
+                            hyp.status === 'confirmed'
+                              ? 'hypothesis-item--confirmed'
+                              : hyp.status === 'disproven'
+                              ? 'hypothesis-item--disproven'
+                              : 'hypothesis-item--active';
+                          const icon =
+                            hyp.status === 'confirmed'
+                              ? '✓'
+                              : hyp.status === 'disproven'
+                              ? '✕'
+                              : '●';
+                          return (
+                            <div key={hyp.id} className={`hypothesis-item ${statusClass}`}>
+                              <span className="hypothesis-item__icon">{icon}</span>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+                                <span>{hyp.content}</span>
+                                {hyp.decidingMetric && (
+                                  <span style={{ fontSize: '9px', opacity: 0.7, fontFamily: 'var(--font-mono)' }}>
+                                    Metric: {hyp.decidingMetric}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : suspectedCause ? (
+                        <div className="hypothesis-item hypothesis-item--active">
+                          <span className="hypothesis-item__icon">●</span>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+                            <span>{suspectedCause}</span>
+                            <span style={{ fontSize: '9px', opacity: 0.7, fontFamily: 'var(--font-mono)' }}>
+                              Initial suspected cause from incident briefing
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="hypothesis-item" style={{ opacity: 0.6, fontStyle: 'italic' }}>
+                          <span className="hypothesis-item__icon">○</span>
+                          <span>Awaiting hypothesis formulation from bridge responders...</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
-            </div>
+            )}
+
+            {/* Panel 3: Hypotheses & Findings (Dedicated Tab when Playbook is present) */}
+            {hasPlaybook && activeTab === 'hypotheses' && (
+              <div className="action-tracker__pane">
+                <div className="hypothesis-board" style={{ margin: 0 }}>
+                  <div className="hypothesis-board__header">
+                    <span>Active Hypotheses &amp; Findings</span>
+                    <span className="hypothesis-board__badge">
+                      {hypotheses.length > 0
+                        ? `${hypotheses.length} tracked`
+                        : suspectedCause
+                        ? '1 tracked'
+                        : '0 tracked'}
+                    </span>
+                  </div>
+                  <div className="hypothesis-board__list">
+                    {hypotheses.length > 0 ? (
+                      hypotheses.map((hyp) => {
+                        const statusClass =
+                          hyp.status === 'confirmed'
+                            ? 'hypothesis-item--confirmed'
+                            : hyp.status === 'disproven'
+                            ? 'hypothesis-item--disproven'
+                            : 'hypothesis-item--active';
+                        const icon =
+                          hyp.status === 'confirmed'
+                            ? '✓'
+                            : hyp.status === 'disproven'
+                            ? '✕'
+                            : '●';
+                        return (
+                          <div key={hyp.id} className={`hypothesis-item ${statusClass}`}>
+                            <span className="hypothesis-item__icon">{icon}</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+                              <span>{hyp.content}</span>
+                              {hyp.decidingMetric && (
+                                <span style={{ fontSize: '9px', opacity: 0.7, fontFamily: 'var(--font-mono)' }}>
+                                  Metric: {hyp.decidingMetric}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : suspectedCause ? (
+                      <div className="hypothesis-item hypothesis-item--active">
+                        <span className="hypothesis-item__icon">●</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+                          <span>{suspectedCause}</span>
+                          <span style={{ fontSize: '9px', opacity: 0.7, fontFamily: 'var(--font-mono)' }}>
+                            Initial suspected cause from incident briefing
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="hypothesis-item" style={{ opacity: 0.6, fontStyle: 'italic' }}>
+                        <span className="hypothesis-item__icon">○</span>
+                        <span>Awaiting hypothesis formulation from bridge responders...</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
       </section>

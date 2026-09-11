@@ -93,6 +93,7 @@ export async function POST(request: NextRequest) {
       impact: matchedPreset.impact,
       suspectedCause: matchedPreset.suspectedCause,
       personas: matchedPreset.personas,
+      playbook: matchedPreset.playbook,
     } : undefined);
 
     // 3. Build the full, rich system prompt with updated real-time incident context

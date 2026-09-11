@@ -26,12 +26,10 @@ import { TranscriptDrawer, TranscriptEntry } from '@/components/TranscriptDrawer
 import { AgoraAnalyticsOverlay } from '@/components/AgoraAnalyticsOverlay';
 import { KeyboardShortcutsModal } from '@/components/KeyboardShortcutsModal';
 import { WarRoomInvite } from '@/components/WarRoomInvite';
-import { SmartPlaybook } from '@/components/SmartPlaybook';
 import { QuickCapture, QuickCapturePayload } from '@/components/QuickCapture';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { NotificationToastContainer, emitToast } from '@/components/NotificationToast';
 import { ResolveIncidentModal } from '@/components/ResolveIncidentModal';
-import { SimilarIncidentBanner } from '@/components/SimilarIncidentBanner';
 import { WarRoomSummaryCard } from '@/components/WarRoomSummaryCard';
 import {
   playConflictEarcon,
@@ -503,6 +501,7 @@ function DashboardContent() {
               displayName: p.displayName,
               role: p.role,
             })),
+            playbook: activeScenario.playbook,
           };
         }
 
@@ -606,6 +605,7 @@ function DashboardContent() {
             description: scenarioConfig.description,
             impact: scenarioConfig.impact,
             suspectedCause: scenarioConfig.suspectedCause,
+            playbook: scenarioConfig.playbook,
           } : undefined,
         }),
       }).catch((err) => {
@@ -860,33 +860,33 @@ function DashboardContent() {
   }, [connectionState, isMockReplay, networkStats.rtt, networkStats.jitter]);
 
   return (
-    <div
-      className={`command-center ${activeConflict ? 'has-conflict' : ''} ${
-        state.status === 'resolved' ? 'command-center--resolved' : ''
-      } ${isSpeakerCollapsed ? 'speakers-collapsed' : ''} ${
-        isActionsCollapsed ? 'actions-collapsed' : ''
-      }`}
-    >
+    <>
       {/* Simulation Replay Banner with 1-click switch to Live Real-Time Voice */}
       {isMockReplay && (
         <div
           style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '32px',
             background: 'linear-gradient(90deg, rgba(255, 170, 0, 0.18) 0%, rgba(255, 110, 0, 0.14) 100%)',
             borderBottom: '1px solid rgba(255, 170, 0, 0.4)',
             color: '#ffbe3b',
-            padding: '8px 16px',
+            padding: '0 16px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            fontSize: '12px',
+            fontSize: '11px',
             fontWeight: 500,
-            zIndex: 999,
+            zIndex: 10000,
+            boxSizing: 'border-box',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '14px' }}>⚠</span>
+            <span style={{ fontSize: '13px' }}>⚠</span>
             <span>
-              <strong>SCRIPTED SIMULATION REPLAY MODE:</strong> You are currently playing an automated script demo. Real-time microphone input is paused.
+              <strong>SCRIPTED SIMULATION REPLAY MODE:</strong> Real-time microphone input is paused while playing an automated script demo.
             </span>
           </div>
           <button
@@ -902,7 +902,7 @@ function DashboardContent() {
               color: '#000',
               border: 'none',
               borderRadius: '4px',
-              padding: '5px 14px',
+              padding: '4px 12px',
               fontWeight: 700,
               fontSize: '11px',
               cursor: 'pointer',
@@ -914,42 +914,44 @@ function DashboardContent() {
         </div>
       )}
 
-      {/* 1. Status Bar */}
-      <StatusBar
-        incidentTitle={state.title}
-        severity={state.severity}
-        status={state.status}
-        openedAt={state.openedAt}
-        resolvedAt={state.resolvedAt}
-        currentOODAPhase={state.currentOODAPhase}
-        icName={icDisplayName}
-        connectionQuality={connectionQuality}
-        onClaimIC={() => claimIC(uid)}
-        costRate={costRate}
-        onRateChange={setCostRate}
-        isCostPaused={isCostPaused}
-        onToggleCostPause={() => setIsCostPaused((prev) => !prev)}
-        voiceLang={voiceLang}
-        onVoiceLangChange={(newLang) => {
-          setVoiceLang(newLang);
-          if (typeof window !== 'undefined') {
-            sessionStorage.setItem('aura_voice_lang', newLang);
-          }
-          emitToast({
-            type: 'info',
-            title: 'ASR Model Switched',
-            description: `Voice recognition switched to ${newLang === 'en-IN' ? 'Indian English (en-IN)' : 'US English (en-US)'}.`,
-          });
-        }}
-        cognitiveLoadScore={state.cognitiveLoadScore}
-        onResolve={() => setIsResolveOpen(true)}
-      />
-
-      {/* 1b. AI Similar Incident Insight Banner */}
-      <SimilarIncidentBanner
-        incident={state}
-        channelName={channel}
-      />
+      <div
+        className={`command-center ${activeConflict ? 'has-conflict' : ''} ${
+          state.status === 'resolved' ? 'command-center--resolved' : ''
+        } ${isSpeakerCollapsed ? 'speakers-collapsed' : ''} ${
+          isActionsCollapsed ? 'actions-collapsed' : ''
+        }`}
+        style={isMockReplay ? { top: '32px', height: 'calc(100vh - 32px)' } : undefined}
+      >
+        {/* 1. Status Bar */}
+        <StatusBar
+          incidentTitle={state.title}
+          severity={state.severity}
+          status={state.status}
+          openedAt={state.openedAt}
+          resolvedAt={state.resolvedAt}
+          currentOODAPhase={state.currentOODAPhase}
+          icName={icDisplayName}
+          connectionQuality={connectionQuality}
+          onClaimIC={() => claimIC(uid)}
+          costRate={costRate}
+          onRateChange={setCostRate}
+          isCostPaused={isCostPaused}
+          onToggleCostPause={() => setIsCostPaused((prev) => !prev)}
+          voiceLang={voiceLang}
+          onVoiceLangChange={(newLang) => {
+            setVoiceLang(newLang);
+            if (typeof window !== 'undefined') {
+              sessionStorage.setItem('aura_voice_lang', newLang);
+            }
+            emitToast({
+              type: 'info',
+              title: 'ASR Model Switched',
+              description: `Voice recognition switched to ${newLang === 'en-IN' ? 'Indian English (en-IN)' : 'US English (en-US)'}.`,
+            });
+          }}
+          cognitiveLoadScore={state.cognitiveLoadScore}
+          onResolve={() => setIsResolveOpen(true)}
+        />
 
       {/* 2. Speaker Panel */}
       <SpeakerPanel
@@ -999,9 +1001,12 @@ function DashboardContent() {
         onTabChange={setMainViewTab}
         incident={state}
         costRate={costRate}
+        channelName={channel}
+        suspectedCause={scenarioConfig?.suspectedCause}
+        scenarioSummary={scenarioConfig?.description || scenarioConfig?.impact}
       />
 
-      {/* 5. Action Tracker */}
+      {/* 5. Tactical Console: Unified Action Tracker & Playbook Runbook */}
       <ActionTracker
         actions={actions}
         hypotheses={state.evidenceItems.filter((e) => e.category === 'hypothesis')}
@@ -1009,47 +1014,39 @@ function DashboardContent() {
         onStatusChange={updateActionStatus}
         isCollapsed={isActionsCollapsed}
         onToggleCollapse={() => setIsActionsCollapsed((prev) => !prev)}
+        playbookSteps={scenarioConfig?.playbook}
+        onCreateAction={(title, detail) => {
+          const actionItem = {
+            id: `playbook-action-${Date.now()}`,
+            category: 'action' as const,
+            content: `${title} — ${detail}`,
+            speakerUid: uid,
+            speakerName: name,
+            confidence: 80,
+            timestamp: Date.now(),
+            actionStatus: 'pending' as const,
+          };
+          processEvent({
+            type: 'dashboard_event',
+            id: actionItem.id,
+            seq: state.eventSeq + 1,
+            timestamp: Date.now(),
+            eventType: 'evidence_added',
+            payload: actionItem,
+          });
+          fetch('/api/incident/event', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ channelName: channel, item: actionItem }),
+          }).catch(() => {});
+          emitToast({
+            type: 'info',
+            title: 'Playbook Action Created',
+            description: `${title}: ${detail}`,
+          });
+        }}
+        incidentStatus={state.status}
       />
-
-      {/* 5b. AURA Smart Playbook — AI-driven runbook suggestions */}
-      {!isActionsCollapsed && scenarioConfig?.playbook && scenarioConfig.playbook.length > 0 && (
-        <div style={{ gridArea: 'actions', paddingTop: 0, overflow: 'auto' }}>
-          <SmartPlaybook
-            steps={scenarioConfig.playbook}
-            incidentStatus={state.status}
-            onCreateAction={(title, detail) => {
-              const actionItem = {
-                id: `playbook-action-${Date.now()}`,
-                category: 'action' as const,
-                content: `${title} — ${detail}`,
-                speakerUid: uid,
-                speakerName: name,
-                confidence: 80,
-                timestamp: Date.now(),
-                actionStatus: 'pending' as const,
-              };
-              processEvent({
-                type: 'dashboard_event',
-                id: actionItem.id,
-                seq: state.eventSeq + 1,
-                timestamp: Date.now(),
-                eventType: 'evidence_added',
-                payload: actionItem,
-              });
-              fetch('/api/incident/event', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ channelName: channel, item: actionItem }),
-              }).catch(() => {});
-              emitToast({
-                type: 'info',
-                title: 'Playbook Action Created',
-                description: `${title}: ${detail}`,
-              });
-            }}
-          />
-        </div>
-      )}
 
       {/* 6-8. Unified Mission Deck (Bottom Dock: Tension Sparkline, Live Captions, Incident Stats) */}
       <footer className="mission-deck" role="region" aria-label="Incident Mission Deck">
@@ -1248,6 +1245,7 @@ function DashboardContent() {
         }}
       />
     </div>
+    </>
   );
 }
 

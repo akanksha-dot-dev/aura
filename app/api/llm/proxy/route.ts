@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createDashboardEvent, publishDashboardEvent } from '@/lib/rtmPublisher';
-import { getIncidentState, buildDynamicContext } from '@/lib/incidentStore';
+import { getIncidentState, buildDynamicContext, getSpeakerDisplayName } from '@/lib/incidentStore';
+import type { IncidentState } from '@/lib/types';
 import { insertTranscript } from '@/lib/db';
 
 export { buildDynamicContext } from '@/lib/incidentStore';
@@ -147,7 +148,7 @@ export async function POST(request: NextRequest) {
     if (isPlaceholderKey) {
       const lastUserMsg =
         [...messages].reverse().find((m) => m.role === 'user')?.content || '';
-      return handleAutonomousIncidentResponse(lastUserMsg, isStream);
+      return handleAutonomousIncidentResponse(lastUserMsg, isStream, getIncidentState(channelName), channelName);
     }
 
     // ── Gemini 2.0 Flash via Google's OpenAI-compatible endpoint ────────────
@@ -474,11 +475,19 @@ export async function POST(request: NextRequest) {
  */
 function handleAutonomousIncidentResponse(
   userMessage: string,
-  isStream: boolean
+  isStream: boolean,
+  state?: IncidentState,
+  channelName = 'incident-war-room'
 ): Response {
   const lower = userMessage.toLowerCase();
-  let text =
-    'AURA online. Monitoring incident bridge. SEV-1 active. How can I assist with telemetry or rollback?';
+  const severity = state?.severity || 'SEV-1';
+  const title = state?.title || 'Active Incident Bridge';
+  const services = state?.affectedServices?.length
+    ? state.affectedServices.join(', ')
+    : 'core services';
+  const primaryService = state?.affectedServices?.[0] || 'core-api';
+
+  let text = `AURA online. Monitoring incident bridge. ${severity} active on ${services}. How can I assist with telemetry or next steps?`;
   let eventToPublish: {
     type: 'fact' | 'action_proposal' | 'conflict';
     payload: Record<string, unknown>;
@@ -490,14 +499,15 @@ function handleAutonomousIncidentResponse(
     lower.includes('bridge') ||
     lower.includes('happening')
   ) {
-    text =
-      'Incident bridge status is SEV-1. Checkout 500 error rate is at 42%. Database connection pool is at 94% capacity. Rollback to release v2.13 is recommended.';
+    const activeHypo = state?.evidenceItems.find((e) => e.category === 'hypothesis' && e.status === 'active');
+    const hypoText = activeHypo ? ` Current leading hypothesis: ${activeHypo.content}.` : '';
+    text = `Bridge status is ${severity} for ${title}. Affected services: ${services}.${hypoText} Standing by for telemetry.`;
     eventToPublish = {
       type: 'fact',
       payload: {
         category: 'fact',
-        content: 'Checkout 500 error rate at 42%; database pool at 94%',
-        serviceAffected: 'payment-api',
+        content: `Telemetry confirmed for ${services} under ${severity}`,
+        serviceAffected: primaryService,
         confidence: 85,
         status: 'confirmed',
         speakerUid: 'aura_agent',
@@ -505,19 +515,25 @@ function handleAutonomousIncidentResponse(
       },
     };
   } else if (
+    lower.includes('service') ||
+    lower.includes('affected') ||
+    lower.includes('impact')
+  ) {
+    text = `Affected services are: ${services}. System status is currently ${state?.status || 'investigating'}.`;
+  } else if (
     lower.includes('database') ||
     lower.includes('postgres') ||
     lower.includes('pool') ||
     lower.includes('marcus')
   ) {
     text =
-      'Marcus reported Postgres connection pool exhaustion. 48 of 50 connections active with queries queued on the primary replica.';
+      `Telemetry on ${primaryService} indicates elevated resource saturation. Investigating connection pool metrics and active queries.`;
     eventToPublish = {
       type: 'fact',
       payload: {
         category: 'fact',
-        content: 'Postgres primary connection pool: 48/50 active connections',
-        serviceAffected: 'postgres-primary',
+        content: `Resource pool saturation on ${primaryService}`,
+        serviceAffected: primaryService,
         confidence: 85,
         status: 'confirmed',
         speakerUid: 'marcus_sre',
@@ -527,34 +543,34 @@ function handleAutonomousIncidentResponse(
   } else if (
     lower.includes('rollback') ||
     lower.includes('revert') ||
-    lower.includes('v2.13')
+    lower.includes('mitigate')
   ) {
     text =
-      'Initiating two-phase confirmation for release rollback to v2.13. Requiring incident commander approval on dashboard.';
+      `Initiating two-phase confirmation for mitigation on ${primaryService}. Requiring incident commander approval on dashboard.`;
     eventToPublish = {
       type: 'action_proposal',
       payload: {
         category: 'action',
-        content: 'Rollback payment-api to release v2.13',
-        serviceAffected: 'payment-api',
+        content: `Rollback or mitigate ${primaryService}`,
+        serviceAffected: primaryService,
         status: 'pending_confirmation',
         speakerUid: 'aura_agent',
         speakerName: 'AURA',
-        assignedToUid: 'sarah_ic',
-        assignedToName: 'Sarah Chen',
+        assignedToUid: state?.incidentCommanderUid || 'incident_commander',
+        assignedToName: state?.incidentCommanderUid ? getSpeakerDisplayName(channelName, state.incidentCommanderUid) : 'Incident Commander',
       },
     };
   } else if (lower.includes('conflict') || lower.includes('disagree')) {
     text =
-      'Flagging contradiction between database pool theory and network latency hypothesis. Requesting deciding metric from query logs.';
+      'Flagging contradiction between root cause hypotheses. Requesting deciding metric from query logs to settle theories.';
     eventToPublish = {
       type: 'conflict',
       payload: {
         category: 'conflict',
-        content: 'Connection pool saturation vs network partition',
-        hypothesisA: 'Postgres connection pool saturation',
-        hypothesisB: 'Upstream gateway network partition',
-        decidingMetric: 'p99 database query latency under load',
+        content: `Contradiction on ${primaryService} root cause`,
+        hypothesisA: 'Internal resource starvation',
+        hypothesisB: 'Upstream gateway throttling',
+        decidingMetric: 'Error response code distribution under load',
         status: 'active',
         speakerUid: 'aura_agent',
         speakerName: 'AURA',
@@ -567,7 +583,7 @@ function handleAutonomousIncidentResponse(
     lower.includes('aura')
   ) {
     text =
-      'Hey there! AURA\'s online and standing by on the incident bridge. Voice ingestion and telemetry monitoring are both active. How can I help?';
+      `Hey there! AURA's online and standing by on the bridge. I'm actively monitoring ${title}. How can I help?`;
   } else if (
     // Filler word handling in autonomous mode
     /^\s*(h+m+|u+h+|u+m+|m+h+m+)\s*\.?\s*$/i.test(lower)
@@ -587,10 +603,10 @@ function handleAutonomousIncidentResponse(
     text = 'Copy that.';
   }
 
-  // Publish live RTM event if applicable
+  // Publish live RTM event to the actual channel if applicable
   if (eventToPublish) {
     publishDashboardEvent(
-      'incident-war-room',
+      channelName,
       createDashboardEvent('evidence_added', eventToPublish.payload)
     ).catch(() => {});
   }

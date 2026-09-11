@@ -5,6 +5,7 @@ import { EvidenceItem, TopologyNode, TopologyEdge, IncidentState } from '@/lib/t
 import { TimelineFeed } from './TimelineFeed';
 import { IncidentTopology } from './IncidentTopology';
 import { AnalyticsDashboard } from './AnalyticsDashboard';
+import { SimilarIncidentBanner } from './SimilarIncidentBanner';
 
 export interface MainViewProps {
   evidenceItems: EvidenceItem[];
@@ -17,6 +18,9 @@ export interface MainViewProps {
   // Analytics props
   incident?: IncidentState;
   costRate?: number;
+  channelName?: string;
+  suspectedCause?: string;
+  scenarioSummary?: string;
 }
 
 export function MainView({
@@ -29,6 +33,9 @@ export function MainView({
   onTabChange,
   incident,
   costRate = 150,
+  channelName,
+  suspectedCause,
+  scenarioSummary,
 }: MainViewProps) {
   const [internalActiveTab, setInternalActiveTab] = useState<'timeline' | 'topology' | 'analytics'>('timeline');
   const activeTab = controlledActiveTab ?? internalActiveTab;
@@ -228,6 +235,14 @@ export function MainView({
           </div>
         </div>
 
+        {/* AI Similar Incident Banner inside Main View */}
+        {incident && channelName && (
+          <SimilarIncidentBanner
+            incident={incident}
+            channelName={channelName}
+          />
+        )}
+
         {/* Tab Panels: Both remain mounted to preserve simulation physics & scroll state */}
         <div
           role="tabpanel"
@@ -243,6 +258,11 @@ export function MainView({
           <TimelineFeed
             evidenceItems={evidenceItems}
             incidentOpenedAt={incidentOpenedAt}
+            incidentTitle={incident?.title}
+            severity={incident?.severity}
+            affectedServices={incident?.affectedServices}
+            suspectedCause={suspectedCause}
+            scenarioSummary={scenarioSummary}
           />
         </div>
 

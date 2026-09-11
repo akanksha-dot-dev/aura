@@ -167,4 +167,63 @@ describe('promptBuilder unit tests', () => {
     expect(prompt).toContain('CURRENT INCIDENT SITUATION & REAL-TIME CONTEXT');
     expect(prompt).toContain('DIRECTIVE 1: SHADOW MONITOR MODE');
   });
+
+  it('injects tactical playbook runbook steps and command citations into the prompt', () => {
+    const now = Date.now();
+    const mockState: IncidentState = {
+      incidentId: 'inc-test-runbook',
+      title: 'Payment Gateway Outage',
+      severity: 'SEV-1',
+      status: 'investigating',
+      openedAt: now,
+      affectedServices: ['payment-api', 'postgres-primary'],
+      participants: {},
+      incidentCommanderUid: null,
+      evidenceItems: [],
+      eventSeq: 0,
+      currentOODAPhase: 'OBSERVE',
+      costAccrued: 0,
+      cognitiveLoadScore: 0,
+      lastReadbackAt: 0,
+    };
+
+    const scenario = {
+      title: 'Payment Gateway Outage',
+      severity: 'SEV-1',
+      affectedServices: ['payment-api', 'postgres-primary'],
+      description: 'Checkout error rate spiked to 42%.',
+      impact: '1,420 sessions failing.',
+      suspectedCause: 'Database connection starvation.',
+      personas: [],
+      playbook: [
+        {
+          id: 'po-1',
+          phase: 'diagnose',
+          priority: 'critical',
+          title: 'Check DB connection pool metrics',
+          detail: 'Verify pool utilization and wait queue depth.',
+          command: 'kubectl exec -it postgres-primary -- psql -c "SELECT count(*) FROM pg_stat_activity;"',
+        },
+        {
+          id: 'po-4',
+          phase: 'mitigate',
+          priority: 'critical',
+          title: 'Rollback PR #492',
+          detail: 'Execute immediate rollback to restore connection headroom.',
+          command: 'git revert HEAD --no-edit && git push origin main',
+        },
+      ],
+    };
+
+    const prompt = buildEffectiveSystemPrompt({
+      incidentState: mockState,
+      scenario,
+    });
+
+    expect(prompt).toContain('Tactical Runbook / Playbook Steps:');
+    expect(prompt).toContain('[DIAGNOSE] Check DB connection pool metrics');
+    expect(prompt).toContain('kubectl exec -it postgres-primary -- psql');
+    expect(prompt).toContain('[MITIGATE] Rollback PR #492');
+    expect(prompt).toContain('git revert HEAD --no-edit');
+  });
 });

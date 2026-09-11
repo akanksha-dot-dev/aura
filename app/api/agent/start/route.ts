@@ -187,53 +187,41 @@ function buildLlmConfig(
   };
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// VAD / Interruption Config â€” Surgically tuned for filler word classes
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ──────────────────────────────────────────────────────────────────────────────────
+// VAD / Interruption Config — Sensitive, resilient turn detection
+// ──────────────────────────────────────────────────────────────────────────────────
 
 function buildTurnDetectionConfig() {
   return {
     mode: 'default',
     config: {
-      // Speech energy threshold â€” reject noise transients below this
-      speech_threshold: 0.60,
+      // Speech energy threshold: 0.35 is sensitive to natural speaking voices (default is 0.5; 0.6 was dropping normal speech)
+      speech_threshold: 0.35,
 
       start_of_speech: {
         mode: 'vad',
         vad_config: {
-          // How long of voiced frames before declaring speech started.
-          // 240ms: Long enough to exclude keyboard clicks, chair creaks.
-          // Short enough to catch "hmm" (avg ~300ms voiced duration).
-          interrupt_duration_ms: 240,
+          // 160ms of voiced audio declares speech start (Agora recommended standard)
+          interrupt_duration_ms: 160,
 
-          // Extra tolerance for multi-speaker rooms where overlapping
-          // voices confuse basic energy VAD.
+          // Tolerance for multi-speaker bridge
           speaking_interrupt_duration_ms: 400,
 
-          // Prefix padding: capture audio BEFORE VAD trigger fires.
-          // 1200ms ensures we don't clip the start of "hmm..." or "wait..."
-          // which begin softly before reaching VAD threshold.
-          prefix_padding_ms: 1200,
+          // Prefix padding: capture audio before VAD trigger fires to not clip first syllables
+          prefix_padding_ms: 800,
         },
       },
 
       end_of_speech: {
         mode: 'semantic',   // Semantic EOS: understands incomplete sentences
         semantic_config: {
-          // Silence after speech before declaring end-of-turn.
-          // 450ms: Enough to distinguish natural pause within a sentence
-          // from true end-of-turn (avoids cutting "hmm... the database..."
-          // as two separate turns).
-          silence_duration_ms: 450,
+          // Silence after speech before declaring end-of-turn
+          silence_duration_ms: 350,
 
-          // Maximum time to wait for more speech before forcing EOS.
-          // 5000ms: Accommodates "wait..." + thinking pause + continuation.
-          max_wait_ms: 5000,
+          // Maximum wait time for semantic determination (3000ms gives snappy responses)
+          max_wait_ms: 3000,
 
-          // pause_state_enabled: true allows semantic model to distinguish
-          // "thinking pause mid-sentence" from "turn complete".
-          // This is the key feature for hmm/uh handling â€” the agent
-          // won't interrupt during a 2-second thinking pause.
+          // Distinguishes mid-sentence thinking pause from true end-of-turn
           pause_state_enabled: true,
         },
       },
@@ -241,73 +229,37 @@ function buildTurnDetectionConfig() {
   };
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Interruption Config â€” Smart mode prevents noise from cutting AURA off
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ──────────────────────────────────────────────────────────────────────────────────
+// Interruption Config — 160ms protects against acoustic feedback/echo cutting AURA off
+// ──────────────────────────────────────────────────────────────────────────────────
 
 function buildInterruptionConfig() {
   return {
-    // 'start_of_speech' mode: any voiced frame interrupts AURA.
-    // 'smart_interruption' (experimental): only substantive speech interrupts.
-    // We use start_of_speech since we handle filler suppression in the LLM layer.
     enable: true,
     mode: 'start_of_speech',
-
-    // Interruption sensitivity: voiced frames needed to trigger interrupt.
-    // 3 frames @ 10ms each = 30ms voiced audio required.
-    // This prevents single keyboard clicks or cough transients from cutting AURA off.
     config: {
-      interrupt_speech_duration_ms: 80,  // ~80ms of voiced audio before interrupt triggers
-      // If user says "hmm" during AURA speech, this fires.
-      // The LLM system prompt then handles the hmm appropriately (stays silent).
+      interrupt_speech_duration_ms: 160,  // 160ms voiced audio avoids speaker-to-mic feedback interruptions
     },
   };
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// ASR Config â€” Deepgram Nova-3 + filler word transcription
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ──────────────────────────────────────────────────────────────────────────────────
+// ASR Config — Agora Managed Deepgram Nova-3 (clean, verified parameters)
+// ──────────────────────────────────────────────────────────────────────────────────
 
 function buildAsrConfig(language: string) {
+  const lang = language?.trim() || 'en-US';
   return {
     credential_mode: 'managed',
     vendor: 'deepgram',
-    // Default to en-US for global English, or user-selected en-IN
-    language: language?.trim() || 'en-US',
+    language: lang,
     params: {
-      model: 'nova-3',               // Deepgram's best: 6% WER, filler-aware
       url: 'wss://api.deepgram.com/v1/listen',
-      keyterm: 'AURA',
-
-      // Boost critical keywords for recognition in noisy war rooms
-      keywords: [
-        'AURA:5',          // Agent wake word â€” critical
-        'SEV-0:4', 'SEV-1:4', 'SEV-2:3', 'SEV-3:2',
-        'rollback:3', 'canary:2', 'hotfix:2',
-        'kubernetes:2', 'postgres:2', 'redis:2',
-        // Filler word keywords â€” tell Deepgram to recognize these, not drop them
-        'hmm:2', 'hm:2',
-        'uhh:2', 'uh:2', 'um:2', 'umm:2',
-        'ahh:2', 'aah:2',
-        'mhm:2', 'mm-hmm:2',
-      ],
-
-      smart_format: true,   // Punctuates and formats numbers/dates naturally
+      model: 'nova-3',
+      smart_format: true,
       punctuate: true,
-      diarize: true,        // Speaker diarization for multi-speaker war rooms
-      diarize_version: '3', // Nova-3 diarization model
-
-      // CRITICAL: filler_words:true instructs Deepgram to transcribe
-      // "um", "uh", "hmm" verbatim instead of silently dropping them.
-      // Without this, the LLM never sees the filler and cannot respond.
       filler_words: true,
-
-      // Interim results: stream partial transcripts for lower perceived latency
       interim_results: true,
-      endpointing: 450,    // Match EOS silence_duration_ms for consistency
-
-      // Utterance end: fires event when Deepgram detects end of utterance
-      utterance_end_ms: '1200',
     },
   };
 }
@@ -330,6 +282,14 @@ interface AgentStartRequest {
     impact?: string;
     suspectedCause?: string;
     personas?: Array<{ uid: string; displayName: string; role: string }>;
+    playbook?: Array<{
+      id: string;
+      phase: string;
+      title: string;
+      detail: string;
+      command?: string;
+      priority?: string;
+    }>;
   };
 }
 
@@ -446,6 +406,7 @@ export async function POST(request: NextRequest) {
       impact: matchedPreset.impact,
       suspectedCause: matchedPreset.suspectedCause,
       personas: matchedPreset.personas,
+      playbook: matchedPreset.playbook,
     } : undefined);
 
     const scenarioOverrides = effectiveScenario ? {
@@ -475,7 +436,10 @@ export async function POST(request: NextRequest) {
     const responderName = userName || 'Responder';
     const greetingSeverity = effectiveScenario?.severity || 'SEV-1';
     const greetingTitle = effectiveScenario?.title || 'active incident';
-    const dynamicGreeting = `Hey ${responderName}, AURA's online and on the bridge. We've got a ${greetingSeverity} — ${greetingTitle}. I'm monitoring all telemetry. What's the latest from your end?`;
+    const affectedSvcs = effectiveScenario?.affectedServices?.length
+      ? ` on ${effectiveScenario.affectedServices.slice(0, 2).join(' and ')}`
+      : '';
+    const dynamicGreeting = `Hey ${responderName}, AURA's online and on the bridge. We've got a ${greetingSeverity} — ${greetingTitle}${affectedSvcs}. I'm monitoring all telemetry. What's the latest from your end?`;
 
     const rawProxyUrl = !isLocalhostRequest
       ? `${dynamicOrigin}/api/llm/proxy`
@@ -515,8 +479,8 @@ export async function POST(request: NextRequest) {
           data_channel: 'rtm',
           enable_metrics: true,
           enable_error_message: true,
-          // chorus: multi-speaker optimized profile (vs 'speech': single-speaker)
-          audio_scenario: 'chorus',
+          // aiserver: optimized for conversational AI agent interaction resilience
+          audio_scenario: 'aiserver',
           noise_suppression_level: 'aggressive',
         },
 
@@ -600,6 +564,7 @@ export async function POST(request: NextRequest) {
     const responseData = await agoraResponse.json().catch(() => ({}));
 
     if (!agoraResponse.ok) {
+      console.error('[AgentStart] Agora ConvAI join error:', agoraResponse.status, JSON.stringify(responseData));
       return NextResponse.json(
         {
           error: 'Agora ConvAI API error',

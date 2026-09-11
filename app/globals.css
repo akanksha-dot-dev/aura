@@ -900,7 +900,7 @@ input, textarea, select {
   width: 100vw;
   height: 100vh;
   display: grid;
-  grid-template-columns: var(--speaker-col-width, 250px) 1fr var(--action-col-width, 290px);
+  grid-template-columns: var(--speaker-col-width, 250px) 1fr var(--action-col-width, 320px);
   grid-template-rows: 52px auto 1fr 68px;
   grid-template-areas:
     "status    status    status"
@@ -2938,7 +2938,9 @@ input, textarea, select {
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--shadow-card-elevated);
-  margin-bottom: var(--space-3);
+  margin-bottom: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .playbook-header {

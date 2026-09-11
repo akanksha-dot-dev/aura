@@ -310,8 +310,8 @@ export function StatusBar({
         .precision-bar__right {
           display: flex;
           align-items: center;
-          gap: 8px;
-          flex: 1 1 0%;
+          gap: 6px;
+          flex: 0 0 auto;
           justify-content: flex-end;
           flex-shrink: 0;
         }
@@ -331,6 +331,33 @@ export function StatusBar({
           color: var(--text-secondary);
           font-variant-numeric: tabular-nums;
           white-space: nowrap;
+          flex-shrink: 0;
+        }
+
+        .precision-bar__resolve-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          height: 26px;
+          padding: 0 10px;
+          border-radius: var(--radius-sm, 4px);
+          font-family: var(--font-sans);
+          font-size: 11px;
+          font-weight: 600;
+          color: #10B981;
+          background: rgba(16, 185, 129, 0.1);
+          border: 1px solid rgba(16, 185, 129, 0.3);
+          cursor: pointer;
+          white-space: nowrap;
+          flex-shrink: 0;
+          transition: all var(--duration-fast) var(--ease-standard);
+        }
+
+        .precision-bar__resolve-btn:hover {
+          background: rgba(16, 185, 129, 0.2);
+          border-color: #10B981;
+          color: #34D399;
         }
 
         .precision-bar__ghost-btn {
@@ -339,6 +366,7 @@ export function StatusBar({
           justify-content: center;
           width: 26px;
           height: 26px;
+          flex-shrink: 0;
           border-radius: var(--radius-sm);
           background: var(--bg-surface-raised);
           border: 1px solid var(--border-hairline);
@@ -510,6 +538,7 @@ export function StatusBar({
                   border: `1px solid ${slaColor}33`,
                   color: slaColor,
                   whiteSpace: 'nowrap',
+                  flexShrink: 0,
                 }}
               >
                 <span style={{ fontSize: 10 }}>{slaIcon}</span>
@@ -523,28 +552,14 @@ export function StatusBar({
             <button
               type="button"
               onClick={onResolve}
-              className="precision-bar__ghost-btn"
+              className="precision-bar__resolve-btn"
               title="Resolve this incident (R)"
-              style={{
-                padding: '3px 10px',
-                fontSize: 'var(--text-xs, 11px)',
-                fontWeight: 600,
-                color: '#10B981',
-                background: 'rgba(16,185,129,0.08)',
-                border: '1px solid rgba(16,185,129,0.2)',
-                borderRadius: 'var(--radius-sm, 4px)',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                transition: 'all 0.15s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(16,185,129,0.15)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(16,185,129,0.08)';
-              }}
+              aria-label="Resolve this incident"
             >
-              🎯 Resolve
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              <span>Resolve</span>
             </button>
           )}
 

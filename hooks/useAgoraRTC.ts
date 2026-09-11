@@ -439,9 +439,14 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
             return;
           }
 
+          audioTrack.setEnabled(true);
+          audioTrack.setVolume(100);
           localTrackRef.current = audioTrack;
           setLocalAudioTrack(audioTrack);
           await client.publish([audioTrack]);
+          console.info(
+            `[useAgoraRTC] Local microphone track published successfully: id=${audioTrack.getTrackId()}, label="${audioTrack.getTrackLabel()}", enabled=${audioTrack.enabled}`
+          );
         } catch (micErr) {
           console.error = originalConsoleError;
           if (isAbortOrCancelError(micErr)) return;

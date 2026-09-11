@@ -8,11 +8,23 @@ import { TimelineCard } from './TimelineCard';
 export interface TimelineFeedProps {
   evidenceItems: EvidenceItem[];
   incidentOpenedAt: number;
+  incidentTitle?: string;
+  severity?: string;
+  affectedServices?: string[];
+  suspectedCause?: string;
+  scenarioSummary?: string;
 }
 
 type TimelineFilter = 'all' | ClassificationType;
 
-export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
+export function TimelineFeed({
+  evidenceItems,
+  incidentTitle,
+  severity,
+  affectedServices = [],
+  suspectedCause,
+  scenarioSummary,
+}: TimelineFeedProps) {
   const router = useRouter();
   const feedRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -155,7 +167,23 @@ export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
           z-index: 1;
         }
 
-        .timeline-feed__empty,
+        .timeline-feed__empty {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: 360px;
+          color: var(--text-muted);
+          font-family: var(--font-sans);
+          text-align: center;
+          gap: 14px;
+          padding: 24px 16px;
+          max-width: 580px;
+          width: 100%;
+          margin: auto;
+          box-sizing: border-box;
+        }
+
         .timeline-feed__no-match {
           display: flex;
           flex-direction: column;
@@ -171,9 +199,147 @@ export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
           margin-left: -19px;
         }
 
+        .timeline-feed__radar-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          padding: 3px 12px;
+          background: rgba(212, 168, 83, 0.08);
+          border: 1px solid rgba(212, 168, 83, 0.25);
+          border-radius: var(--radius-full);
+          font-family: var(--font-mono);
+          font-size: 10px;
+          font-weight: 600;
+          letter-spacing: 0.05em;
+          color: var(--color-aura);
+          text-transform: uppercase;
+        }
+
+        .timeline-feed__radar-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: var(--color-aura);
+          box-shadow: 0 0 8px var(--color-aura);
+          animation: radar-ping 2s ease-in-out infinite;
+        }
+
+        @keyframes radar-ping {
+          0%, 100% { transform: scale(0.9); opacity: 0.6; }
+          50% { transform: scale(1.3); opacity: 1; }
+        }
+
+        .timeline-feed__dossier {
+          width: 100%;
+          background: var(--bg-surface-raised, #131217);
+          border: 1px solid var(--border-hairline);
+          border-radius: var(--radius-md, 8px);
+          padding: 14px 16px;
+          text-align: left;
+          box-shadow: var(--shadow-card-elevated, 0 4px 16px rgba(0, 0, 0, 0.3));
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          box-sizing: border-box;
+        }
+
+        .timeline-feed__dossier-top {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          border-bottom: 1px solid var(--border-hairline);
+          padding-bottom: 8px;
+        }
+
+        .timeline-feed__dossier-tag {
+          font-family: var(--font-mono);
+          font-size: 10px;
+          font-weight: 600;
+          color: var(--text-muted);
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .timeline-feed__dossier-sev {
+          font-family: var(--font-mono);
+          font-size: 10px;
+          font-weight: 700;
+          padding: 1px 6px;
+          border-radius: var(--radius-sm);
+          background: rgba(249, 115, 22, 0.15);
+          border: 1px solid rgba(249, 115, 22, 0.4);
+          color: var(--color-sev1, #F97316);
+        }
+
+        .timeline-feed__dossier-title {
+          font-family: var(--font-sans);
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--text-primary);
+          letter-spacing: -0.01em;
+          margin: 0;
+        }
+
+        .timeline-feed__dossier-desc {
+          font-family: var(--font-sans);
+          font-size: 11px;
+          line-height: 1.45;
+          color: var(--text-secondary);
+          margin: 0;
+        }
+
+        .timeline-feed__dossier-services {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+
+        .timeline-feed__service-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 2px 7px;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid var(--border-hairline);
+          border-radius: var(--radius-sm);
+          font-family: var(--font-mono);
+          font-size: 10px;
+          color: var(--text-secondary);
+        }
+
+        .timeline-feed__prompt-pills {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          width: 100%;
+        }
+
+        .timeline-feed__prompt-pill {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 7px 12px;
+          background: rgba(212, 168, 83, 0.04);
+          border: 1px solid rgba(212, 168, 83, 0.18);
+          border-radius: var(--radius-md, 6px);
+          font-family: var(--font-mono);
+          font-size: 11px;
+          color: var(--text-secondary);
+          text-align: left;
+          transition: all 150ms ease;
+          user-select: none;
+        }
+
+        .timeline-feed__prompt-pill:hover {
+          background: rgba(212, 168, 83, 0.09);
+          border-color: rgba(212, 168, 83, 0.4);
+          color: var(--color-aura);
+        }
+
         .timeline-feed__empty-icon {
-          width: 40px;
-          height: 40px;
+          width: 38px;
+          height: 38px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -191,38 +357,39 @@ export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
         }
 
         .timeline-feed__empty-title {
-          font-size: var(--text-md);
-          font-weight: 500;
+          font-size: var(--text-md, 14px);
+          font-weight: 600;
           color: var(--text-primary);
           letter-spacing: var(--tracking-tight);
           margin: 0;
         }
 
         .timeline-feed__empty-sub {
-          font-size: var(--text-xs);
+          font-size: var(--text-xs, 11px);
           color: var(--text-secondary);
-          max-width: 320px;
-          line-height: var(--leading-relaxed);
-          margin: 0;
+          max-width: 440px;
+          line-height: var(--leading-relaxed, 1.5);
+          margin: 4px 0 0 0;
         }
 
         .timeline-feed__start-replay-btn,
         .timeline-feed__reset-filter {
           display: inline-flex;
           align-items: center;
+          justify-content: center;
           gap: 6px;
-          margin-top: var(--space-2);
-          padding: 5px 14px;
+          padding: 6px 14px;
           background: var(--bg-surface-raised);
           border: 1px solid var(--border-default);
           box-shadow: var(--shadow-inner-glow);
           border-radius: var(--radius-full);
           font-family: var(--font-sans);
-          font-size: var(--text-xs);
+          font-size: var(--text-xs, 11px);
           font-weight: 500;
           color: var(--color-aura);
           cursor: pointer;
           transition: all var(--duration-fast) var(--ease-standard);
+          width: fit-content;
         }
 
         .timeline-feed__start-replay-btn:hover,
@@ -318,6 +485,11 @@ export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
 
           {evidenceItems.length === 0 ? (
             <div className="timeline-feed__empty">
+              <div className="timeline-feed__radar-badge">
+                <span className="timeline-feed__radar-dot" />
+                <span>Agora SD-RTM™ · 48kHz HD Audio Bridge Active</span>
+              </div>
+
               <div className="timeline-feed__empty-icon" aria-hidden="true">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
@@ -325,41 +497,69 @@ export function TimelineFeed({ evidenceItems }: TimelineFeedProps) {
                   <line x1="12" y1="19" x2="12" y2="22" />
                 </svg>
               </div>
-              <p className="timeline-feed__empty-title">Awaiting Incident Telemetry</p>
-              <p className="timeline-feed__empty-sub">
-                AURA is live on the bridge and listening to your voice. Speak into your microphone to discuss hypotheses, query metrics, or declare actions.
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', marginTop: '12px' }}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '6px 12px',
-                  background: 'rgba(0, 240, 255, 0.08)',
-                  border: '1px solid rgba(0, 240, 255, 0.25)',
-                  borderRadius: 'var(--radius-full)',
-                  fontSize: '11px',
-                  color: 'var(--color-aura)',
-                  fontFamily: 'var(--font-mono)'
-                }}>
-                  <span>🎙 Try saying: &quot;AURA, what is our active incident status?&quot;</span>
-                </div>
-                <button
-                  type="button"
-                  className="timeline-feed__start-replay-btn"
-                  onClick={() => {
-                    router.push('/?persona=sarah_chen&channel=incident-sev1-checkout&__AURA_REPLAY_MOCK_STREAM=true&speed=1.5');
-                    router.refresh();
-                  }}
-                  style={{ opacity: 0.6, fontSize: '10px', marginTop: '4px' }}
-                  title="Switch to scripted demo replay"
-                >
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
-                    <polygon points="5 3 19 12 5 21 5 3" />
-                  </svg>
-                  <span>Or switch to Scripted Demo Replay</span>
-                </button>
+
+              <div>
+                <h3 className="timeline-feed__empty-title">Awaiting Incident Telemetry</h3>
+                <p className="timeline-feed__empty-sub">
+                  AURA is live on the bridge and listening to your voice. Speak into your microphone to discuss hypotheses, query metrics, or declare actions.
+                </p>
               </div>
+
+              {incidentTitle && (
+                <div className="timeline-feed__dossier">
+                  <div className="timeline-feed__dossier-top">
+                    <span className="timeline-feed__dossier-tag">OPERATIONAL BRIEFING DOSSIER</span>
+                    <span className="timeline-feed__dossier-sev">{severity || 'SEV-1'}</span>
+                  </div>
+                  <h4 className="timeline-feed__dossier-title">{incidentTitle}</h4>
+                  {scenarioSummary && (
+                    <p className="timeline-feed__dossier-desc">{scenarioSummary}</p>
+                  )}
+                  {suspectedCause && (
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '11px', color: 'var(--color-hypothesis)', background: 'rgba(212, 168, 83, 0.05)', padding: '6px 8px', borderRadius: '4px', border: '1px solid rgba(212, 168, 83, 0.15)' }}>
+                      <span style={{ fontWeight: 700 }}>● Cause:</span>
+                      <span>{suspectedCause}</span>
+                    </div>
+                  )}
+                  {affectedServices.length > 0 && (
+                    <div className="timeline-feed__dossier-services">
+                      <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>AFFECTED:</span>
+                      {affectedServices.map((svc) => (
+                        <span key={svc} className="timeline-feed__service-pill">
+                          <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--color-sev1, #F97316)' }} />
+                          {svc}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="timeline-feed__prompt-pills">
+                <div className="timeline-feed__prompt-pill">
+                  <span style={{ color: 'var(--color-aura)' }}>🎙</span>
+                  <span>Try saying: &quot;AURA, what is our active incident status?&quot;</span>
+                </div>
+                <div className="timeline-feed__prompt-pill">
+                  <span style={{ color: 'var(--color-aura)' }}>🎙</span>
+                  <span>Try saying: &quot;AURA, check database connection pool headroom&quot;</span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="timeline-feed__start-replay-btn"
+                onClick={() => {
+                  router.push('/?persona=sarah_chen&channel=incident-sev1-checkout&__AURA_REPLAY_MOCK_STREAM=true&speed=1.5');
+                  router.refresh();
+                }}
+                title="Switch to scripted demo replay"
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
+                  <polygon points="5 3 19 12 5 21 5 3" />
+                </svg>
+                <span>Or switch to Scripted Demo Replay</span>
+              </button>
             </div>
           ) : filteredItems.length === 0 ? (
             <div className="timeline-feed__no-match">
