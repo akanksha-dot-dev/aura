@@ -36,7 +36,7 @@ export function WarRoomSummaryCard({ incident, actions, onDismiss }: WarRoomSumm
     const sorted = [...activeHypotheses].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0));
     return sorted[0];
   }, [activeHypotheses]);
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(true);
   const [elapsedMin, setElapsedMin] = useState(() =>
     Math.floor((Date.now() - incident.openedAt) / 60000)
   );

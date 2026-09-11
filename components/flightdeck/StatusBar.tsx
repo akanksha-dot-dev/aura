@@ -256,58 +256,51 @@ export function StatusBar({
         .precision-bar__stepper {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
+          gap: 7px;
           background: var(--bg-surface-raised);
-          padding: 3px 10px;
+          padding: 3px 9px;
           border-radius: var(--radius-md);
           border: 1px solid var(--border-hairline);
           box-shadow: var(--shadow-inner-glow);
         }
 
-        .precision-bar__step {
+        .precision-bar__pips {
           display: inline-flex;
           align-items: center;
           gap: 4px;
-          font-family: var(--font-mono);
-          font-size: 10px;
-          font-weight: 500;
-          letter-spacing: 0.04em;
-          color: var(--text-muted);
-          transition: color 150ms ease;
-          user-select: none;
-        }
-
-        .precision-bar__step--active {
-          color: var(--text-primary);
-          font-weight: 600;
-        }
-
-        .precision-bar__step--completed {
-          color: var(--text-secondary);
         }
 
         .precision-bar__pip {
-          width: 4px;
-          height: 4px;
+          width: 5px;
+          height: 5px;
           border-radius: 50%;
           background: var(--text-disabled);
           display: inline-block;
+          transition: all 150ms ease;
         }
 
-        .precision-bar__step--completed .precision-bar__pip {
+        .precision-bar__pip--completed {
           background: var(--text-secondary);
         }
 
-        .precision-bar__step--active .precision-bar__pip {
+        .precision-bar__pip--active {
           background: var(--color-aura);
           box-shadow: 0 0 5px var(--color-aura);
         }
 
-        .precision-bar__arrow {
-          color: var(--text-disabled);
-          font-size: 9px;
-          user-select: none;
-          opacity: 0.4;
+        .precision-bar__phase-label {
+          font-family: var(--font-mono);
+          font-size: 10px;
+          font-weight: 600;
+          letter-spacing: 0.04em;
+          color: var(--text-primary);
+          text-transform: uppercase;
+        }
+
+        @media (max-width: 1360px) {
+          .precision-bar__ic-text {
+            display: none;
+          }
         }
 
         .precision-bar__right {
@@ -561,41 +554,35 @@ export function StatusBar({
           </h1>
         </div>
 
-        {/* Center Section: Enterprise OODA Breadcrumb Stepper */}
+        {/* Center Section: Mission-Control OODA Stepper */}
         <div className={`precision-bar__center ${styles.center}`}>
           <nav className="precision-bar__stepper" aria-label="Incident OODA Phase Progression">
-            {oodaPhases.map((phase, idx) => {
-              const isActive = !isResolved && currentOODAPhase === phase;
-              const isCompleted = isResolved || idx < currentOODAIndex;
-              return (
-                <React.Fragment key={phase}>
-                  {idx > 0 && <span className="precision-bar__arrow" aria-hidden="true">→</span>}
+            <div className="precision-bar__pips" aria-hidden="true">
+              {oodaPhases.map((phase, idx) => {
+                const isActive = !isResolved && currentOODAPhase === phase;
+                const isCompleted = isResolved || idx < currentOODAIndex;
+                return (
                   <span
-                    className={`precision-bar__step ${
+                    key={phase}
+                    className={`precision-bar__pip ${
                       isActive
-                        ? 'precision-bar__step--active'
+                        ? 'precision-bar__pip--active'
                         : isCompleted
-                        ? 'precision-bar__step--completed'
+                        ? 'precision-bar__pip--completed'
                         : ''
                     }`}
-                    aria-current={isActive ? 'step' : undefined}
-                  >
-                    <span className="precision-bar__pip" aria-hidden="true" />
-                    <span>{phase}</span>
-                  </span>
-                </React.Fragment>
-              );
-            })}
-
-            {isResolved && (
-              <>
-                <span className="precision-bar__arrow" aria-hidden="true">→</span>
-                <span className="precision-bar__step precision-bar__step--active" aria-current="step">
-                  <span className="precision-bar__pip" style={{ background: 'var(--color-fact)' }} aria-hidden="true" />
-                  <span style={{ color: 'var(--color-fact)' }}>RESOLVED</span>
-                </span>
-              </>
-            )}
+                    title={`Phase ${idx + 1}: ${phase}`}
+                  />
+                );
+              })}
+            </div>
+            <span className="precision-bar__phase-label">
+              {isResolved ? (
+                <span style={{ color: 'var(--color-fact)', fontWeight: 600 }}>RESOLVED</span>
+              ) : (
+                <span>{currentOODAPhase}</span>
+              )}
+            </span>
           </nav>
         </div>
 
@@ -781,7 +768,7 @@ export function StatusBar({
                   <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                 </svg>
               </span>
-              <span>{icName} (IC)</span>
+              <span className="precision-bar__ic-text">{icName} (IC)</span>
             </div>
           ) : (
             <button

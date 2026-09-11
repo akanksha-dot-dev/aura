@@ -3378,8 +3378,12 @@ input, textarea, select {
   gap: var(--space-3);
   align-items: start;
 }
+.analytics-charts-row--duo {
+  grid-template-columns: repeat(2, 1fr);
+}
 @media (max-width: 900px) {
-  .analytics-charts-row { grid-template-columns: 1fr; }
+  .analytics-charts-row,
+  .analytics-charts-row--duo { grid-template-columns: 1fr; }
 }
 
 .analytics-chart-card {
@@ -4002,29 +4006,48 @@ input, textarea, select {
 /* ─── War Room Summary Card ─── */
 .wrsummary-card {
   position: fixed;
-  bottom: 80px;
-  right: 16px;
-  width: 280px;
-  background: var(--bg-glass-panel);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(245, 158, 11, 0.2);
-  border-radius: var(--radius-xl);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 0 1px rgba(245,158,11,0.05);
+  bottom: 50px;
+  right: 336px;
+  width: 290px;
+  background: rgba(18, 19, 26, 0.98);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   z-index: var(--z-overlay);
   overflow: hidden;
   animation: card-arrive 0.3s var(--ease-arrive) both;
 }
 
+@media (max-width: 1024px) {
+  .wrsummary-card {
+    right: 16px;
+    bottom: 60px;
+  }
+}
+
 .wrsummary-card--minimized {
   width: auto;
-  max-width: 300px;
-  padding: 4px 10px;
+  max-width: 320px;
+  padding: 4px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
   border-radius: var(--radius-full);
+  bottom: 46px;
+  right: 336px;
+  background: rgba(18, 19, 26, 0.95);
+  border-color: rgba(245, 158, 11, 0.35);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+}
+
+@media (max-width: 1024px) {
+  .wrsummary-card--minimized {
+    right: 16px;
+    bottom: 50px;
+  }
 }
 
 .wrsummary-header {

@@ -317,15 +317,11 @@ export function CostCounter({
             {isPaused ? 'PAUSED' : `${minuteRateFormatted}/min`}
           </span>
         </div>
-        {isResolved ? (
+        {isResolved && (
           <span className="cost-counter-savings">
             Saved: ~{estimatedSavings}
           </span>
-        ) : isPaused ? (
-          <span className="cost-rate-badge" style={{ color: 'var(--color-hypothesis)' }}>
-            ⏸ Halted
-          </span>
-        ) : null}
+        )}
 
         {isPopoverOpen && !isResolved && (
           <div

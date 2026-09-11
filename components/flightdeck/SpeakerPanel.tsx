@@ -628,14 +628,8 @@ export function SpeakerPanel({
                                 </span>
                               )}
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                               <span className="speaker-row__role-tag">{p.role}</span>
-                              <span
-                                className="speaker-row__spatial-tag"
-                                title={`Agora 3D Spatial Soundstage: ${getPersonaSoundstagePosition(p.uid, p.role).label}`}
-                              >
-                                {getPersonaSoundstagePosition(p.uid, p.role).label}
-                              </span>
                             </div>
                           </div>
                         )}

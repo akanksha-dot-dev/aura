@@ -112,7 +112,7 @@ export function SimilarIncidentBanner({ incident, channelName }: SimilarIncident
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '8px 12px',
+            padding: '5px 10px',
             cursor: 'pointer',
           }}
           onClick={() => setIsExpanded(!isExpanded)}
@@ -120,13 +120,13 @@ export function SimilarIncidentBanner({ incident, channelName }: SimilarIncident
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span
               style={{
-                fontSize: 16,
-                width: 28,
-                height: 28,
+                fontSize: 13,
+                width: 22,
+                height: 22,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                background: 'rgba(99, 102, 241, 0.1)',
+                background: 'rgba(99, 102, 241, 0.12)',
                 borderRadius: 'var(--radius-sm, 4px)',
               }}
             >

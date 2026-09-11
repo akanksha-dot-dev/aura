@@ -246,9 +246,9 @@ export function IncidentTopology({
       sim.on('tick', () => {
         // Enforce safe boundary clamping for 200x54 cards
         // padYTop is 68px to ensure cards never collide with top-right legend
-        const padX = 115;
+        const padX = 130;
         const padYTop = 68;
-        const padYBottom = 55;
+        const padYBottom = 75;
         for (const node of sim.nodes()) {
           if (typeof node.x === 'number') {
             node.x = Math.max(padX, Math.min(width - padX, node.x));
@@ -473,7 +473,7 @@ export function IncidentTopology({
 
         .topology-controls {
           position: absolute;
-          bottom: 14px;
+          top: 12px;
           left: 14px;
           display: flex;
           align-items: center;
@@ -990,19 +990,34 @@ export function IncidentTopology({
                   {node.category.toUpperCase()}
                 </text>
 
-                {/* Confidence Percentage Tag */}
-                <text
-                  x={halfW - 10}
-                  y={-halfH + 16}
-                  textAnchor="end"
-                  fill="var(--text-muted)"
-                  fontSize="9"
-                  fontFamily="var(--font-mono)"
-                  fontWeight="500"
-                  pointerEvents="none"
-                >
-                  {node.confidence}%
-                </text>
+                {/* Confidence Percentage Tag (Only for Hypotheses) */}
+                {node.category === 'hypothesis' ? (
+                  <text
+                    x={halfW - 10}
+                    y={-halfH + 16}
+                    textAnchor="end"
+                    fill="var(--text-muted)"
+                    fontSize="9"
+                    fontFamily="var(--font-mono)"
+                    fontWeight="500"
+                    pointerEvents="none"
+                  >
+                    {node.confidence}%
+                  </text>
+                ) : node.category === 'decision' ? (
+                  <text
+                    x={halfW - 10}
+                    y={-halfH + 16}
+                    textAnchor="end"
+                    fill="var(--color-decision)"
+                    fontSize="8.5"
+                    fontFamily="var(--font-mono)"
+                    fontWeight="600"
+                    pointerEvents="none"
+                  >
+                    COMMIT
+                  </text>
+                ) : null}
 
                 {/* Content Statement Line 1 */}
                 <text

@@ -551,7 +551,7 @@ export function TimelineCard({
               isSpeaking={false}
             />
             <span className="timeline-card__speaker-name">{speakerInfo.name}</span>
-            {speakerInfo.role && (
+            {speakerInfo.role && speakerInfo.name !== 'AURA' && speakerInfo.role !== 'AURA AI' && (
               <span className="timeline-card__speaker-role">({speakerInfo.role})</span>
             )}
           </div>
@@ -581,7 +581,7 @@ export function TimelineCard({
         </div>
 
         <div className="timeline-card__header-right">
-          {displayConfidence != null && (
+          {isHypothesis && displayConfidence != null ? (
             <span
               className={`timeline-card__confidence-pill ${
                 isConfirmed
@@ -594,7 +594,35 @@ export function TimelineCard({
             >
               {isConfirmed ? '100%' : isDisproven ? '0%' : `${displayConfidence}%`}
             </span>
-          )}
+          ) : item.category === 'decision' ? (
+            <span
+              className="timeline-card__confidence-pill"
+              style={{ color: 'var(--color-decision)', borderColor: 'rgba(123, 140, 255, 0.35)', background: 'rgba(123, 140, 255, 0.08)' }}
+              title="Finalized IC Decision"
+            >
+              COMMITTED
+            </span>
+          ) : item.category === 'action' ? (
+            <span
+              className="timeline-card__confidence-pill"
+              style={{
+                color: item.actionStatus === 'done' ? 'var(--color-fact)' : 'var(--color-action)',
+                borderColor: item.actionStatus === 'done' ? 'rgba(16, 185, 129, 0.35)' : 'rgba(232, 125, 62, 0.35)',
+                background: item.actionStatus === 'done' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(232, 125, 62, 0.08)'
+              }}
+              title={`Action Status: ${(item.actionStatus || 'pending').toUpperCase()}`}
+            >
+              {(item.actionStatus || 'pending').toUpperCase()}
+            </span>
+          ) : item.category === 'fact' ? (
+            <span
+              className="timeline-card__confidence-pill"
+              style={{ color: 'var(--color-fact)', borderColor: 'rgba(16, 185, 129, 0.3)', background: 'rgba(16, 185, 129, 0.06)' }}
+              title="Verified Ground Truth Fact"
+            >
+              VERIFIED
+            </span>
+          ) : null}
           <button
             type="button"
             className="timeline-card__toggle-btn"
