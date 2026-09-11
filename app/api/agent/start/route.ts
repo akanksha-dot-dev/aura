@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { RtcTokenBuilder, RtcRole } from 'agora-token';
+import { UniversalRtcTokenBuilder, RtcRole } from '@/lib/agoraToken';
 import { getIncidentState, initializeLiveIncident } from '@/lib/incidentStore';
 import { PRESET_SCENARIOS } from '@/lib/scenarios';
 import { AURA_SYSTEM_PROMPT, buildEffectiveSystemPrompt } from '@/lib/promptBuilder';
@@ -334,7 +334,7 @@ export async function POST(request: NextRequest) {
     const agentUid = '0'; // Agora ConvAI agents must use numeric UID; '0' is the reserved agent slot
     const expireTimeInSeconds = 3600;
 
-    const agentToken = RtcTokenBuilder.buildTokenWithRtm(
+    const agentToken = await UniversalRtcTokenBuilder.buildTokenWithRtm(
       appId,
       appCertificate,
       channelName,
