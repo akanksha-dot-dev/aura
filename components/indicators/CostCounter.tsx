@@ -18,7 +18,7 @@ export function CostCounter({
   incidentStatus,
   openedAt,
   resolvedAt,
-  baseRate = 150,
+  baseRate = 1,
   onRateChange,
   isPaused: externalIsPaused,
   onTogglePause: externalOnTogglePause,
@@ -65,11 +65,11 @@ export function CostCounter({
 
   const PRESETS = [
     { label: 'Halt ($0/min)', rate: 0 },
-    { label: 'SaaS ($1.5k/min)', rate: 25 },
-    { label: 'Mid ($4.5k/min)', rate: 75 },
-    { label: 'E-Comm ($9k/min)', rate: 150 },
-    { label: 'Fintech ($30k/min)', rate: 500 },
-    { label: 'Cloud ($60k/min)', rate: 1000 },
+    { label: 'Calm ($60/min)', rate: 1 },
+    { label: 'Standard ($120/min)', rate: 2 },
+    { label: 'SaaS ($300/min)', rate: 5 },
+    { label: 'High ($600/min)', rate: 10 },
+    { label: 'Critical ($1.5k/min)', rate: 25 },
   ];
 
   const handleSelectRate = (rate: number) => {

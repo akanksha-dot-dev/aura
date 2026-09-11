@@ -288,6 +288,42 @@ export function TimelineFeed({
           margin: 0;
         }
 
+        .timeline-feed__dossier-cause-box {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          padding: 8px 10px;
+          background: rgba(212, 168, 83, 0.06);
+          border: 1px solid rgba(212, 168, 83, 0.2);
+          border-radius: var(--radius-sm);
+        }
+
+        .timeline-feed__dossier-cause-header {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          font-family: var(--font-mono);
+          font-size: 9.5px;
+          font-weight: 700;
+          letter-spacing: 0.05em;
+          color: var(--color-hypothesis);
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+
+        .timeline-feed__dossier-cause-dot {
+          font-size: 8px;
+          color: var(--color-hypothesis);
+        }
+
+        .timeline-feed__dossier-cause-body {
+          font-family: var(--font-sans);
+          font-size: 11.5px;
+          line-height: 1.45;
+          color: var(--text-primary);
+          margin: 0;
+        }
+
         .timeline-feed__dossier-services {
           display: flex;
           align-items: center;
@@ -516,9 +552,14 @@ export function TimelineFeed({
                     <p className="timeline-feed__dossier-desc">{scenarioSummary}</p>
                   )}
                   {suspectedCause && (
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '11px', color: 'var(--color-hypothesis)', background: 'rgba(212, 168, 83, 0.05)', padding: '6px 8px', borderRadius: '4px', border: '1px solid rgba(212, 168, 83, 0.15)' }}>
-                      <span style={{ fontWeight: 700 }}>● Cause:</span>
-                      <span>{suspectedCause}</span>
+                    <div className="timeline-feed__dossier-cause-box">
+                      <div className="timeline-feed__dossier-cause-header">
+                        <span className="timeline-feed__dossier-cause-dot" aria-hidden="true">●</span>
+                        <span>SUSPECTED ROOT CAUSE</span>
+                      </div>
+                      <p className="timeline-feed__dossier-cause-body">
+                        {suspectedCause}
+                      </p>
                     </div>
                   )}
                   {affectedServices.length > 0 && (
@@ -584,6 +625,8 @@ export function TimelineFeed({
                   item={item}
                   displayConfidence={getDisplayConfidence(item)}
                   defaultExpanded={isRecent}
+                  sequenceIndex={idx + 1}
+                  allItems={evidenceItems}
                 />
               );
             })

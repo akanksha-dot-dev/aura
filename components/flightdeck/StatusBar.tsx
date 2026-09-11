@@ -69,6 +69,7 @@ export function StatusBar({
   onResolve,
 }: StatusBarProps) {
   const [activeElapsed, setActiveElapsed] = useState<number>(0);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const theme = useSyncExternalStore(subscribeTheme, getThemeSnapshot, getServerThemeSnapshot);
 
   // AURA Pulse: status bar breathes based on cognitive load & incident status
@@ -164,7 +165,7 @@ export function StatusBar({
           display: flex;
           align-items: center;
           gap: 8px;
-          flex: 1 1 0%;
+          flex: 1 1 auto;
           min-width: 0;
           overflow: hidden;
         }
@@ -241,6 +242,8 @@ export function StatusBar({
           white-space: nowrap;
           margin: 0;
           line-height: 1.2;
+          flex: 1 1 auto;
+          min-width: 0;
         }
 
         .precision-bar__center {
@@ -413,6 +416,115 @@ export function StatusBar({
           border-color: var(--border-emphasis);
           background: var(--bg-surface-hover);
         }
+
+        .precision-bar__ghost-btn--active {
+          color: var(--color-aura);
+          border-color: var(--color-aura-border);
+          background: var(--color-aura-dim);
+        }
+
+        .precision-bar__settings-wrap {
+          position: relative;
+          display: inline-flex;
+          align-items: center;
+        }
+
+        .precision-bar__settings-popover {
+          position: absolute;
+          top: calc(100% + 8px);
+          right: 0;
+          width: 220px;
+          background: var(--bg-surface-raised);
+          border: 1px solid var(--border-default);
+          border-radius: var(--radius-md);
+          box-shadow: var(--shadow-float);
+          padding: 10px 12px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          z-index: var(--z-modal);
+          opacity: 0;
+          pointer-events: none;
+          transform: translateY(-4px);
+          transition: opacity var(--duration-fast) var(--ease-standard),
+                      transform var(--duration-fast) var(--ease-standard);
+        }
+
+        .precision-bar__settings-popover--open {
+          opacity: 1;
+          pointer-events: auto;
+          transform: translateY(0);
+        }
+
+        .precision-bar__popover-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-family: var(--font-mono);
+          font-size: 10px;
+          font-weight: 700;
+          color: var(--text-muted);
+          letter-spacing: 0.06em;
+          border-bottom: 1px solid var(--border-subtle);
+          padding-bottom: 6px;
+        }
+
+        .precision-bar__popover-close {
+          background: none;
+          border: none;
+          color: var(--text-muted);
+          cursor: pointer;
+          font-size: 11px;
+          padding: 2px 4px;
+        }
+
+        .precision-bar__popover-close:hover {
+          color: var(--text-primary);
+        }
+
+        .precision-bar__setting-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+        }
+
+        .precision-bar__setting-label {
+          font-family: var(--font-sans);
+          font-size: 11px;
+          font-weight: 500;
+          color: var(--text-secondary);
+        }
+
+        .precision-bar__setting-action {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 3px 8px;
+          border-radius: var(--radius-sm);
+          font-family: var(--font-mono);
+          font-size: 11px;
+          background: var(--bg-surface);
+          border: 1px solid var(--border-subtle);
+          color: var(--text-primary);
+          cursor: pointer;
+          transition: all var(--duration-fast) var(--ease-standard);
+        }
+
+        .precision-bar__setting-action:hover {
+          border-color: var(--color-aura);
+          color: var(--color-aura);
+        }
+
+        .precision-bar__setting-status {
+          font-family: var(--font-mono);
+          font-size: 10px;
+          color: var(--color-fact);
+          padding: 2px 6px;
+          border-radius: var(--radius-xs);
+          background: var(--color-fact-dim);
+          border: 1px solid var(--color-fact-border);
+        }
       `}</style>
       <header className={`precision-bar ${styles.statusBar} ${pulseClass}`} role="banner">
         {/* Left Section: Breadcrumb with Brand + ID + Severity + Title */}
@@ -574,57 +686,89 @@ export function StatusBar({
             </button>
           )}
 
-          <button
-            type="button"
-            className={`precision-bar__ghost-btn ${styles.themeBtn}`}
-            onClick={toggleTheme}
-            title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
-            aria-label={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
-          >
-            {theme === 'light' ? (
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-              </svg>
-            ) : (
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="5" />
-                <line x1="12" y1="1" x2="12" y2="3" />
-                <line x1="12" y1="21" x2="12" y2="23" />
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                <line x1="1" y1="12" x2="3" y2="12" />
-                <line x1="21" y1="12" x2="23" y2="12" />
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-              </svg>
-            )}
-          </button>
-
-          {onVoiceLangChange && (
+          {/* Progressive Disclosure: Settings & Overflow Popover */}
+          <div className="precision-bar__settings-wrap">
             <button
               type="button"
-              className="precision-bar__ghost-btn"
-              style={{ width: 'auto', padding: '0 7px', height: '26px', fontSize: '11px', gap: '4px', fontFamily: 'var(--font-mono)' }}
-              onClick={() => onVoiceLangChange(voiceLang === 'en-IN' ? 'en-US' : 'en-IN')}
-              title={`Voice Model: ${voiceLang === 'en-IN' ? 'Indian English (en-IN)' : 'US English (en-US)'}. Click to toggle.`}
-              aria-label="Toggle voice model language"
+              className={`precision-bar__ghost-btn ${isSettingsOpen ? 'precision-bar__ghost-btn--active' : ''}`}
+              onClick={() => setIsSettingsOpen((p) => !p)}
+              title="Flight Deck settings & preferences"
+              aria-label="Flight Deck settings and preferences"
+              aria-expanded={isSettingsOpen}
             >
-              <span
-                style={{
-                  fontSize: '9px',
-                  fontWeight: 700,
-                  padding: '1px 3px',
-                  borderRadius: '2px',
-                  background: 'rgba(212, 168, 83, 0.15)',
-                  color: 'var(--color-aura)',
-                  letterSpacing: '0.04em',
-                }}
-              >
-                {voiceLang === 'en-IN' ? 'IN' : 'US'}
-              </span>
-              <span>{voiceLang === 'en-IN' ? 'en-IN' : 'en-US'}</span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <circle cx="5" cy="12" r="2.2" />
+                <circle cx="12" cy="12" r="2.2" />
+                <circle cx="19" cy="12" r="2.2" />
+              </svg>
             </button>
-          )}
+
+            <div
+              className={`precision-bar__settings-popover ${
+                isSettingsOpen ? 'precision-bar__settings-popover--open' : ''
+              }`}
+            >
+              <div className="precision-bar__popover-header">
+                <span>PREFERENCES & CONTROLS</span>
+                <button
+                  type="button"
+                  onClick={() => setIsSettingsOpen(false)}
+                  className="precision-bar__popover-close"
+                  aria-label="Close preferences"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Theme Toggle */}
+              <div className="precision-bar__setting-row">
+                <span className="precision-bar__setting-label">Theme</span>
+                <button
+                  type="button"
+                  className={`precision-bar__setting-action ${styles.themeBtn}`}
+                  onClick={toggleTheme}
+                  title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
+                  aria-label={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
+                >
+                  {theme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode'}
+                </button>
+              </div>
+
+              {/* Voice Language Toggle */}
+              {onVoiceLangChange && (
+                <div className="precision-bar__setting-row">
+                  <span className="precision-bar__setting-label">Voice ASR/TTS</span>
+                  <button
+                    type="button"
+                    className="precision-bar__setting-action"
+                    onClick={() => onVoiceLangChange(voiceLang === 'en-IN' ? 'en-US' : 'en-IN')}
+                    title={`Voice Model: ${voiceLang === 'en-IN' ? 'Indian English (en-IN)' : 'US English (en-US)'}. Click to toggle.`}
+                    aria-label="Toggle voice model language"
+                  >
+                    <span
+                      style={{
+                        fontSize: '9px',
+                        fontWeight: 700,
+                        padding: '1px 3px',
+                        borderRadius: '2px',
+                        background: 'rgba(212, 168, 83, 0.15)',
+                        color: 'var(--color-aura)',
+                      }}
+                    >
+                      {voiceLang === 'en-IN' ? 'IN' : 'US'}
+                    </span>
+                    <span>{voiceLang === 'en-IN' ? 'en-IN' : 'en-US'}</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Soundstage Status */}
+              <div className="precision-bar__setting-row">
+                <span className="precision-bar__setting-label">Spatial Stage</span>
+                <span className="precision-bar__setting-status">SD-RTN™ 3D</span>
+              </div>
+            </div>
+          </div>
 
           {icName ? (
             <div

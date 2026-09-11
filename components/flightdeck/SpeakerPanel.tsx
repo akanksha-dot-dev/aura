@@ -678,7 +678,7 @@ export function SpeakerPanel({
         {!collapsed && (
           <div className="speaker-panel__bridge-telemetry" aria-label="Acoustic Bridge Status">
             <span className="bridge-telemetry__dot" aria-hidden="true" />
-            <span className="bridge-telemetry__line">Agora SD-RTN™ · 3D Spatial Soundstage · 48kHz HD Audio</span>
+            <span className="bridge-telemetry__line">SD-RTN™ · 48kHz HD</span>
           </div>
         )}
 

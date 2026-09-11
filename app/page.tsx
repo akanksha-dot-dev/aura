@@ -84,7 +84,8 @@ function DashboardContent() {
 
   const effectiveCostRate = useMemo(() => {
     if (manualCostRate !== null) return manualCostRate;
-    return calculateDynamicBurnRate(state.severity || 'SEV-1', state.affectedServices);
+    const dynamicPerMinute = calculateDynamicBurnRate(state.severity || 'SEV-1', state.affectedServices);
+    return Math.max(1, Math.round(dynamicPerMinute / 60));
   }, [manualCostRate, state.severity, state.affectedServices]);
 
   setRtmIncidentState(state);

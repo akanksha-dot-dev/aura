@@ -55,8 +55,8 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
   const [newPersonaRole, setNewPersonaRole] = React.useState('');
 
   // Join config state
-  const [selectedRate, setSelectedRate] = React.useState<number>(150);
-  const [customRateInput, setCustomRateInput] = React.useState<string>('150');
+  const [selectedRate, setSelectedRate] = React.useState<number>(1);
+  const [customRateInput, setCustomRateInput] = React.useState<string>('1');
   const [customName, setCustomName] = React.useState<string>('');
   const [customRole, setCustomRole] = React.useState<string>('');
   const [demoMode, setDemoMode] = React.useState<'simulation' | 'live'>('simulation');
