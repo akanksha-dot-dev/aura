@@ -71,6 +71,7 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
   const clientRef = useRef<IAgoraRTCClient | null>(null);
   const localTrackRef = useRef<ILocalAudioTrack | null>(null);
   const isJoiningRef = useRef<boolean>(false);
+  const joinPromiseRef = useRef<Promise<void> | null>(null);
   const isMountedRef = useRef<boolean>(true);
   const currentUplinkQualityRef = useRef<number>(1);
   const currentDownlinkQualityRef = useRef<number>(1);
@@ -307,8 +308,9 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
       return;
     }
 
-    // Prevent concurrent join executions
-    if (isJoiningRef.current) {
+    // If a join is already in flight, await it
+    if (joinPromiseRef.current) {
+      await joinPromiseRef.current;
       return;
     }
 
@@ -324,65 +326,84 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
 
     isJoiningRef.current = true;
 
-    try {
-      if (isMountedRef.current) setError(null);
-      const AgoraRTC = (await import('agora-rtc-sdk-ng')).default;
+    joinPromiseRef.current = (async () => {
+      try {
+        if (isMountedRef.current) setError(null);
+        const AgoraRTC = (await import('agora-rtc-sdk-ng')).default;
 
-      // 1. Fetch token from server
-      const tokenRes = await fetch('/api/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channelName, uid }),
-      });
+        // 1. Fetch token from server
+        const tokenRes = await fetch('/api/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ channelName, uid }),
+        });
 
-      if (!isMountedRef.current) return;
+        if (!isMountedRef.current) return;
 
-      if (!tokenRes.ok) {
-        const errJson = await tokenRes.json().catch(() => ({}));
-        if (tokenRes.status === 500 && String(errJson.error).includes('credentials not configured')) {
-          console.info('[useAgoraRTC] Voice standby: Agora credentials not configured in .env.local');
+        if (!tokenRes.ok) {
+          const errJson = await tokenRes.json().catch(() => ({}));
+          if (tokenRes.status === 500 && String(errJson.error).includes('credentials not configured')) {
+            console.info('[useAgoraRTC] Voice standby: Agora credentials not configured in .env.local');
+            if (isMountedRef.current) setError('Agora voice standby (credentials not configured)');
+            return;
+          }
+          throw new Error(errJson.error || `Failed to get Agora token (HTTP ${tokenRes.status})`);
+        }
+
+        const tokenData = await tokenRes.json();
+        const targetAppId = (propAppId || tokenData.appId || '').trim();
+        const rtcToken = tokenData.rtcToken;
+
+        if (
+          !targetAppId ||
+          targetAppId.includes('your_') ||
+          targetAppId.includes('placeholder') ||
+          !/^[0-9a-fA-F]{32}$/.test(targetAppId)
+        ) {
+          console.info('[useAgoraRTC] Voice standby: Agora App ID is not configured or is a placeholder in .env.local.');
           if (isMountedRef.current) setError('Agora voice standby (credentials not configured)');
           return;
         }
-        throw new Error(errJson.error || `Failed to get Agora token (HTTP ${tokenRes.status})`);
-      }
 
-      const tokenData = await tokenRes.json();
-      const targetAppId = (propAppId || tokenData.appId || '').trim();
-      const rtcToken = tokenData.rtcToken;
+        if (!isMountedRef.current) return;
 
-      if (
-        !targetAppId ||
-        targetAppId.includes('your_') ||
-        targetAppId.includes('placeholder') ||
-        !/^[0-9a-fA-F]{32}$/.test(targetAppId)
-      ) {
-        console.info('[useAgoraRTC] Voice standby: Agora App ID is not configured or is a placeholder in .env.local.');
-        if (isMountedRef.current) setError('Agora voice standby (credentials not configured)');
-        return;
-      }
+        if (!clientRef.current) {
+          clientRef.current = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+        }
 
-      if (!isMountedRef.current) return;
+        const client = clientRef.current;
 
-      if (!clientRef.current) {
-        clientRef.current = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
-      }
+        // Re-check connection state before calling client.join
+        if (
+          client.connectionState === 'CONNECTING' ||
+          client.connectionState === 'CONNECTED'
+        ) {
+          if (isMountedRef.current) setIsJoined(true);
+          return;
+        }
 
-      const client = clientRef.current;
+        // 2. Join RTC channel with string UID
+        await client.join(targetAppId, channelName, rtcToken || null, uid);
+        if (!isMountedRef.current) return;
+        setIsJoined(true);
 
-      // Re-check connection state before calling client.join
-      if (
-        client.connectionState === 'CONNECTING' ||
-        client.connectionState === 'CONNECTED'
-      ) {
-        if (isMountedRef.current) setIsJoined(true);
-        return;
-      }
-
-      // 2. Join RTC channel with string UID
-      await client.join(targetAppId, channelName, rtcToken || null, uid);
-      if (!isMountedRef.current) return;
-      setIsJoined(true);
+        // Subscribe to any existing remote audio tracks (e.g. if AURA agent joined before user)
+        if (client.remoteUsers && client.remoteUsers.length > 0) {
+          for (const user of client.remoteUsers) {
+            if (user.hasAudio) {
+              try {
+                await client.subscribe(user, 'audio');
+                if (user.audioTrack) {
+                  user.audioTrack.setVolume(100);
+                  user.audioTrack.play();
+                  console.info(`[useAgoraRTC] Subscribed to pre-existing remote audio: ${user.uid}`);
+                }
+              } catch (playErr) {
+                console.warn('[useAgoraRTC] Pre-existing remote audio subscribe notice:', playErr);
+              }
+            }
+          }
+        }
 
       // 3. Create and publish local microphone audio track if not already active
       if (!localTrackRef.current) {
@@ -498,11 +519,16 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
       }
     } finally {
       isJoiningRef.current = false;
+      joinPromiseRef.current = null;
     }
+    })();
+
+    await joinPromiseRef.current;
   }, [channelName, uid, propAppId]);
 
   const leaveChannel = useCallback(async () => {
     isJoiningRef.current = false;
+    joinPromiseRef.current = null;
     try {
       if (localTrackRef.current) {
         try {

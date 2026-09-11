@@ -321,7 +321,9 @@ function DashboardContent() {
 
     const win = window as unknown as IWindowWithSpeech;
     const SpeechRec = win.SpeechRecognition || win.webkitSpeechRecognition;
-    if (!SpeechRec || !isJoined) return;
+    // In live WebRTC bridge sessions, Agora ConvAI captures audio directly and streams Deepgram ASR transcripts via RTM.
+    // Running Web Speech API simultaneously on Windows Chromium causes audio driver contention and starves the WebRTC track.
+    if (!SpeechRec || isJoined) return;
 
     let recognition: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
     let isAlive = true;
@@ -438,22 +440,26 @@ function DashboardContent() {
   }, [transcriptHistory, state.evidenceItems]);
 
   // Automatically attempt RTC audio join on mount (skipped during mock replay)
-  const hasAttemptedJoinRef = useRef(false);
   useEffect(() => {
-    if (!isMockReplay && !isJoined && channel && uid && !hasAttemptedJoinRef.current) {
-      hasAttemptedJoinRef.current = true;
-      joinChannel().catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : String(err);
-        if (!msg.includes('OPERATION_ABORTED') && !msg.includes('cancel token canceled')) {
-          console.warn('[Dashboard] Agora RTC join standby:', err);
-        }
-      });
-    }
+    if (isMockReplay || isJoined || !channel || !uid) return;
+
+    let isEffectActive = true;
+    joinChannel().catch((err: unknown) => {
+      if (!isEffectActive) return;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!msg.includes('OPERATION_ABORTED') && !msg.includes('cancel token canceled')) {
+        console.warn('[Dashboard] Agora RTC join standby:', err);
+      }
+    });
+
+    return () => {
+      isEffectActive = false;
+    };
   }, [isMockReplay, isJoined, channel, uid, joinChannel]);
 
   // Automatically launch Agora Conversational AI Agent into RTC channel when live bridge is active
   const activeAgentIdRef = useRef<string | null>(null);
-  const isStartingAgentRef = useRef<boolean>(false);
+  const activeAgentChannelRef = useRef<string | null>(null);
 
   useEffect(() => {
     // CRITICAL: Only launch the agent AFTER the user has joined the RTC channel.
@@ -461,17 +467,16 @@ function DashboardContent() {
     // because there is no existing session for it to connect to.
     if (isMockReplay || !channel || !isJoined) return;
 
+    // If an agent is already active in this exact channel, keep it running
+    if (activeAgentIdRef.current && activeAgentChannelRef.current === channel) {
+      return;
+    }
+
     let isMounted = true;
+    let launchTimer: ReturnType<typeof setTimeout> | null = null;
 
     async function summonAgent() {
-      if (isStartingAgentRef.current || activeAgentIdRef.current) return;
-      isStartingAgentRef.current = true;
       try {
-        // Brief delay to let the Agora RTC session fully propagate to Agora's servers
-        // before the ConvAI agent tries to join the same channel.
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-        if (!isMounted) return;
-
         const activeScenario =
           scenarioConfig ||
           (typeof window !== 'undefined' ? loadScenarioConfig() : null) ||
@@ -526,27 +531,28 @@ function DashboardContent() {
         }
         if (data?.agentId) {
           activeAgentIdRef.current = data.agentId;
+          activeAgentChannelRef.current = channel;
           console.info('[Dashboard] AURA agent active in channel:', data.agentId, '| Stack:', data.stack);
         }
       } catch (err) {
         console.warn('[Dashboard] AURA agent launch network notice:', err);
-      } finally {
-        isStartingAgentRef.current = false;
       }
     }
 
-    void summonAgent();
+    // Debounce agent launch by 1000ms:
+    // 1) lets Agora RTC edge cluster settle user entry
+    // 2) cancels cleanly if React FastRefresh / Strict Mode remounts before firing
+    launchTimer = setTimeout(() => {
+      if (isMounted) {
+        void summonAgent();
+      }
+    }, 1000);
 
     return () => {
       isMounted = false;
-      const agentId = activeAgentIdRef.current;
-      if (agentId) {
-        activeAgentIdRef.current = null;
-        fetch('/api/agent/stop', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ agentId }),
-        }).catch(() => {});
+      if (launchTimer) {
+        clearTimeout(launchTimer);
+        launchTimer = null;
       }
     };
   // isJoined is intentionally in deps — agent must wait until user is in the channel

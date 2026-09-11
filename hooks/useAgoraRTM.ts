@@ -235,7 +235,12 @@ export function useAgoraRTM({
             if (activeSession.subscribedChannel) {
               await activeSession.client.unsubscribe(activeSession.subscribedChannel);
             }
-            await activeSession.client.subscribe(channelName);
+            await (activeSession.client as any).subscribe(channelName, {
+              withMessage: true,
+              withPresence: false,
+              withMetadata: false,
+              withLock: false,
+            });
             activeSession.subscribedChannel = channelName;
           } catch (subErr) {
             console.warn('[useAgoraRTM] Channel resubscribe warning:', subErr);
@@ -262,20 +267,6 @@ export function useAgoraRTM({
     // 3. Initiate single connection pipeline
     connectingPromise = (async () => {
       try {
-        // If an old session with a different UID exists, cleanly log it out first
-        if (activeSession && activeSession.uid !== uid) {
-          try {
-            if (activeSession.subscribedChannel) {
-              await activeSession.client.unsubscribe(activeSession.subscribedChannel);
-            }
-            await activeSession.client.logout();
-          } catch {
-            // Ignore previous logout errors
-          } finally {
-            activeSession = null;
-          }
-        }
-
         // Fetch token from /api/token
         const tokenRes = await fetch('/api/token', {
           method: 'POST',
@@ -309,22 +300,40 @@ export function useAgoraRTM({
           return;
         }
 
-        const AgoraRTM = (await import('agora-rtm-sdk')).default;
-
-        // Initialize single RTM client with try/catch to gracefully handle invalid/standby configurations
+        // Reuse client instance if matching UID, otherwise cleanly logout previous session
         let client: RtmClientInstance;
-        try {
-          client = new AgoraRTM.RTM(trimmedAppId, uid, {
-            useStringUserId: true,
-            logLevel: 'warn',
-          }) as unknown as RtmClientInstance;
-        } catch (initErr) {
-          console.info('[useAgoraRTM] Telemetry standby: Agora RTM client unavailable:', initErr);
-          broadcastError('Agora telemetry standby (RTM unavailable)');
-          return;
+        if (activeSession && activeSession.uid === uid && activeSession.client) {
+          client = activeSession.client;
+        } else {
+          if (activeSession) {
+            try {
+              if (activeSession.subscribedChannel) {
+                await activeSession.client.unsubscribe(activeSession.subscribedChannel);
+              }
+              await activeSession.client.logout();
+            } catch {
+              // Ignore previous logout errors
+            } finally {
+              activeSession = null;
+            }
+          }
+
+          const AgoraRTM = (await import('agora-rtm-sdk')).default;
+          try {
+            client = new AgoraRTM.RTM(trimmedAppId, uid, {
+              useStringUserId: true,
+              logLevel: 'warn',
+            }) as unknown as RtmClientInstance;
+          } catch (initErr) {
+            console.info('[useAgoraRTM] Telemetry standby: Agora RTM client unavailable:', initErr);
+            broadcastError('Agora telemetry standby (RTM unavailable)');
+            return;
+          }
         }
 
         // Attach listeners once on the client
+        if (!(client as unknown as { _listenersAttached?: boolean })._listenersAttached) {
+          (client as unknown as { _listenersAttached?: boolean })._listenersAttached = true;
         client.addEventListener('message', (eventData: Record<string, unknown>) => {
           try {
             let rawData = eventData?.message;
@@ -730,12 +739,20 @@ export function useAgoraRTM({
           }
           updateAllConnectionStates(connected);
         });
+        }
 
-        // Login to Agora RTM
-        await client.login({ token: rtmToken || undefined });
+        // Login to Agora RTM if not already logged in
+        if (!activeSession?.isLoggedIn) {
+          await client.login({ token: rtmToken || undefined });
+        }
 
-        // Subscribe to incident channel
-        await client.subscribe(channelName);
+        // Subscribe to incident channel with withPresence: false to prevent -13001
+        await (client as any).subscribe(channelName, {
+          withMessage: true,
+          withPresence: false,
+          withMetadata: false,
+          withLock: false,
+        });
 
         activeSession = {
           client,
