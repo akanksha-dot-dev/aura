@@ -4,7 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { ActionTracker } from '@/components/flightdeck/ActionTracker';
 import { EvidenceItem } from '@/lib/types';
 
-describe('ActionTracker Component (components/ActionTracker.tsx)', () => {
+describe('ActionTracker Component (components/flightdeck/ActionTracker.tsx)', () => {
   it('renders empty listening state when no actions exist', () => {
     const onStatusChange = vi.fn();
     render(<ActionTracker actions={[]} onStatusChange={onStatusChange} />);

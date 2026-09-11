@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { TranscriptDrawer, TranscriptEntry } from '@/components/modals/TranscriptDrawer';
 
-describe('TranscriptDrawer Component (components/TranscriptDrawer.tsx)', () => {
+describe('TranscriptDrawer Component (components/modals/TranscriptDrawer.tsx)', () => {
   const mockEntries: TranscriptEntry[] = [
     {
       id: 't-1',

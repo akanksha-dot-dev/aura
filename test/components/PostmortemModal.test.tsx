@@ -4,7 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { PostmortemModal } from '@/components/modals/PostmortemModal';
 import { IncidentState } from '@/lib/types';
 
-describe('PostmortemModal Component (components/PostmortemModal.tsx)', () => {
+describe('PostmortemModal Component (components/modals/PostmortemModal.tsx)', () => {
   const mockResolvedIncident: IncidentState = {
     incidentId: 'INC-4821',
     title: 'Payment Gateway Outage — Checkout Failures',

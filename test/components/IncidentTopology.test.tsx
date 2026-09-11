@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { IncidentTopology } from '@/components/flightdeck/IncidentTopology';
 import { TopologyNode, TopologyEdge } from '@/lib/types';
 
-describe('IncidentTopology Component (components/IncidentTopology.tsx)', () => {
+describe('IncidentTopology Component (components/flightdeck/IncidentTopology.tsx)', () => {
   const mockNodes: TopologyNode[] = [
     {
       id: 'evt-1',

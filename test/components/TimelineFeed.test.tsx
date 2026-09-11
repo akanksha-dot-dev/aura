@@ -4,7 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { TimelineFeed } from '@/components/flightdeck/TimelineFeed';
 import { EvidenceItem } from '@/lib/types';
 
-describe('TimelineFeed & TimelineCard Components (components/TimelineFeed.tsx)', () => {
+describe('TimelineFeed & TimelineCard Components (components/flightdeck/TimelineFeed.tsx)', () => {
   it('renders empty state when evidenceItems is empty', () => {
     render(<TimelineFeed evidenceItems={[]} incidentOpenedAt={Date.now()} />);
     expect(screen.getByText(/awaiting incident telemetry/i)).toBeInTheDocument();

@@ -45,7 +45,7 @@ const mockRoomInfo = {
   setupInstructions: null,
 };
 
-describe('WarRoomInvite (components/WarRoomInvite.tsx)', () => {
+describe('WarRoomInvite (components/modals/WarRoomInvite.tsx)', () => {
   beforeEach(() => {
     vi.stubGlobal(
       'fetch',

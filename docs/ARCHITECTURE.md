@@ -915,41 +915,58 @@ aura/
 │       ├── health/route.ts                 # Diagnostic & uptime probe
 │       └── tunnel/start/route.ts           # Cloudflare quick tunnel helper for local webhooks
 ├── components/
-│   ├── StatusBar.tsx                       # Status bar (OODA phase bar + Cost Counter + IC Lock + Timer)
-│   ├── StatusBar.module.css                # Scoped CSS module for StatusBar
-│   ├── CostCounter.tsx                     # Live dollar counter ($150/sec rate with animated digits)
-│   ├── SpeakerPanel.tsx                    # Responders grid with waveforms, silence timer, tempo, CLT
-│   ├── SilenceCounter.tsx                  # "⏸ 47s" display for AURA's active silence monitoring
-│   ├── CognitiveLoadMeter.tsx              # Sweller CLT gauge (0-100 mental burden score)
-│   ├── TempoIndicator.tsx                  # 5-dot military C2 tempo & cadence display
-│   ├── VoiceBadge.tsx                      # Speaker avatar badge with active voice indicator
-│   ├── ConflictBanner.tsx                  # Sticky pulsing red conflict alert with arbitration
-│   ├── MainView.tsx                        # Three-column flight deck container & tab switcher
-│   ├── TimelineFeed.tsx                    # Chronological real-time OODA event feed
-│   ├── TimelineCard.tsx                    # Classified event card with decay & strikethrough
-│   ├── IncidentTopology.tsx                # Interactive SVG dependency graph & blast radius
-│   ├── ActionTracker.tsx                   # Checkable task checklist with owner, status, and ETAs
-│   ├── IncidentStats.tsx                   # Event & hypothesis count summary pill
-│   ├── SmartPlaybook.tsx                   # Dynamic runbook steps with progress tracking
-│   ├── NarrativeBar.tsx                    # Tension sparkline with inflection point markers
-│   ├── LiveCaptions.tsx                    # Real-time Web Speech / Agora ASR transcript strip
-│   ├── PostmortemModal.tsx                 # Complete SRE postmortem with MTTR metrics & export
-│   ├── ResolveIncidentModal.tsx            # Resolution modal with root cause categorization
-│   ├── SimilarIncidentBanner.tsx           # Slide-down alert matching past incidents with fix tips
-│   ├── WarRoomInvite.tsx                   # Engineer invitation modal (link, QR code, simulation bots)
-│   ├── KeyboardShortcutsModal.tsx          # Hotkey cheatsheet modal (triggered by ?)
-│   ├── QuickCapture.tsx                    # Cmd+K command bar to rapidly log facts/hypotheses
-│   ├── TranscriptDrawer.tsx                # Slide-out full verbatim transcript drawer
-│   ├── AnalyticsDashboard.tsx              # Operational metrics & MTTR breakdown inside MainView
-│   ├── AgoraAnalyticsOverlay.tsx           # Real-time WebRTC telemetry (MOS, RTT, jitter, loss)
-│   ├── LobbyScreen.tsx                     # Pre-incident staging, mic test, scenario launcher
-│   ├── NotificationToast.tsx               # Epistemic state change toast notifications
-│   ├── WarRoomSummaryCard.tsx              # Floating bottom-right summary widget
-│   └── ErrorBoundary.tsx                   # React crash guard with diagnostic error display
+│   ├── flightdeck/                         # Core incident cockpit panels
+│   │   ├── StatusBar.tsx & .module.css     # Status bar (OODA phase bar + Cost Counter + IC Lock + Timer)
+│   │   ├── SpeakerPanel.tsx                # Responders grid with waveforms, silence timer, tempo, CLT
+│   │   ├── MainView.tsx                    # Three-column flight deck container & tab switcher
+│   │   ├── TimelineFeed.tsx & Card.tsx     # Chronological real-time OODA event feed & cards
+│   │   ├── IncidentTopology.tsx            # Interactive SVG dependency graph & blast radius
+│   │   ├── ActionTracker.tsx               # Checkable task checklist with owner, status, and ETAs
+│   │   ├── SmartPlaybook.tsx               # Dynamic runbook steps with progress tracking
+│   │   ├── MissionDeck.tsx                 # Unified bottom flight deck (telemetry dock & actions)
+│   │   └── SimulationBanner.tsx            # Scripted replay warning banner with live switch
+│   ├── modals/                             # Dialogs & overlay panels
+│   │   ├── PostmortemModal.tsx             # Complete SRE postmortem with MTTR metrics & export
+│   │   ├── ResolveIncidentModal.tsx        # Resolution modal with root cause categorization
+│   │   ├── WarRoomInvite.tsx               # Engineer invitation modal (link, QR code, simulation bots)
+│   │   ├── KeyboardShortcutsModal.tsx      # Hotkey cheatsheet modal (triggered by ?)
+│   │   ├── QuickCapture.tsx                # Cmd+K command bar to rapidly log facts/hypotheses
+│   │   ├── TranscriptDrawer.tsx            # Slide-out full verbatim transcript drawer
+│   │   └── WarRoomModals.tsx               # Consolidated modal group wrapper
+│   ├── indicators/                         # Lightweight telemetry & micro-widgets
+│   │   ├── CostCounter.tsx                 # Live dollar counter ($150/sec rate with animated digits)
+│   │   ├── SilenceCounter.tsx              # "⏸ 47s" display for AURA's active silence monitoring
+│   │   ├── CognitiveLoadMeter.tsx          # Sweller CLT gauge (0-100 mental burden score)
+│   │   ├── TempoIndicator.tsx              # 5-dot military C2 tempo & cadence display
+│   │   ├── VoiceBadge.tsx                  # Speaker avatar badge with active voice indicator
+│   │   ├── ConflictBanner.tsx              # Sticky pulsing red conflict alert with arbitration
+│   │   ├── SimilarIncidentBanner.tsx       # Slide-down alert matching past incidents with fix tips
+│   │   ├── IncidentStats.tsx               # Event & hypothesis count summary pill
+│   │   ├── NarrativeBar.tsx                # Tension sparkline with inflection point markers
+│   │   ├── LiveCaptions.tsx                # Real-time Web Speech / Agora ASR transcript strip
+│   │   ├── NotificationToast.tsx           # Epistemic state change toast notifications
+│   │   └── WarRoomSummaryCard.tsx          # Floating bottom-right summary widget
+│   ├── lobby/
+│   │   └── LobbyScreen.tsx                 # Pre-incident staging, mic test, scenario launcher
+│   ├── common/
+│   │   ├── ErrorBoundary.tsx               # React crash guard with diagnostic error display
+│   │   ├── AnalyticsDashboard.tsx          # Operational metrics & MTTR breakdown inside MainView
+│   │   ├── AgoraAnalyticsOverlay.tsx       # Real-time WebRTC telemetry (MOS, RTT, jitter, loss)
+│   │   └── LoadingSkeleton.tsx             # Suspense skeleton fallback
+│   └── index.ts                            # Root backward-compatible barrel export
 ├── hooks/
 │   ├── useAgoraRTC.ts                      # WebRTC voice client + remote tracks + volume indicators
 │   ├── useAgoraRTM.ts                      # Agora Signaling RTM v2 stream channel pub/sub
 │   ├── useIncidentState.ts                 # Central OODA state machine (facts, hypotheses, actions)
+│   ├── useWarRoomModals.ts                 # Flight deck modal & drawer display state manager
+│   ├── useKeyboardShortcuts.ts             # Global war room hotkeys (Cmd+K, Space, Esc, ?, etc.)
+│   ├── useSpeechRecognitionFallback.ts     # Client Web Speech API offline/standby fallback
+│   ├── useAuraAgent.ts                     # Agora ConvAI agent lifecycle & hot-sync orchestrator
+│   ├── useFlightDeckTelemetry.ts           # Derived topology graph, metrics, and tension series
+│   ├── useWarRoomTranscripts.ts            # RTM transcript aggregator and speaker attribution
+│   ├── useMockReplayStream.ts              # Scripted simulation replay stream
+│   ├── useEvidenceLogger.ts                # Action & quick-capture evidence dispatcher
+│   ├── useScenarioConfig.ts                # Active scenario configuration resolver
 │   ├── useCostCounter.ts                   # Cost-of-silence 10Hz calculation with pause/resume
 │   └── useVoiceWaveform.ts                 # Web Audio API analyser node for real-time oscilloscope
 ├── lib/

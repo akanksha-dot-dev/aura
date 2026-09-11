@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/react';
 import { SpeakerPanel } from '@/components/flightdeck/SpeakerPanel';
 import { Participant } from '@/lib/types';
 
-describe('SpeakerPanel Component & Telemetry Sub-meters (components/SpeakerPanel.tsx)', () => {
+describe('SpeakerPanel Component & Telemetry Sub-meters (components/flightdeck/SpeakerPanel.tsx)', () => {
   const mockParticipants: Record<string, Participant> = {
     sarah_ic: {
       uid: 'sarah_ic',

@@ -42,11 +42,26 @@ aura/
 │   ├── lobby/                    # Persona selection and pre-flight room setup
 │   ├── layout.tsx                # Root layout with IBM Plex fonts
 │   └── page.tsx                  # Flight Deck dashboard main page
-├── components/                   # 31 production UI components (War Room Flight Deck)
-├── hooks/                        # 5 core React hooks
+├── components/                   # 31 production UI components grouped into 5 domains
+│   ├── flightdeck/               # Core cockpit panels (StatusBar, SpeakerPanel, MainView, ActionTracker)
+│   ├── modals/                   # Dialogs & overlays (Postmortem, QuickCapture, WarRoomInvite)
+│   ├── indicators/               # Lightweight telemetry & widgets (CostCounter, LiveCaptions, Banners)
+│   ├── lobby/                    # Pre-incident staging room (LobbyScreen)
+│   ├── common/                   # Monitors & fallbacks (ErrorBoundary, AnalyticsDashboard, Skeleton)
+│   └── index.ts                  # Root backward-compatible barrel re-export
+├── hooks/                        # React hooks for flight deck orchestration
 │   ├── useAgoraRTC.ts            # WebRTC microphone capture, audio playback & network quality
 │   ├── useAgoraRTM.ts            # Signaling v2.x event bus, transcript & telemetry stream
 │   ├── useIncidentState.ts       # Central incident state reducer
+│   ├── useWarRoomModals.ts       # Modal & drawer display state manager
+│   ├── useKeyboardShortcuts.ts   # Global war room hotkeys (Cmd+K, Space, Esc, ?, etc.)
+│   ├── useSpeechRecognitionFallback.ts # Web Speech API client fallback
+│   ├── useAuraAgent.ts           # Agora ConvAI agent lifecycle & hot-sync orchestrator
+│   ├── useFlightDeckTelemetry.ts # Derived topology graph, metrics, and tension series
+│   ├── useWarRoomTranscripts.ts  # RTM transcript aggregator and speaker attribution
+│   ├── useMockReplayStream.ts    # Scripted simulation replay stream
+│   ├── useEvidenceLogger.ts      # Action & quick-capture evidence dispatcher
+│   ├── useScenarioConfig.ts      # Active scenario configuration resolver
 │   ├── useCostCounter.ts         # Live $0 Agora free-tier budget tracker
 │   └── useVoiceWaveform.ts       # Web Audio API real-time canvas visualizer
 ├── lib/                          # 13 core engines, types, and utilities

@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { KeyboardShortcutsModal } from '@/components/modals/KeyboardShortcutsModal';
 
-describe('KeyboardShortcutsModal (components/KeyboardShortcutsModal.tsx)', () => {
+describe('KeyboardShortcutsModal (components/modals/KeyboardShortcutsModal.tsx)', () => {
   it('does not render when isOpen is false', () => {
     const { container } = render(
       <KeyboardShortcutsModal isOpen={false} onClose={() => {}} />

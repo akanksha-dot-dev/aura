@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { StatusBar } from '@/components/flightdeck/StatusBar';
 
-describe('StatusBar Component (components/StatusBar.tsx)', () => {
+describe('StatusBar Component (components/flightdeck/StatusBar.tsx)', () => {
   it('renders incident header, severity badge, and title correctly', () => {
     render(
       <StatusBar

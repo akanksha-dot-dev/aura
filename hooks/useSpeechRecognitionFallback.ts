@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useSyncExternalStore } from 'react';
 
 // Strict type interfaces for Web Speech API fallback without any
 interface SpeechRecognitionResultItem {
@@ -72,7 +72,14 @@ export function useSpeechRecognitionFallback({
 }: SpeechRecognitionFallbackOptions): UseSpeechRecognitionFallbackReturn {
   const [transcriptText, setTranscriptText] = useState<string | null>(null);
   const [transcriptSpeaker, setTranscriptSpeaker] = useState<string | null>(null);
-  const [isSupported, setIsSupported] = useState(false);
+  const isSupported = useSyncExternalStore(
+    () => () => {},
+    () => {
+      const win = window as unknown as WindowWithSpeech;
+      return Boolean(win.SpeechRecognition || win.webkitSpeechRecognition);
+    },
+    () => false
+  );
 
   const volumeLevelsRef = useRef(volumeLevels);
   const onTranscriptRef = useRef(onTranscript);
@@ -88,11 +95,7 @@ export function useSpeechRecognitionFallback({
     const win = window as unknown as WindowWithSpeech;
     const SpeechRec = win.SpeechRecognition || win.webkitSpeechRecognition;
 
-    if (!SpeechRec) {
-      setIsSupported(false);
-      return;
-    }
-    setIsSupported(true);
+    if (!SpeechRec) return;
 
     // In live WebRTC bridge sessions, Agora ConvAI captures audio directly and streams Deepgram ASR transcripts via RTM.
     // Running Web Speech API simultaneously on Windows Chromium causes audio driver contention and starves the WebRTC track.

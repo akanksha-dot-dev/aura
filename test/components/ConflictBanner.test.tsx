@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { ConflictBanner } from '@/components/indicators/ConflictBanner';
 
-describe('ConflictBanner Component (components/ConflictBanner.tsx)', () => {
+describe('ConflictBanner Component (components/indicators/ConflictBanner.tsx)', () => {
   it('renders active dual-hypothesis conflict with speaker attribution and deciding metric', () => {
     render(
       <ConflictBanner
