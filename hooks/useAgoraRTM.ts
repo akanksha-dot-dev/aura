@@ -322,7 +322,7 @@ export function useAgoraRTM({
           try {
             client = new AgoraRTM.RTM(trimmedAppId, uid, {
               useStringUserId: true,
-              logLevel: 'warn',
+              logLevel: 'error',
             }) as unknown as RtmClientInstance;
           } catch (initErr) {
             console.info('[useAgoraRTM] Telemetry standby: Agora RTM client unavailable:', initErr);
