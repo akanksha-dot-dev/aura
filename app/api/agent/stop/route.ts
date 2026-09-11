@@ -5,6 +5,8 @@ export const runtime = 'edge';
 interface AgentStopRequest {
   agentId?: string;
   agent_id?: string;
+  channelName?: string;
+  channel_name?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -20,8 +22,9 @@ export async function POST(request: NextRequest) {
     }
 
     const agentId = body.agentId || body.agent_id;
+    const channelName = body.channelName || body.channel_name;
 
-    if (!agentId || typeof agentId !== 'string') {
+    if ((!agentId || typeof agentId !== 'string') && (!channelName || typeof channelName !== 'string')) {
       return NextResponse.json(
         { error: 'Missing or invalid agentId' },
         { status: 400 }
@@ -53,36 +56,86 @@ export async function POST(request: NextRequest) {
       `${customerKey}:${customerSecret}`
     ).toString('base64')}`;
 
-    const agoraResponse = await fetch(
-      `https://api.agora.io/api/conversational-ai-agent/v2/projects/${appId}/agents/${encodeURIComponent(agentId)}/leave`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: authHeader,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    const responseData = await agoraResponse.json().catch(() => ({}));
-
-    // If agent is not found or already left, consider it a successful idempotent stop
-    if (!agoraResponse.ok && agoraResponse.status !== 404) {
-      return NextResponse.json(
+    if (agentId) {
+      const agoraResponse = await fetch(
+        `https://api.agora.io/api/conversational-ai-agent/v2/projects/${appId}/agents/${encodeURIComponent(agentId)}/leave`,
         {
-          error: 'Failed to stop Agora ConvAI agent',
-          status: agoraResponse.status,
-          details: responseData,
-        },
-        { status: agoraResponse.status }
+          method: 'POST',
+          headers: {
+            Authorization: authHeader,
+            'Content-Type': 'application/json',
+          },
+        }
       );
+
+      const responseData = await agoraResponse.json().catch(() => ({}));
+
+      // If agent is not found or already left, consider it a successful idempotent stop
+      if (!agoraResponse.ok && agoraResponse.status !== 404) {
+        return NextResponse.json(
+          {
+            error: 'Failed to stop Agora ConvAI agent',
+            status: agoraResponse.status,
+            details: responseData,
+          },
+          { status: agoraResponse.status }
+        );
+      }
+
+      return NextResponse.json({
+        agentId,
+        status: 'stopped',
+        details: responseData,
+      });
     }
 
-    return NextResponse.json({
-      agentId,
-      status: 'stopped',
-      details: responseData,
-    });
+    // Otherwise, clean up all agents active in the specified channel
+    if (channelName) {
+      const cleanChannelKey = channelName.replace(/[^a-zA-Z0-9-]/g, '-');
+      const listRes = await fetch(
+        `https://api.agora.io/api/conversational-ai-agent/v2/projects/${appId}/agents`,
+        { headers: { Authorization: authHeader } }
+      );
+      if (listRes.ok) {
+        const listData = await listRes.json();
+        const activeList = listData?.data?.list || [];
+        for (const ag of activeList) {
+          try {
+            const detailRes = await fetch(
+              `https://api.agora.io/api/conversational-ai-agent/v2/projects/${appId}/agents/${ag.agent_id}`,
+              { headers: { Authorization: authHeader } }
+            );
+            if (detailRes.ok) {
+              const detail = await detailRes.json();
+              if (
+                detail?.channel === channelName ||
+                (typeof detail?.name === 'string' && detail.name.includes(cleanChannelKey))
+              ) {
+                await fetch(
+                  `https://api.agora.io/api/conversational-ai-agent/v2/projects/${appId}/agents/${ag.agent_id}/leave`,
+                  {
+                    method: 'POST',
+                    headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
+                  }
+                ).catch(() => {});
+              }
+            }
+          } catch {
+            // Ignore individual agent detail error
+          }
+        }
+      }
+
+      return NextResponse.json({
+        channelName,
+        status: 'stopped',
+      });
+    }
+
+    return NextResponse.json(
+      { error: 'Missing or invalid agentId' },
+      { status: 400 }
+    );
   } catch (error) {
     return NextResponse.json(
       {

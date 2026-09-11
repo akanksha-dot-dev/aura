@@ -140,7 +140,42 @@ export function useAuraAgent({
     };
   }, [isMockReplay, channel, isJoined, uid, name, role, voiceLang, scenarioConfig, scenarioId]);
 
-  // 2. Note on mid-session hot-sync:
+  // 2. Immediately terminate agent on tab close, page refresh, or navigation away from flight deck
+  useEffect(() => {
+    const handleStop = () => {
+      const id = activeAgentIdRef.current;
+      const chan = activeAgentChannelRef.current || channel;
+      if (!id && !chan) return;
+
+      const payload = JSON.stringify({ agentId: id || undefined, channelName: chan || undefined });
+      if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+        const blob = new Blob([payload], { type: 'application/json' });
+        navigator.sendBeacon('/api/agent/stop', blob);
+      } else {
+        fetch('/api/agent/stop', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload,
+          keepalive: true,
+        }).catch(() => {});
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('pagehide', handleStop);
+      window.addEventListener('beforeunload', handleStop);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('pagehide', handleStop);
+        window.removeEventListener('beforeunload', handleStop);
+      }
+      handleStop();
+    };
+  }, [channel]);
+
+  // 3. Note on mid-session hot-sync:
   // Agora ConvAI maintains continuous conversation history naturally over the active audio bridge.
   // We intentionally do not call /api/agent/update on every evidence event mid-call, because
   // Agora's cloud engine resets in-flight LLM buffers upon receiving /update, which caused
@@ -148,3 +183,4 @@ export function useAuraAgent({
 
   return { activeAgentId };
 }
+

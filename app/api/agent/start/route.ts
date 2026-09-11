@@ -457,7 +457,7 @@ export async function POST(request: NextRequest) {
         agent_rtc_uid: agentUid,
         remote_rtc_uids: ['*'],
         enable_string_uid: true, // Must match human participant mode; agent UID '0' is valid in string mode
-        idle_timeout: 600,
+        idle_timeout: 120, // 2-minute safety auto-exit if bridge becomes completely silent
 
         // ── Agora Advanced Features (AI pipeline) ──────────────────────────
         advanced_features: {
