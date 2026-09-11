@@ -39,7 +39,7 @@ Authorization: Basic {Base64(appKey:appSecret)}
 Content-Type: application/json
 
 {
-  "destination": "incident-sev1-4821",
+  "channel_name": "incident-sev1-4821",
   "payload": "{\"customType\":\"dashboard_event\",\"type\":\"fact\",...}"
 }
 ```

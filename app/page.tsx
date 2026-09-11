@@ -16,6 +16,7 @@ import { useScenarioConfig } from '@/hooks/useScenarioConfig';
 import { useEvidenceLogger } from '@/hooks/useEvidenceLogger';
 import { Participant } from '@/lib/types';
 import { createIncidentStateFromScenario } from '@/lib/scenarios';
+import { calculateDynamicBurnRate } from '@/lib/costModel';
 import {
   StatusBar,
   SpeakerPanel,
@@ -42,11 +43,11 @@ function DashboardContent() {
   const scenarioId = searchParams.get('scenarioId');
   const isMockReplay = Boolean(searchParams.get('__AURA_REPLAY_MOCK_STREAM'));
   const speedParam = Math.max(0.1, Number(searchParams.get('speed')) || 1);
-  const initialCostRate = Math.max(1, Number(searchParams.get('costRate')) || 150);
+  const explicitCostParam = searchParams.get('costRate') ? Number(searchParams.get('costRate')) : null;
+  const [manualCostRate, setManualCostRate] = useState<number | null>(explicitCostParam);
 
   // 1. Modals, views, and settings
   const modals = useWarRoomModals();
-  const [costRate, setCostRate] = useState<number>(initialCostRate);
   const [mainViewTab, setMainViewTab] = useState<'timeline' | 'topology' | 'analytics'>('timeline');
   const [isCostPaused, setIsCostPaused] = useState(false);
   const [isSpeakerCollapsed, setIsSpeakerCollapsed] = useState(false);
@@ -78,6 +79,11 @@ function DashboardContent() {
 
   const { state, processEvent, dispatchStateUpdate, claimIC, updateActionStatus } =
     useIncidentState(scenarioInitialState);
+
+  const effectiveCostRate = useMemo(() => {
+    if (manualCostRate !== null) return manualCostRate;
+    return calculateDynamicBurnRate(state.severity || 'SEV-1', state.affectedServices);
+  }, [manualCostRate, state.severity, state.affectedServices]);
 
   setRtmIncidentState(state);
 
@@ -235,7 +241,7 @@ function DashboardContent() {
     transcriptHistory: transcripts.transcriptHistory,
   });
 
-  const { logAction, logQuickCapture } = useEvidenceLogger({
+  const { logAction, logQuickCapture, broadcastActionStatus, broadcastClaimIC } = useEvidenceLogger({
     channel,
     uid,
     name,
@@ -262,9 +268,12 @@ function DashboardContent() {
           currentOODAPhase={state.currentOODAPhase}
           icName={telemetry.icDisplayName}
           connectionQuality={telemetry.connectionQuality}
-          onClaimIC={() => claimIC(uid)}
-          costRate={costRate}
-          onRateChange={setCostRate}
+          onClaimIC={() => {
+            claimIC(uid);
+            broadcastClaimIC(uid, name);
+          }}
+          costRate={effectiveCostRate}
+          onRateChange={setManualCostRate}
           isCostPaused={isCostPaused}
           onToggleCostPause={() => setIsCostPaused((p) => !p)}
           voiceLang={voiceLang}
@@ -311,7 +320,7 @@ function DashboardContent() {
           activeTab={mainViewTab}
           onTabChange={setMainViewTab}
           incident={state}
-          costRate={costRate}
+          costRate={effectiveCostRate}
           channelName={channel}
           suspectedCause={scenarioConfig?.suspectedCause}
           scenarioSummary={scenarioConfig?.description || scenarioConfig?.impact}
@@ -321,7 +330,10 @@ function DashboardContent() {
           actions={telemetry.actions}
           hypotheses={state.evidenceItems.filter((e) => e.category === 'hypothesis')}
           suspectedCause={scenarioConfig?.suspectedCause}
-          onStatusChange={updateActionStatus}
+          onStatusChange={(actionId, newStatus) => {
+            updateActionStatus(actionId, newStatus);
+            broadcastActionStatus(actionId, newStatus);
+          }}
           isCollapsed={isActionsCollapsed}
           onToggleCollapse={() => setIsActionsCollapsed((p) => !p)}
           playbookSteps={scenarioConfig?.playbook}
@@ -359,7 +371,7 @@ function DashboardContent() {
           modals={modals}
           incident={state}
           topologyEdges={telemetry.topologyEdges}
-          costRate={costRate}
+          costRate={effectiveCostRate}
           channelName={channel}
           effectiveTranscripts={telemetry.effectiveTranscripts}
           speakerName={name}

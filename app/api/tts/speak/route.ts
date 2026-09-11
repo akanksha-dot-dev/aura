@@ -14,18 +14,52 @@ export const runtime = 'nodejs';
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json() as { text?: string; voice?: string; speed?: number };
-    const { text, voice = 'nova', speed = 1.0 } = body;
+    const body = await request.json() as { text?: string; voice?: string; speed?: number; agentId?: string };
+    const { text, voice = 'nova', speed = 1.0, agentId } = body;
 
     if (!text || text.trim().length === 0) {
       return NextResponse.json({ error: 'text is required' }, { status: 400 });
+    }
+
+    // 1. If active Agora ConvAI agentId is provided, broadcast directly into RTC channel via Agora /speak
+    const appId = process.env.AGORA_APP_ID;
+    const customerKey = process.env.AGORA_CUSTOMER_KEY;
+    const customerSecret = process.env.AGORA_CUSTOMER_SECRET;
+
+    if (agentId && appId && customerKey && customerSecret) {
+      const authHeader = `Basic ${Buffer.from(
+        `${customerKey}:${customerSecret}`
+      ).toString('base64')}`;
+
+      const endpoint = `https://api.agora.io/api/conversational-ai-agent/v2/projects/${appId}/agents/${encodeURIComponent(agentId)}/speak`;
+
+      try {
+        const agoraRes = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            Authorization: authHeader,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ text: text.trim() }),
+        });
+
+        if (agoraRes.ok) {
+          return NextResponse.json({
+            status: 'spoken_via_agora',
+            agentId,
+            text: text.trim(),
+          });
+        }
+      } catch (err) {
+        console.warn('[/api/tts/speak] Agora /speak broadcast notice:', err);
+      }
     }
 
     const openAiKey = process.env.OPENAI_API_KEY || '';
     const hasValidKey = openAiKey.startsWith('sk-') && !openAiKey.includes('your_openai');
 
     if (!hasValidKey) {
-      // Return empty 200 in demo mode — extension will handle gracefully
+      // Return empty 204 in demo mode — extension/client will handle gracefully
       return new NextResponse(null, { status: 204 });
     }
 

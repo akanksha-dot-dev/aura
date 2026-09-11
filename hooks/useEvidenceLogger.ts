@@ -1,7 +1,6 @@
 'use client';
-
 import { useCallback } from 'react';
-import type { RTMDashboardEvent } from '@/lib/types';
+import type { ActionStatus, RTMDashboardEvent } from '@/lib/types';
 import type { QuickCapturePayload } from '@/components/modals/QuickCapture';
 import { emitToast } from '@/components/indicators/NotificationToast';
 
@@ -14,8 +13,8 @@ export interface EvidenceLoggerOptions {
 }
 
 /**
- * Encapsulates creating and dispatching evidence and action items
- * to local incident state and background telemetry sync.
+ * Encapsulates creating and dispatching evidence, action items,
+ * IC leader claims, and status updates to local incident state and Agora RTM.
  */
 export function useEvidenceLogger({
   channel,
@@ -84,5 +83,56 @@ export function useEvidenceLogger({
     [channel, uid, name, eventSeq, processEvent]
   );
 
-  return { logAction, logQuickCapture };
+  const broadcastActionStatus = useCallback(
+    (actionId: string, newStatus: ActionStatus) => {
+      processEvent({
+        type: 'dashboard_event',
+        id: `act-status-${Date.now()}`,
+        seq: eventSeq + 1,
+        timestamp: Date.now(),
+        eventType: 'action_status_changed',
+        payload: { actionId, actionStatus: newStatus },
+      });
+      fetch('/api/incident/event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channelName: channel,
+          eventType: 'action_status_changed',
+          payload: { actionId, actionStatus: newStatus },
+        }),
+      }).catch(() => {});
+    },
+    [channel, eventSeq, processEvent]
+  );
+
+  const broadcastClaimIC = useCallback(
+    (targetUid: string, targetName?: string) => {
+      processEvent({
+        type: 'dashboard_event',
+        id: `ic-claim-${Date.now()}`,
+        seq: eventSeq + 1,
+        timestamp: Date.now(),
+        eventType: 'ic_claimed',
+        payload: { uid: targetUid, displayName: targetName || targetUid },
+      });
+      fetch('/api/incident/event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channelName: channel,
+          eventType: 'ic_claimed',
+          payload: { uid: targetUid, displayName: targetName || targetUid },
+        }),
+      }).catch(() => {});
+      emitToast({
+        type: 'info',
+        title: 'Incident Commander Claimed',
+        description: `${targetName || targetUid} is now lead Incident Commander.`,
+      });
+    },
+    [channel, eventSeq, processEvent]
+  );
+
+  return { logAction, logQuickCapture, broadcastActionStatus, broadcastClaimIC };
 }

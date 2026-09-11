@@ -190,6 +190,7 @@ export function useAuraAgent({
       }
     };
   }, [
+    incidentState.currentOODAPhase,
     incidentState.eventSeq,
     incidentState.evidenceItems.length,
     incidentState.status,

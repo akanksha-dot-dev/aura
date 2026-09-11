@@ -127,9 +127,19 @@ export function buildDynamicIncidentContext(state: IncidentState, operatorUid?: 
 
   const secsSinceReadback = Math.round((Date.now() - state.lastReadbackAt) / 1000);
 
+  const oodaDirectives: Record<string, string> = {
+    OBSERVE: 'OBSERVE PHASE: Focus strictly on gathering telemetry and logging confirmed facts. Keep shadow mode; do not speculate prematurely.',
+    ORIENT: 'ORIENT PHASE: Proactively flag contradictions between hypotheses and ask the team for deciding metrics to isolate the root cause.',
+    DECIDE: 'DECIDE PHASE: Facilitate decision-making. Prompt the Incident Commander for authoritative go/no-go decisions on mitigation directives.',
+    ACT: 'ACT PHASE: Track action item execution, verify owners, monitor SLAs, and watch for system recovery signals.',
+    RESOLVED: 'RESOLVED PHASE: Congratulate the team on resolution, summarize MTTR and root cause, and offer postmortem debrief.',
+  };
+  const activeOODADirective = oodaDirectives[state.currentOODAPhase] || oodaDirectives.OBSERVE;
+
   return `[INCIDENT CONTEXT — INJECTED AT ${new Date().toISOString()}]
 Incident: ${state.title} | Severity: ${state.severity} | Status: ${state.status} | Elapsed: ${elapsed}
 IC: ${ic} | Current OODA Phase: ${state.currentOODAPhase}
+ACTIVE OPERATIONAL DIRECTIVE: ${activeOODADirective}
 Active Responders on Bridge: ${respondersText}
 Bridge Mode: ${isSoloSession ? '1-on-1 Solo Session (Respond verbally to every operator utterance)' : 'Multi-Responder Room'}
 Telemetry & Epistemic Counts: Facts: ${state.evidenceItems.filter((e) => e.category === 'fact').length} | Active Hypotheses: ${state.evidenceItems.filter((e) => e.category === 'hypothesis' && e.status === 'active').length} | Decisions: ${state.evidenceItems.filter((e) => e.category === 'decision').length} | Pending Actions: ${state.evidenceItems.filter((e) => e.category === 'action' && (e.actionStatus === 'pending' || e.actionStatus === 'in_progress')).length} | Unresolved Conflicts: ${state.evidenceItems.filter((e) => e.category === 'conflict' && e.status === 'active').length}

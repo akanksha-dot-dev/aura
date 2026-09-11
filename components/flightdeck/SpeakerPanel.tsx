@@ -6,6 +6,7 @@ import { VoiceBadge } from '@/components/indicators/VoiceBadge';
 import { CognitiveLoadMeter } from '@/components/indicators/CognitiveLoadMeter';
 import { TempoIndicator } from '@/components/indicators/TempoIndicator';
 import { useVoiceWaveform } from '@/hooks/useVoiceWaveform';
+import { getPersonaSoundstagePosition } from '@/lib/spatialAudio';
 
 /** Animated SVG neural ring drawn around the AURA avatar when speaking */
 function AuraNeuralRing({ isSpeaking, radius = 20 }: { isSpeaking: boolean; radius?: number }) {
@@ -420,6 +421,17 @@ export function SpeakerPanel({
           flex-shrink: 0;
         }
 
+        .speaker-row__spatial-tag {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          color: var(--text-muted);
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid var(--border-subtle);
+          border-radius: 2px;
+          padding: 0 4px;
+          flex-shrink: 0;
+        }
+
         .speaker-row__heatbar-wrap {
           display: flex;
           align-items: center;
@@ -616,7 +628,15 @@ export function SpeakerPanel({
                                 </span>
                               )}
                             </div>
-                            <span className="speaker-row__role-tag">{p.role}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+                              <span className="speaker-row__role-tag">{p.role}</span>
+                              <span
+                                className="speaker-row__spatial-tag"
+                                title={`Agora 3D Spatial Soundstage: ${getPersonaSoundstagePosition(p.uid, p.role).label}`}
+                              >
+                                {getPersonaSoundstagePosition(p.uid, p.role).label}
+                              </span>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -658,7 +678,7 @@ export function SpeakerPanel({
         {!collapsed && (
           <div className="speaker-panel__bridge-telemetry" aria-label="Acoustic Bridge Status">
             <span className="bridge-telemetry__dot" aria-hidden="true" />
-            <span className="bridge-telemetry__line">Agora SD-RTN™ · 48kHz HD Audio</span>
+            <span className="bridge-telemetry__line">Agora SD-RTN™ · 3D Spatial Soundstage · 48kHz HD Audio</span>
           </div>
         )}
 

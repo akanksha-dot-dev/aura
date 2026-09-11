@@ -4,6 +4,7 @@ import { POST as startAgent } from '@/app/api/agent/start/route';
 import { POST as stopAgent } from '@/app/api/agent/stop/route';
 import { POST as interruptAgent } from '@/app/api/agent/interrupt/route';
 import { POST as updateAgent } from '@/app/api/agent/update/route';
+import { POST as thinkAgent } from '@/app/api/agent/think/route';
 
 describe('API Route: /api/agent (app/api/agent/start, stop & interrupt routes)', () => {
   const originalEnv = process.env;
@@ -344,6 +345,76 @@ describe('API Route: /api/agent (app/api/agent/start, stop & interrupt routes)',
       expect(updatedPrompt).toContain('Database connection pool reached 100% saturation');
       expect(updatedPrompt).toContain('Leaked connections from unclosed cursor in billing service');
       expect(updatedPrompt).toContain('Active Responders on Bridge: Operator Kai');
+    });
+  });
+
+  describe('/api/agent/think POST', () => {
+    it('returns 400 when message is missing or empty', async () => {
+      const req = new NextRequest('http://localhost:3000/api/agent/think', {
+        method: 'POST',
+        body: JSON.stringify({}),
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const res = await thinkAgent(req);
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error).toContain('Missing or empty message');
+    });
+
+    it('broadcasts alert to RTM stream when agentId is absent', async () => {
+      const req = new NextRequest('http://localhost:3000/api/agent/think', {
+        method: 'POST',
+        body: JSON.stringify({
+          channelName: 'incident-war-room',
+          message: 'Datadog latency spike: 450ms',
+          source: 'Datadog Alert',
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const res = await thinkAgent(req);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.status).toBe('broadcasted_to_rtm');
+      expect(data.message).toBe('Datadog latency spike: 450ms');
+    });
+
+    it('injects alert into Agora ConvAI /think REST endpoint when credentials and agentId exist', async () => {
+      process.env.AGORA_APP_ID = '970ca35de60c44645bbae8a215061b33';
+      process.env.AGORA_CUSTOMER_KEY = 'test_key';
+      process.env.AGORA_CUSTOMER_SECRET = 'test_secret';
+
+      let capturedUrl = '';
+      let capturedBody = '';
+
+      vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        capturedUrl = url;
+        capturedBody = String(init?.body || '');
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ code: 'success' }),
+          text: () => Promise.resolve('{"code":"success"}'),
+        });
+      }));
+
+      const req = new NextRequest('http://localhost:3000/api/agent/think', {
+        method: 'POST',
+        body: JSON.stringify({
+          agentId: 'ag-test-think-123',
+          channelName: 'incident-war-room',
+          message: 'Kubernetes node 4 entered NotReady state',
+          source: 'Prometheus',
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const res = await thinkAgent(req);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.status).toBe('injected');
+      expect(data.agentId).toBe('ag-test-think-123');
+      expect(capturedUrl).toContain('/agents/ag-test-think-123/think');
+      expect(capturedBody).toContain('Kubernetes node 4 entered NotReady state');
     });
   });
 });
