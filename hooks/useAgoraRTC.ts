@@ -466,9 +466,28 @@ export function useAgoraRTC({ channelName, uid, appId: propAppId }: UseAgoraRTCO
         return;
       }
       const message = err instanceof Error ? err.message : 'Failed to join voice channel';
-      if (isMountedRef.current) setError(message);
+      const isAppIdInactive =
+        message.includes('CAN_NOT_GET_GATEWAY_SERVER') ||
+        message.includes('no active status') ||
+        message.includes('APP_ID_NO_ACTIVATED') ||
+        message.includes('not activated');
+
+      if (isMountedRef.current) {
+        if (isAppIdInactive) {
+          setError(
+            'Agora App ID is not activated in console.agora.io (vendor inactive). Operating in audio standby.'
+          );
+        } else {
+          setError(message);
+        }
+      }
+
       if (message.includes('credentials not configured')) {
         console.info('[useAgoraRTC] Voice channel on standby (Agora credentials not configured in .env.local).');
+      } else if (isAppIdInactive) {
+        console.warn(
+          '[useAgoraRTC] Standby notice: Agora project has "no active status" or is not activated in console.agora.io. Voice channel on standby.'
+        );
       } else {
         console.error('[useAgoraRTC] Join error:', err);
       }

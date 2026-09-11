@@ -440,8 +440,10 @@ function DashboardContent() {
   }, [transcriptHistory, state.evidenceItems]);
 
   // Automatically attempt RTC audio join on mount (skipped during mock replay)
+  const hasAttemptedJoinRef = useRef(false);
   useEffect(() => {
-    if (!isMockReplay && !isJoined && channel && uid) {
+    if (!isMockReplay && !isJoined && channel && uid && !hasAttemptedJoinRef.current) {
+      hasAttemptedJoinRef.current = true;
       joinChannel().catch((err: unknown) => {
         const msg = err instanceof Error ? err.message : String(err);
         if (!msg.includes('OPERATION_ABORTED') && !msg.includes('cancel token canceled')) {
