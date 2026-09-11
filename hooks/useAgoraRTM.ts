@@ -3,10 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { RTMDashboardEvent, EvidenceItem, IncidentState } from '@/lib/types';
 import { PERSONAS } from '@/lib/constants';
-import {
-  processTranscriptForConversation,
-  getConversationManager,
-} from '@/lib/auraConversationManager';
 
 export interface RTMTranscriptEntry {
   id: string;
@@ -110,33 +106,6 @@ function dispatchTranscriptToSubscribers(entry: RTMTranscriptEntry) {
       console.warn('[useAgoraRTM] Transcript subscriber error:', err);
     }
   });
-
-  // ── Conversation Manager Integration ────────────────────────────────────────
-  // Fire conversation manager for final, human-spoken transcripts
-  // so AURA can respond to filler words, discoveries, frustration, etc.
-  if (
-    entry.isFinal &&
-    entry.speakerName !== 'AURA' &&
-    entry.text.trim().length > 0 &&
-    _rtmIncidentState
-  ) {
-    const state = _rtmIncidentState;
-    const speakerUid = entry.id.split('-')[2] || entry.speakerName;
-
-    // Async: process through conversation manager and speak if needed
-    processTranscriptForConversation(speakerUid, entry.speakerName, entry.text, state)
-      .then((response) => {
-        if (response.shouldSpeak && response.text) {
-          const manager = getConversationManager();
-          manager.speak(response).catch((err) => {
-            console.warn('[RTM] Conversation manager speak error:', err);
-          });
-        }
-      })
-      .catch((err) => {
-        console.warn('[RTM] Conversation manager processing error:', err);
-      });
-  }
 }
 
 // Deduplication cache shared across session
@@ -587,7 +556,7 @@ export function useAgoraRTM({
               const factTag = rawText.match(/\[LOG_FACT:\s*([^|\]]+?)(?:\s*\|\s*(\d+))?(?:\s*\|\s*([^\]]+?))?\]/i);
               if (factTag) {
                 dispatchEpistemicItem('fact', factTag[1], {
-                  confidence: factTag[2] ? Number(factTag[2]) : 95,
+                  confidence: factTag[2] ? Math.min(85, Number(factTag[2])) : 85,
                   service: factTag[3]?.trim(),
                 });
               }
@@ -596,7 +565,7 @@ export function useAgoraRTM({
               if (hypoTag) {
                 dispatchEpistemicItem('hypothesis', hypoTag[1], {
                   decidingMetric: hypoTag[2]?.trim(),
-                  confidence: hypoTag[3] ? Number(hypoTag[3]) : 80,
+                  confidence: hypoTag[3] ? Math.min(85, Number(hypoTag[3])) : 80,
                 });
               }
 
@@ -628,7 +597,7 @@ export function useAgoraRTM({
               const spokenFact = rawText.match(/(?:logging\s+fact|recorded\s+as\s+fact):\s*["']?([^"'\n]+?)["']?(?:\.|\s+with|\s+logging|\s*$)/i);
               if (spokenFact) {
                 dispatchEpistemicItem('fact', spokenFact[1], {
-                  confidence: 95,
+                  confidence: 85,
                 });
               }
             };

@@ -63,9 +63,9 @@ When multiple team members are on the bridge simultaneously:
 5. When a new responder shares a data point, briefly confirm and classify it before moving on.
 6. Balance attention across all responders â€” if someone has been silent for a while, occasionally check in: "[Name], anything from your end?"
 
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• 
 DIRECTIVE 4: FILLER WORD & HESITATION PROTOCOL â€” CRITICAL
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• 
 You MUST handle every class of filler word and hesitation with human-like intelligence.
 The ASR will transcribe these verbatim â€” you must classify and respond correctly:
 
@@ -362,7 +362,7 @@ function buildTurnDetectionConfig() {
 
           // Extra tolerance for multi-speaker rooms where overlapping
           // voices confuse basic energy VAD.
-          speaking_interrupt_duration_ms: 380,
+          speaking_interrupt_duration_ms: 400,
 
           // Prefix padding: capture audio BEFORE VAD trigger fires.
           // 1200ms ensures we don't clip the start of "hmm..." or "wait..."
@@ -697,20 +697,9 @@ export async function POST(request: NextRequest) {
         // ── TTS: Agora Managed MiniMax (or MiniMax BYOK) ───────────────────
         tts: selectedTts.config,
 
-        // Natural filler words in AURA's own speech
-        // Agora ConvAI v2 requires static_config.phrases when enable:true
+        // Filler words disabled per D-006 / D-016 to maintain Shadow Monitor Mode silence
         filler_words: {
-          enable: true,
-          content: {
-            mode: 'static',
-            static_config: {
-              phrases: [
-                'So...', 'Alright...', 'Let me check that.',
-                'One moment.', 'Got it.', 'Okay so...',
-                'Right, so...', "I'm on it.", 'Understood.',
-              ],
-            },
-          },
+          enable: false,
         },
       },
     };

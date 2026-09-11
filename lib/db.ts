@@ -1,349 +1,16 @@
 /**
- * db.ts — Persistent SQLite incident database for AURA.
+ * db.ts — Zero-dependency, Edge-compatible In-Memory Incident Store for AURA.
  *
  * Stores incident metadata, evidence items, participant records, transcripts,
- * and postmortem reports. Enables "similar incident" lookups and full-text search
- * for future decision-making intelligence.
+ * and postmortem reports in memory. Pre-seeded with realistic production outage
+ * scenarios from PRESET_SCENARIOS for historical intelligence and similarity lookups.
  *
- * Uses better-sqlite3 for synchronous, zero-config, file-based persistence.
+ * Fully compatible with Cloudflare Pages (no native C++ addons, no better-sqlite3).
  */
 
-import Database from 'better-sqlite3';
-import path from 'path';
+import { PRESET_SCENARIOS } from './scenarios';
 
-// ─── Database Singleton ───
-
-let db: Database.Database | null = null;
-
-function getDbPath(): string {
-  return process.env.DATABASE_PATH || path.join(process.cwd(), 'data', 'aura.db');
-}
-
-export function getDb(): Database.Database {
-  if (db) return db;
-
-  const dbPath = getDbPath();
-
-  // Ensure directory exists
-  const fs = require('fs');
-  const dir = path.dirname(dbPath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-
-  db = new Database(dbPath);
-  db.pragma('journal_mode = WAL'); // Write-Ahead Logging for concurrent reads
-  db.pragma('foreign_keys = ON');
-
-  initializeSchema(db);
-  return db;
-}
-
-// ─── Schema Definition & Migration ───
-
-function initializeSchema(database: Database.Database): void {
-  database.exec(`
-    CREATE TABLE IF NOT EXISTS incidents (
-      id TEXT PRIMARY KEY,
-      title TEXT NOT NULL,
-      severity TEXT NOT NULL DEFAULT 'SEV-1',
-      status TEXT NOT NULL DEFAULT 'investigating',
-      channel_name TEXT NOT NULL,
-      opened_at INTEGER NOT NULL,
-      resolved_at INTEGER,
-      affected_services TEXT NOT NULL DEFAULT '[]',
-      incident_commander_uid TEXT,
-      cost_accrued REAL DEFAULT 0,
-      cognitive_load_score INTEGER DEFAULT 0,
-      ooda_phase TEXT DEFAULT 'OBSERVE',
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now'))
-    );
-
-    CREATE TABLE IF NOT EXISTS evidence_items (
-      id TEXT PRIMARY KEY,
-      incident_id TEXT NOT NULL,
-      category TEXT NOT NULL,
-      content TEXT NOT NULL,
-      speaker_uid TEXT,
-      speaker_name TEXT,
-      confidence INTEGER DEFAULT 80,
-      timestamp INTEGER NOT NULL,
-      service_affected TEXT,
-      related_to TEXT DEFAULT '[]',
-      status TEXT DEFAULT 'active',
-      assigned_to TEXT,
-      eta INTEGER,
-      action_status TEXT,
-      deciding_metric TEXT,
-      hypothesis_a TEXT,
-      hypothesis_b TEXT,
-      speaker_a_uid TEXT,
-      speaker_b_uid TEXT,
-      created_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (incident_id) REFERENCES incidents(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS participants (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      incident_id TEXT NOT NULL,
-      uid TEXT NOT NULL,
-      display_name TEXT NOT NULL,
-      role TEXT NOT NULL,
-      is_incident_commander INTEGER DEFAULT 0,
-      joined_at INTEGER NOT NULL,
-      left_at INTEGER,
-      total_speaking_ms INTEGER DEFAULT 0,
-      turn_count INTEGER DEFAULT 0,
-      created_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (incident_id) REFERENCES incidents(id) ON DELETE CASCADE,
-      UNIQUE(incident_id, uid)
-    );
-
-    CREATE TABLE IF NOT EXISTS transcripts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      incident_id TEXT NOT NULL,
-      speaker_name TEXT NOT NULL,
-      speaker_uid TEXT,
-      text TEXT NOT NULL,
-      is_agent INTEGER DEFAULT 0,
-      is_filler INTEGER DEFAULT 0,
-      timestamp INTEGER NOT NULL,
-      turn_id TEXT,
-      created_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (incident_id) REFERENCES incidents(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS postmortems (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      incident_id TEXT NOT NULL UNIQUE,
-      title TEXT NOT NULL,
-      summary TEXT NOT NULL,
-      root_cause TEXT,
-      timeline_json TEXT DEFAULT '[]',
-      action_items_json TEXT DEFAULT '[]',
-      lessons_learned TEXT,
-      generated_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (incident_id) REFERENCES incidents(id) ON DELETE CASCADE
-    );
-
-    -- Team/owner attribution for incidents (Pillar 2: Executive Dashboard)
-    CREATE TABLE IF NOT EXISTS incident_teams (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      incident_id TEXT NOT NULL,
-      team_name TEXT NOT NULL,
-      is_primary_owner INTEGER DEFAULT 0,
-      created_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (incident_id) REFERENCES incidents(id) ON DELETE CASCADE
-    );
-
-    -- Root cause categories for pattern analysis (Pillar 2)
-    CREATE TABLE IF NOT EXISTS root_causes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      incident_id TEXT NOT NULL UNIQUE,
-      category TEXT NOT NULL,
-      subcategory TEXT,
-      description TEXT,
-      created_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (incident_id) REFERENCES incidents(id) ON DELETE CASCADE
-    );
-
-    -- Resolution steps that worked — for future suggestion (Pillar 2)
-    CREATE TABLE IF NOT EXISTS resolution_playbook (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      incident_id TEXT NOT NULL,
-      step_order INTEGER NOT NULL,
-      action_text TEXT NOT NULL,
-      was_effective INTEGER DEFAULT 1,
-      duration_ms INTEGER,
-      created_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (incident_id) REFERENCES incidents(id) ON DELETE CASCADE
-    );
-
-    -- Tags for flexible categorization (Pillar 2)
-    CREATE TABLE IF NOT EXISTS incident_tags (
-      incident_id TEXT NOT NULL,
-      tag TEXT NOT NULL,
-      PRIMARY KEY (incident_id, tag),
-      FOREIGN KEY (incident_id) REFERENCES incidents(id) ON DELETE CASCADE
-    );
-
-    -- Speaker voice profiles for cross-session recognition (Pillar 1: War Room)
-    CREATE TABLE IF NOT EXISTS speaker_profiles (
-      uid TEXT PRIMARY KEY,
-      display_name TEXT NOT NULL,
-      role TEXT DEFAULT 'participant',
-      embedding_json TEXT NOT NULL,
-      embedding_dim INTEGER NOT NULL DEFAULT 66,
-      frame_count INTEGER NOT NULL DEFAULT 0,
-      identity_confidence INTEGER NOT NULL DEFAULT 0,
-      is_enrolled INTEGER NOT NULL DEFAULT 0,
-      last_active_at INTEGER,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now'))
-    );
-
-    -- Knowledge base — extracted learnings from resolved incidents (Pillar 5)
-    CREATE TABLE IF NOT EXISTS knowledge_base (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      incident_id TEXT,
-      title TEXT NOT NULL,
-      content TEXT NOT NULL,
-      category TEXT NOT NULL DEFAULT 'general',
-      tags TEXT DEFAULT '[]',
-      quality_score INTEGER DEFAULT 50,
-      times_referenced INTEGER DEFAULT 0,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (incident_id) REFERENCES incidents(id) ON DELETE SET NULL
-    );
-
-    -- SLA targets per severity (Pillar 2: Dashboard)
-    CREATE TABLE IF NOT EXISTS sla_targets (
-      severity TEXT PRIMARY KEY,
-      acknowledge_minutes INTEGER NOT NULL,
-      resolve_minutes INTEGER NOT NULL,
-      created_at TEXT DEFAULT (datetime('now'))
-    );
-
-    -- Incident response quality scores (Pillar 5: Post-Incident)
-    CREATE TABLE IF NOT EXISTS incident_scores (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      incident_id TEXT NOT NULL UNIQUE,
-      time_to_first_hypothesis_ms INTEGER,
-      time_to_root_cause_ms INTEGER,
-      mttr_ms INTEGER,
-      sla_met INTEGER DEFAULT 0,
-      participant_count INTEGER DEFAULT 0,
-      evidence_count INTEGER DEFAULT 0,
-      action_items_completed INTEGER DEFAULT 0,
-      action_items_total INTEGER DEFAULT 0,
-      overall_score INTEGER DEFAULT 0,
-      created_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (incident_id) REFERENCES incidents(id) ON DELETE CASCADE
-    );
-
-    -- Indexes for fast lookups
-    CREATE INDEX IF NOT EXISTS idx_evidence_incident ON evidence_items(incident_id);
-    CREATE INDEX IF NOT EXISTS idx_evidence_category ON evidence_items(category);
-    CREATE INDEX IF NOT EXISTS idx_transcripts_incident ON transcripts(incident_id);
-    CREATE INDEX IF NOT EXISTS idx_participants_incident ON participants(incident_id);
-    CREATE INDEX IF NOT EXISTS idx_incidents_severity ON incidents(severity);
-    CREATE INDEX IF NOT EXISTS idx_incidents_status ON incidents(status);
-    CREATE INDEX IF NOT EXISTS idx_incidents_opened ON incidents(opened_at);
-    CREATE INDEX IF NOT EXISTS idx_speaker_profiles_name ON speaker_profiles(display_name);
-    CREATE INDEX IF NOT EXISTS idx_knowledge_base_category ON knowledge_base(category);
-    CREATE INDEX IF NOT EXISTS idx_knowledge_base_incident ON knowledge_base(incident_id);
-  `);
-
-  // Full-text search virtual table for evidence content
-  try {
-    database.exec(`
-      CREATE VIRTUAL TABLE IF NOT EXISTS evidence_fts USING fts5(
-        content,
-        content_rowid='rowid',
-        tokenize='porter unicode61'
-      );
-    `);
-  } catch {
-    // FTS5 may not be available in all SQLite builds
-    console.warn('[DB] FTS5 not available, full-text search will use LIKE fallback');
-  }
-
-  // Seed default SLA targets if table is empty
-  try {
-    const slaCount = database.prepare('SELECT COUNT(*) as count FROM sla_targets').get() as { count: number };
-    if (slaCount.count === 0) {
-      const slaStmt = database.prepare(
-        'INSERT OR IGNORE INTO sla_targets (severity, acknowledge_minutes, resolve_minutes) VALUES (?, ?, ?)',
-      );
-      slaStmt.run('SEV-0', 15, 60);
-      slaStmt.run('SEV-1', 30, 240);
-      slaStmt.run('SEV-2', 120, 1440);
-      slaStmt.run('SEV-3', 240, 4320);
-      console.log('[DB] Seeded default SLA targets');
-    }
-  } catch {
-    console.warn('[DB] Failed to seed SLA targets');
-  }
-}
-
-// ─── Database Robustness Helpers ───
-
-let writeCount = 0;
-const WAL_CHECKPOINT_INTERVAL = 100;
-
-/**
- * Wraps a multi-statement operation in a transaction for atomicity.
- * Automatically retries on SQLITE_BUSY up to 3 times with backoff.
- */
-export function withTransaction<T>(fn: (db: Database.Database) => T): T {
-  const database = getDb();
-  const maxRetries = 3;
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      const result = database.transaction(() => fn(database))();
-      writeCount++;
-      // Periodic WAL checkpoint
-      if (writeCount % WAL_CHECKPOINT_INTERVAL === 0) {
-        try {
-          database.pragma('wal_checkpoint(PASSIVE)');
-        } catch {
-          // Non-critical
-        }
-      }
-      return result;
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (message.includes('SQLITE_BUSY') && attempt < maxRetries) {
-        const backoffMs = attempt * 100;
-        console.warn(`[DB] SQLITE_BUSY, retrying in ${backoffMs}ms (attempt ${attempt}/${maxRetries})`);
-        // Synchronous sleep for SQLite retry
-        const end = Date.now() + backoffMs;
-        while (Date.now() < end) { /* busy-wait */ }
-        continue;
-      }
-      throw err;
-    }
-  }
-  // Should never reach here due to throw in catch
-  throw new Error('Transaction failed after max retries');
-}
-
-/**
- * Returns database size and health metrics.
- */
-export function getDatabaseHealth(): {
-  sizeBytes: number;
-  incidentCount: number;
-  evidenceCount: number;
-  transcriptCount: number;
-  knowledgeBaseCount: number;
-  walMode: string;
-} {
-  const database = getDb();
-  const fs = require('fs');
-  const resolvedDbPath = process.env.DATABASE_PATH || path.join(process.cwd(), 'data', 'aura.db');
-  let sizeBytes = 0;
-  try {
-    const stats = fs.statSync(resolvedDbPath);
-    sizeBytes = stats.size;
-  } catch { /* file may not exist yet */ }
-
-  const counts = {
-    incidentCount: (database.prepare('SELECT COUNT(*) as c FROM incidents').get() as { c: number }).c,
-    evidenceCount: (database.prepare('SELECT COUNT(*) as c FROM evidence_items').get() as { c: number }).c,
-    transcriptCount: (database.prepare('SELECT COUNT(*) as c FROM transcripts').get() as { c: number }).c,
-    knowledgeBaseCount: (database.prepare('SELECT COUNT(*) as c FROM knowledge_base').get() as { c: number }).c,
-  };
-
-  const walMode = String(database.pragma('journal_mode', { simple: true }));
-
-  return { sizeBytes, ...counts, walMode };
-}
-
-// ─── Incident CRUD ───
+// ─── Interfaces ───
 
 export interface DbIncident {
   id: string;
@@ -353,13 +20,14 @@ export interface DbIncident {
   channel_name: string;
   opened_at: number;
   resolved_at: number | null;
-  affected_services: string;
+  affected_services: string; // JSON string array
   incident_commander_uid: string | null;
   cost_accrued: number;
   cognitive_load_score: number;
   ooda_phase: string;
-  created_at: string;
-  updated_at: string;
+  created_at: number;
+  updated_at: number;
+  similarity_score?: number;
 }
 
 export interface DbEvidenceItem {
@@ -367,12 +35,12 @@ export interface DbEvidenceItem {
   incident_id: string;
   category: string;
   content: string;
-  speaker_uid: string | null;
-  speaker_name: string | null;
+  speaker_uid: string;
+  speaker_name: string;
   confidence: number;
   timestamp: number;
   service_affected: string | null;
-  related_to: string;
+  related_to: string; // JSON string array
   status: string;
   assigned_to: string | null;
   eta: number | null;
@@ -385,126 +53,209 @@ export interface DbEvidenceItem {
 }
 
 export interface DbParticipant {
-  id: number;
   incident_id: string;
   uid: string;
   display_name: string;
   role: string;
   is_incident_commander: number;
   joined_at: number;
-  left_at: number | null;
   total_speaking_ms: number;
-  turn_count: number;
+  last_spoke_at: number | null;
 }
 
 export interface DbTranscript {
   id: number;
   incident_id: string;
-  speaker_name: string;
   speaker_uid: string | null;
+  speaker_name: string;
   text: string;
-  is_agent: number;
   is_filler: number;
+  filler_type: string | null;
+  confidence: number | null;
   timestamp: number;
-  turn_id: string | null;
 }
 
 export interface DbPostmortem {
-  id: number;
   incident_id: string;
-  title: string;
+  title?: string;
   summary: string;
-  root_cause: string | null;
-  timeline_json: string;
-  action_items_json: string;
-  lessons_learned: string | null;
-  generated_at: string;
+  root_cause: string;
+  detection: string | null;
+  timeline: string; // JSON
+  action_items: string; // JSON
+  five_whys: string; // JSON
+  timeline_json?: string;
+  action_items_json?: string;
+  five_whys_json?: string;
+  generated_at: number;
+  published: number;
 }
 
-// ─── Incident Operations ───
+export interface DbKnowledgeItem {
+  id: number;
+  incident_id: string | null;
+  title: string;
+  content: string;
+  category: string;
+  tags: string; // JSON
+  quality_score: number;
+  times_referenced: number;
+  created_at: number;
+}
+
+export interface DbIncidentScore {
+  incident_id: string;
+  time_to_first_hypothesis_ms: number | null;
+  time_to_root_cause_ms: number | null;
+  mttr_ms: number;
+  sla_met: number;
+  participant_count: number;
+  evidence_count: number;
+  action_items_completed: number;
+  action_items_total: number;
+  overall_score: number;
+  created_at: number;
+}
+
+// ─── In-Memory Stores ───
+
+const incidentsStore = new Map<string, DbIncident>();
+const evidenceStore = new Map<string, DbEvidenceItem[]>();
+const participantsStore = new Map<string, Map<string, DbParticipant>>();
+const transcriptsStore = new Map<string, DbTranscript[]>();
+const postmortemsStore = new Map<string, DbPostmortem>();
+const incidentScoresStore = new Map<string, DbIncidentScore>();
+const knowledgeBaseStore: DbKnowledgeItem[] = [];
+
+let transcriptSeq = 1;
+let knowledgeSeq = 1;
+let isSeeded = false;
+
+// ─── Pre-seed Initial Scenarios ───
+
+export function seedHistoricalIncidents(force = false): { seeded: number; message: string } {
+  if (isSeeded && !force) {
+    return { seeded: incidentsStore.size, message: `Already seeded (${incidentsStore.size} incidents)` };
+  }
+
+  const now = Date.now();
+
+  // Seed knowledge items from preset scenarios
+  for (const scenario of PRESET_SCENARIOS) {
+    const incId = `inc-${scenario.id}`;
+    const openedAt = now - 86400000 * 2; // 2 days ago
+    const resolvedAt = openedAt + 45 * 60 * 1000; // 45m MTTR
+
+    const inc: DbIncident = {
+      id: incId,
+      title: scenario.title,
+      severity: scenario.severity,
+      status: 'resolved',
+      channel_name: scenario.channelName,
+      opened_at: openedAt,
+      resolved_at: resolvedAt,
+      affected_services: JSON.stringify(scenario.affectedServices),
+      incident_commander_uid: scenario.personas[0]?.uid || 'sarah_ic',
+      cost_accrued: Math.round(scenario.costRate * 45),
+      cognitive_load_score: 35,
+      ooda_phase: 'ACT',
+      created_at: openedAt,
+      updated_at: resolvedAt,
+    };
+    incidentsStore.set(incId, inc);
+
+    // Add playbook resolution steps to knowledge base
+    if (scenario.playbook) {
+      for (const step of scenario.playbook) {
+        knowledgeBaseStore.push({
+          id: knowledgeSeq++,
+          incident_id: incId,
+          title: `Playbook: ${step.title}`,
+          content: `${step.detail}${step.command ? ` | Command: ${step.command}` : ''}`,
+          category: 'resolution',
+          tags: JSON.stringify(scenario.affectedServices),
+          quality_score: step.priority === 'critical' ? 95 : step.priority === 'high' ? 85 : 75,
+          times_referenced: 1,
+          created_at: now - 86400000,
+        });
+      }
+    }
+  }
+
+  isSeeded = true;
+  return { seeded: incidentsStore.size, message: `Successfully seeded ${incidentsStore.size} historical incidents` };
+}
+
+// Auto-seed on load
+seedHistoricalIncidents();
+
+// ─── Exported Functions ───
 
 export function upsertIncident(incident: {
   id: string;
   title: string;
-  severity: string;
-  status: string;
-  channelName: string;
-  openedAt: number;
+  severity?: string;
+  status?: string;
+  channelName?: string;
+  openedAt?: number;
   resolvedAt?: number | null;
-  affectedServices: string[];
+  affectedServices?: string[];
   incidentCommanderUid?: string | null;
   costAccrued?: number;
   cognitiveLoadScore?: number;
   oodaPhase?: string;
 }): void {
-  const database = getDb();
-  const stmt = database.prepare(`
-    INSERT INTO incidents (id, title, severity, status, channel_name, opened_at, resolved_at, affected_services, incident_commander_uid, cost_accrued, cognitive_load_score, ooda_phase, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-    ON CONFLICT(id) DO UPDATE SET
-      title = excluded.title,
-      severity = excluded.severity,
-      status = excluded.status,
-      resolved_at = excluded.resolved_at,
-      affected_services = excluded.affected_services,
-      incident_commander_uid = excluded.incident_commander_uid,
-      cost_accrued = excluded.cost_accrued,
-      cognitive_load_score = excluded.cognitive_load_score,
-      ooda_phase = excluded.ooda_phase,
-      updated_at = datetime('now')
-  `);
+  const now = Date.now();
+  const existing = incidentsStore.get(incident.id);
 
-  stmt.run(
-    incident.id,
-    incident.title,
-    incident.severity,
-    incident.status,
-    incident.channelName,
-    incident.openedAt,
-    incident.resolvedAt ?? null,
-    JSON.stringify(incident.affectedServices),
-    incident.incidentCommanderUid ?? null,
-    incident.costAccrued ?? 0,
-    incident.cognitiveLoadScore ?? 0,
-    incident.oodaPhase ?? 'OBSERVE'
-  );
+  const updated: DbIncident = {
+    id: incident.id,
+    title: incident.title,
+    severity: incident.severity ?? existing?.severity ?? 'SEV-1',
+    status: incident.status ?? existing?.status ?? 'investigating',
+    channel_name: incident.channelName ?? existing?.channel_name ?? 'incident-war-room',
+    opened_at: incident.openedAt ?? existing?.opened_at ?? now,
+    resolved_at: incident.resolvedAt !== undefined ? incident.resolvedAt : existing?.resolved_at ?? null,
+    affected_services: JSON.stringify(incident.affectedServices ?? (existing ? JSON.parse(existing.affected_services) : [])),
+    incident_commander_uid: incident.incidentCommanderUid !== undefined ? incident.incidentCommanderUid : existing?.incident_commander_uid ?? null,
+    cost_accrued: incident.costAccrued ?? existing?.cost_accrued ?? 0,
+    cognitive_load_score: incident.cognitiveLoadScore ?? existing?.cognitive_load_score ?? 0,
+    ooda_phase: incident.oodaPhase ?? existing?.ooda_phase ?? 'OBSERVE',
+    created_at: existing?.created_at ?? now,
+    updated_at: now,
+  };
+
+  incidentsStore.set(incident.id, updated);
 }
 
 export function getIncidentById(id: string): DbIncident | undefined {
-  const database = getDb();
-  return database.prepare('SELECT * FROM incidents WHERE id = ?').get(id) as DbIncident | undefined;
+  return incidentsStore.get(id);
 }
 
 export function listIncidents(options?: {
-  severity?: string;
   status?: string;
+  severity?: string;
   limit?: number;
   offset?: number;
 }): { incidents: DbIncident[]; total: number } {
-  const database = getDb();
-  const conditions: string[] = [];
-  const params: unknown[] = [];
+  let list = Array.from(incidentsStore.values());
 
-  if (options?.severity) {
-    conditions.push('severity = ?');
-    params.push(options.severity);
-  }
   if (options?.status) {
-    conditions.push('status = ?');
-    params.push(options.status);
+    list = list.filter((i) => i.status === options.status);
+  }
+  if (options?.severity) {
+    list = list.filter((i) => i.severity === options.severity);
   }
 
-  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-  const limit = options?.limit ?? 50;
+  list.sort((a, b) => b.opened_at - a.opened_at);
+
+  const total = list.length;
   const offset = options?.offset ?? 0;
+  const limit = options?.limit ?? 20;
+  const paged = list.slice(offset, offset + limit);
 
-  const total = (database.prepare(`SELECT COUNT(*) as count FROM incidents ${where}`).get(...params) as { count: number }).count;
-  const incidents = database.prepare(`SELECT * FROM incidents ${where} ORDER BY opened_at DESC LIMIT ? OFFSET ?`).all(...params, limit, offset) as DbIncident[];
-
-  return { incidents, total };
+  return { incidents: paged, total };
 }
-
-// ─── Evidence Operations ───
 
 export function insertEvidence(evidence: {
   id: string;
@@ -514,7 +265,7 @@ export function insertEvidence(evidence: {
   speakerUid?: string;
   speakerName?: string;
   confidence?: number;
-  timestamp: number;
+  timestamp?: number;
   serviceAffected?: string;
   relatedTo?: string[];
   status?: string;
@@ -527,51 +278,41 @@ export function insertEvidence(evidence: {
   speakerAUid?: string;
   speakerBUid?: string;
 }): void {
-  const database = getDb();
-  const stmt = database.prepare(`
-    INSERT OR REPLACE INTO evidence_items (
-      id, incident_id, category, content, speaker_uid, speaker_name, confidence,
-      timestamp, service_affected, related_to, status, assigned_to, eta,
-      action_status, deciding_metric, hypothesis_a, hypothesis_b, speaker_a_uid, speaker_b_uid
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
+  const item: DbEvidenceItem = {
+    id: evidence.id,
+    incident_id: evidence.incidentId,
+    category: evidence.category,
+    content: evidence.content,
+    speaker_uid: evidence.speakerUid ?? 'unknown',
+    speaker_name: evidence.speakerName ?? 'Unknown',
+    confidence: Math.min(85, evidence.confidence ?? (evidence.category === 'fact' ? 85 : 80)),
+    timestamp: evidence.timestamp ?? Date.now(),
+    service_affected: evidence.serviceAffected ?? null,
+    related_to: JSON.stringify(evidence.relatedTo ?? []),
+    status: evidence.status ?? 'active',
+    assigned_to: evidence.assignedTo ?? null,
+    eta: evidence.eta ?? null,
+    action_status: evidence.actionStatus ?? null,
+    deciding_metric: evidence.decidingMetric ?? null,
+    hypothesis_a: evidence.hypothesisA ?? null,
+    hypothesis_b: evidence.hypothesisB ?? null,
+    speaker_a_uid: evidence.speakerAUid ?? null,
+    speaker_b_uid: evidence.speakerBUid ?? null,
+  };
 
-  stmt.run(
-    evidence.id,
-    evidence.incidentId,
-    evidence.category,
-    evidence.content,
-    evidence.speakerUid ?? null,
-    evidence.speakerName ?? null,
-    evidence.confidence ?? 80,
-    evidence.timestamp,
-    evidence.serviceAffected ?? null,
-    JSON.stringify(evidence.relatedTo ?? []),
-    evidence.status ?? 'active',
-    evidence.assignedTo ?? null,
-    evidence.eta ?? null,
-    evidence.actionStatus ?? null,
-    evidence.decidingMetric ?? null,
-    evidence.hypothesisA ?? null,
-    evidence.hypothesisB ?? null,
-    evidence.speakerAUid ?? null,
-    evidence.speakerBUid ?? null
-  );
-
-  // Update FTS index
-  try {
-    database.prepare(`INSERT OR REPLACE INTO evidence_fts(rowid, content) VALUES ((SELECT rowid FROM evidence_items WHERE id = ?), ?)`).run(evidence.id, evidence.content);
-  } catch {
-    // FTS not available, silently skip
+  const list = evidenceStore.get(evidence.incidentId) ?? [];
+  const idx = list.findIndex((e) => e.id === item.id);
+  if (idx >= 0) {
+    list[idx] = item;
+  } else {
+    list.push(item);
   }
+  evidenceStore.set(evidence.incidentId, list);
 }
 
 export function getEvidenceByIncident(incidentId: string): DbEvidenceItem[] {
-  const database = getDb();
-  return database.prepare('SELECT * FROM evidence_items WHERE incident_id = ? ORDER BY timestamp ASC').all(incidentId) as DbEvidenceItem[];
+  return evidenceStore.get(incidentId) ?? [];
 }
-
-// ─── Participant Operations ───
 
 export function upsertParticipant(participant: {
   incidentId: string;
@@ -579,144 +320,115 @@ export function upsertParticipant(participant: {
   displayName: string;
   role: string;
   isIncidentCommander?: boolean;
-  joinedAt: number;
-  totalSpeakingMs?: number;
-  turnCount?: number;
+  joinedAt?: number;
 }): void {
-  const database = getDb();
-  const stmt = database.prepare(`
-    INSERT INTO participants (incident_id, uid, display_name, role, is_incident_commander, joined_at, total_speaking_ms, turn_count)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(incident_id, uid) DO UPDATE SET
-      display_name = excluded.display_name,
-      role = excluded.role,
-      is_incident_commander = excluded.is_incident_commander,
-      total_speaking_ms = excluded.total_speaking_ms,
-      turn_count = excluded.turn_count
-  `);
+  let partMap = participantsStore.get(participant.incidentId);
+  if (!partMap) {
+    partMap = new Map();
+    participantsStore.set(participant.incidentId, partMap);
+  }
 
-  stmt.run(
-    participant.incidentId,
-    participant.uid,
-    participant.displayName,
-    participant.role,
-    participant.isIncidentCommander ? 1 : 0,
-    participant.joinedAt,
-    participant.totalSpeakingMs ?? 0,
-    participant.turnCount ?? 0
-  );
+  const existing = partMap.get(participant.uid);
+  const now = Date.now();
+
+  const item: DbParticipant = {
+    incident_id: participant.incidentId,
+    uid: participant.uid,
+    display_name: participant.displayName,
+    role: participant.role,
+    is_incident_commander: participant.isIncidentCommander ? 1 : 0,
+    joined_at: participant.joinedAt ?? existing?.joined_at ?? now,
+    total_speaking_ms: existing?.total_speaking_ms ?? 0,
+    last_spoke_at: existing?.last_spoke_at ?? now,
+  };
+
+  partMap.set(participant.uid, item);
 }
 
 export function getParticipantsByIncident(incidentId: string): DbParticipant[] {
-  const database = getDb();
-  return database.prepare('SELECT * FROM participants WHERE incident_id = ? ORDER BY joined_at ASC').all(incidentId) as DbParticipant[];
+  const map = participantsStore.get(incidentId);
+  return map ? Array.from(map.values()) : [];
 }
-
-// ─── Transcript Operations ───
 
 export function insertTranscript(entry: {
   incidentId: string;
-  speakerName: string;
   speakerUid?: string;
+  speakerName: string;
   text: string;
-  isAgent?: boolean;
   isFiller?: boolean;
-  timestamp: number;
-  turnId?: string;
+  fillerType?: string;
+  confidence?: number;
+  timestamp?: number;
 }): void {
-  const database = getDb();
-  const stmt = database.prepare(`
-    INSERT INTO transcripts (incident_id, speaker_name, speaker_uid, text, is_agent, is_filler, timestamp, turn_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `);
+  const item: DbTranscript = {
+    id: transcriptSeq++,
+    incident_id: entry.incidentId,
+    speaker_uid: entry.speakerUid ?? null,
+    speaker_name: entry.speakerName,
+    text: entry.text,
+    is_filler: entry.isFiller ? 1 : 0,
+    filler_type: entry.fillerType ?? null,
+    confidence: entry.confidence ?? null,
+    timestamp: entry.timestamp ?? Date.now(),
+  };
 
-  stmt.run(
-    entry.incidentId,
-    entry.speakerName,
-    entry.speakerUid ?? null,
-    entry.text,
-    entry.isAgent ? 1 : 0,
-    entry.isFiller ? 1 : 0,
-    entry.timestamp,
-    entry.turnId ?? null
-  );
+  const list = transcriptsStore.get(entry.incidentId) ?? [];
+  list.push(item);
+  transcriptsStore.set(entry.incidentId, list);
 }
 
 export function getTranscriptsByIncident(incidentId: string): DbTranscript[] {
-  const database = getDb();
-  return database.prepare('SELECT * FROM transcripts WHERE incident_id = ? ORDER BY timestamp ASC').all(incidentId) as DbTranscript[];
+  return transcriptsStore.get(incidentId) ?? [];
 }
-
-// ─── Postmortem Operations ───
 
 export function upsertPostmortem(postmortem: {
   incidentId: string;
-  title: string;
+  title?: string;
   summary: string;
-  rootCause?: string;
+  rootCause: string;
+  detection?: string;
   timeline?: unknown[];
   actionItems?: unknown[];
+  fiveWhys?: unknown[];
   lessonsLearned?: string;
+  published?: boolean;
 }): void {
-  const database = getDb();
-  const stmt = database.prepare(`
-    INSERT INTO postmortems (incident_id, title, summary, root_cause, timeline_json, action_items_json, lessons_learned)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(incident_id) DO UPDATE SET
-      title = excluded.title,
-      summary = excluded.summary,
-      root_cause = excluded.root_cause,
-      timeline_json = excluded.timeline_json,
-      action_items_json = excluded.action_items_json,
-      lessons_learned = excluded.lessons_learned,
-      generated_at = datetime('now')
-  `);
-
-  stmt.run(
-    postmortem.incidentId,
-    postmortem.title,
-    postmortem.summary,
-    postmortem.rootCause ?? null,
-    JSON.stringify(postmortem.timeline ?? []),
-    JSON.stringify(postmortem.actionItems ?? []),
-    postmortem.lessonsLearned ?? null
-  );
+  const item: DbPostmortem = {
+    incident_id: postmortem.incidentId,
+    title: postmortem.title,
+    summary: postmortem.summary,
+    root_cause: postmortem.rootCause,
+    detection: postmortem.detection ?? null,
+    timeline: JSON.stringify(postmortem.timeline ?? []),
+    action_items: JSON.stringify(postmortem.actionItems ?? []),
+    five_whys: JSON.stringify(postmortem.fiveWhys ?? []),
+    timeline_json: JSON.stringify(postmortem.timeline ?? []),
+    action_items_json: JSON.stringify(postmortem.actionItems ?? []),
+    five_whys_json: JSON.stringify(postmortem.fiveWhys ?? []),
+    generated_at: Date.now(),
+    published: postmortem.published ? 1 : 0,
+  };
+  postmortemsStore.set(postmortem.incidentId, item);
 }
 
 export function getPostmortemByIncident(incidentId: string): DbPostmortem | undefined {
-  const database = getDb();
-  return database.prepare('SELECT * FROM postmortems WHERE incident_id = ?').get(incidentId) as DbPostmortem | undefined;
+  return postmortemsStore.get(incidentId);
 }
 
-// ─── Search & Similarity ───
-
 export function searchIncidents(query: string, limit = 20): DbIncident[] {
-  const database = getDb();
+  const q = query.trim().toLowerCase();
+  if (!q) return listIncidents({ limit }).incidents;
 
-  // Try FTS5 first
-  try {
-    const ftsResults = database.prepare(`
-      SELECT DISTINCT i.* FROM incidents i
-      JOIN evidence_items e ON e.incident_id = i.id
-      JOIN evidence_fts f ON f.rowid = e.rowid
-      WHERE evidence_fts MATCH ?
-      ORDER BY i.opened_at DESC
-      LIMIT ?
-    `).all(query, limit) as DbIncident[];
-    if (ftsResults.length > 0) return ftsResults;
-  } catch {
-    // FTS not available
+  const matches: DbIncident[] = [];
+  for (const inc of incidentsStore.values()) {
+    const services = inc.affected_services.toLowerCase();
+    const title = inc.title.toLowerCase();
+    if (title.includes(q) || services.includes(q) || inc.id.toLowerCase().includes(q)) {
+      matches.push(inc);
+    }
   }
 
-  // Fallback to LIKE search
-  const likeQuery = `%${query}%`;
-  return database.prepare(`
-    SELECT DISTINCT i.* FROM incidents i
-    LEFT JOIN evidence_items e ON e.incident_id = i.id
-    WHERE i.title LIKE ? OR e.content LIKE ? OR i.affected_services LIKE ?
-    ORDER BY i.opened_at DESC
-    LIMIT ?
-  `).all(likeQuery, likeQuery, likeQuery, limit) as DbIncident[];
+  return matches.slice(0, limit);
 }
 
 export function findSimilarIncidents(options: {
@@ -724,63 +436,46 @@ export function findSimilarIncidents(options: {
   symptoms?: string;
   excludeId?: string;
   limit?: number;
-}): Array<DbIncident & { similarity_score: number }> {
-  const database = getDb();
-  const limit = options.limit ?? 5;
-  const results: Array<DbIncident & { similarity_score: number }> = [];
+}): DbIncident[] {
+  const { services = [], symptoms, excludeId, limit = 5 } = options;
+  const targetServices = new Set(services.map((s) => s.toLowerCase()));
+  const symptomTokens = symptoms ? symptoms.toLowerCase().split(/\s+/).filter((t) => t.length > 3) : [];
 
-  // Service-based similarity
-  if (options.services && options.services.length > 0) {
-    const serviceMatches = database.prepare(`
-      SELECT i.*, COUNT(*) as match_count
-      FROM incidents i, json_each(i.affected_services) AS s
-      WHERE s.value IN (${options.services.map(() => '?').join(',')})
-      ${options.excludeId ? 'AND i.id != ?' : ''}
-      GROUP BY i.id
-      ORDER BY match_count DESC, i.opened_at DESC
-      LIMIT ?
-    `).all(
-      ...options.services,
-      ...(options.excludeId ? [options.excludeId] : []),
-      limit
-    ) as Array<DbIncident & { match_count: number }>;
-
-    for (const m of serviceMatches) {
-      results.push({
-        ...m,
-        similarity_score: Math.min(100, Math.round((m.match_count / options.services.length) * 80)),
-      });
-    }
+  interface ScoredIncident {
+    incident: DbIncident;
+    score: number;
   }
 
-  // Symptom-based similarity (text search in evidence)
-  if (options.symptoms) {
-    const likeQuery = `%${options.symptoms}%`;
-    const symptomMatches = database.prepare(`
-      SELECT DISTINCT i.*
-      FROM incidents i
-      JOIN evidence_items e ON e.incident_id = i.id
-      WHERE (e.content LIKE ? OR i.title LIKE ?)
-      ${options.excludeId ? 'AND i.id != ?' : ''}
-      ORDER BY i.opened_at DESC
-      LIMIT ?
-    `).all(
-      likeQuery, likeQuery,
-      ...(options.excludeId ? [options.excludeId] : []),
-      limit
-    ) as DbIncident[];
+  const scored: ScoredIncident[] = [];
 
-    for (const m of symptomMatches) {
-      if (!results.find((r) => r.id === m.id)) {
-        results.push({ ...m, similarity_score: 60 });
+  for (const inc of incidentsStore.values()) {
+    if (excludeId && inc.id === excludeId) continue;
+
+    let score = 0;
+    const incServices: string[] = JSON.parse(inc.affected_services || '[]');
+
+    // Service overlap
+    for (const s of incServices) {
+      if (targetServices.has(s.toLowerCase())) {
+        score += 30;
       }
     }
+
+    // Symptom match in title
+    for (const token of symptomTokens) {
+      if (inc.title.toLowerCase().includes(token)) {
+        score += 15;
+      }
+    }
+
+    if (score > 0) {
+      scored.push({ incident: inc, score });
+    }
   }
 
-  return results.sort((a, b) => b.similarity_score - a.similarity_score).slice(0, limit);
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, limit).map((s) => s.incident);
 }
-
-// ─── Bulk Persistence (called on incident resolution) ───
 
 export function persistFullIncidentSnapshot(incidentState: {
   incidentId: string;
@@ -789,20 +484,13 @@ export function persistFullIncidentSnapshot(incidentState: {
   status: string;
   channelName: string;
   openedAt: number;
-  resolvedAt?: number;
+  resolvedAt?: number | null;
   affectedServices: string[];
   incidentCommanderUid?: string | null;
-  costAccrued?: number;
-  cognitiveLoadScore?: number;
+  costAccrued: number;
+  cognitiveLoadScore: number;
   currentOODAPhase?: string;
-  participants: Record<string, {
-    uid: string;
-    displayName: string;
-    role: string;
-    isIncidentCommander: boolean;
-    joinedAt: number;
-    totalSpeakingMs: number;
-  }>;
+  participants: Record<string, { uid: string; displayName: string; role: string; isIncidentCommander?: boolean }>;
   evidenceItems: Array<{
     id: string;
     category: string;
@@ -812,7 +500,7 @@ export function persistFullIncidentSnapshot(incidentState: {
     confidence: number;
     timestamp: number;
     serviceAffected?: string;
-    relatedTo?: string[];
+    relatedTo: string[];
     status: string;
     assignedTo?: string;
     eta?: number;
@@ -820,426 +508,163 @@ export function persistFullIncidentSnapshot(incidentState: {
     decidingMetric?: string;
     hypothesisA?: string;
     hypothesisB?: string;
-    speakerAUid?: string;
-    speakerBUid?: string;
   }>;
 }): void {
-  const database = getDb();
-
-  const transaction = database.transaction(() => {
-    // 1. Upsert incident
-    upsertIncident({
-      id: incidentState.incidentId,
-      title: incidentState.title,
-      severity: incidentState.severity,
-      status: incidentState.status,
-      channelName: incidentState.channelName,
-      openedAt: incidentState.openedAt,
-      resolvedAt: incidentState.resolvedAt,
-      affectedServices: incidentState.affectedServices,
-      incidentCommanderUid: incidentState.incidentCommanderUid,
-      costAccrued: incidentState.costAccrued,
-      cognitiveLoadScore: incidentState.cognitiveLoadScore,
-      oodaPhase: incidentState.currentOODAPhase,
-    });
-
-    // 2. Upsert participants
-    for (const p of Object.values(incidentState.participants)) {
-      upsertParticipant({
-        incidentId: incidentState.incidentId,
-        uid: p.uid,
-        displayName: p.displayName,
-        role: p.role,
-        isIncidentCommander: p.isIncidentCommander,
-        joinedAt: p.joinedAt,
-        totalSpeakingMs: p.totalSpeakingMs,
-      });
-    }
-
-    // 3. Insert evidence items
-    for (const e of incidentState.evidenceItems) {
-      insertEvidence({
-        id: e.id,
-        incidentId: incidentState.incidentId,
-        category: e.category,
-        content: e.content,
-        speakerUid: e.speakerUid,
-        speakerName: e.speakerName,
-        confidence: e.confidence,
-        timestamp: e.timestamp,
-        serviceAffected: e.serviceAffected,
-        relatedTo: e.relatedTo,
-        status: e.status,
-        assignedTo: e.assignedTo,
-        eta: e.eta,
-        actionStatus: e.actionStatus,
-        decidingMetric: e.decidingMetric,
-        hypothesisA: e.hypothesisA,
-        hypothesisB: e.hypothesisB,
-        speakerAUid: e.speakerAUid,
-        speakerBUid: e.speakerBUid,
-      });
-    }
+  upsertIncident({
+    id: incidentState.incidentId,
+    title: incidentState.title,
+    severity: incidentState.severity,
+    status: incidentState.status,
+    channelName: incidentState.channelName,
+    openedAt: incidentState.openedAt,
+    resolvedAt: incidentState.resolvedAt,
+    affectedServices: incidentState.affectedServices,
+    incidentCommanderUid: incidentState.incidentCommanderUid,
+    costAccrued: incidentState.costAccrued,
+    cognitiveLoadScore: incidentState.cognitiveLoadScore,
+    oodaPhase: incidentState.currentOODAPhase,
   });
 
-  transaction();
-}
+  for (const p of Object.values(incidentState.participants)) {
+    upsertParticipant({
+      incidentId: incidentState.incidentId,
+      uid: p.uid,
+      displayName: p.displayName,
+      role: p.role,
+      isIncidentCommander: p.isIncidentCommander,
+    });
+  }
 
-// ─── Statistics ───
+  for (const e of incidentState.evidenceItems) {
+    insertEvidence({
+      id: e.id,
+      incidentId: incidentState.incidentId,
+      category: e.category,
+      content: e.content,
+      speakerUid: e.speakerUid,
+      speakerName: e.speakerName,
+      confidence: e.confidence,
+      timestamp: e.timestamp,
+      serviceAffected: e.serviceAffected,
+      relatedTo: e.relatedTo,
+      status: e.status,
+      assignedTo: e.assignedTo,
+      eta: e.eta,
+      actionStatus: e.actionStatus,
+      decidingMetric: e.decidingMetric,
+      hypothesisA: e.hypothesisA,
+      hypothesisB: e.hypothesisB,
+    });
+  }
+}
 
 export function getIncidentStats(): {
   totalIncidents: number;
+  activeIncidents: number;
   resolvedIncidents: number;
-  avgResolutionTimeMs: number;
-  incidentsBySeverity: Record<string, number>;
+  avgCognitiveLoad: number;
+  avgMttrMinutes: number;
+  bySeverity: Record<string, number>;
 } {
-  const database = getDb();
+  const all = Array.from(incidentsStore.values());
+  const active = all.filter((i) => i.status !== 'resolved');
+  const resolved = all.filter((i) => i.status === 'resolved' && i.resolved_at);
 
-  const total = (database.prepare('SELECT COUNT(*) as count FROM incidents').get() as { count: number }).count;
-  const resolved = (database.prepare('SELECT COUNT(*) as count FROM incidents WHERE status = ?').get('resolved') as { count: number }).count;
+  const bySeverity: Record<string, number> = { 'SEV-0': 0, 'SEV-1': 0, 'SEV-2': 0, 'SEV-3': 0 };
+  let totalCogLoad = 0;
+  let totalMttrMs = 0;
 
-  const avgResult = database.prepare(
-    'SELECT AVG(resolved_at - opened_at) as avg_time FROM incidents WHERE resolved_at IS NOT NULL'
-  ).get() as { avg_time: number | null };
+  for (const inc of all) {
+    bySeverity[inc.severity] = (bySeverity[inc.severity] || 0) + 1;
+    totalCogLoad += inc.cognitive_load_score;
+  }
 
-  const severityCounts = database.prepare(
-    'SELECT severity, COUNT(*) as count FROM incidents GROUP BY severity'
-  ).all() as Array<{ severity: string; count: number }>;
-
-  const bySeverity: Record<string, number> = {};
-  for (const row of severityCounts) {
-    bySeverity[row.severity] = row.count;
+  for (const inc of resolved) {
+    if (inc.resolved_at) {
+      totalMttrMs += inc.resolved_at - inc.opened_at;
+    }
   }
 
   return {
-    totalIncidents: total,
-    resolvedIncidents: resolved,
-    avgResolutionTimeMs: avgResult.avg_time ?? 0,
-    incidentsBySeverity: bySeverity,
+    totalIncidents: all.length,
+    activeIncidents: active.length,
+    resolvedIncidents: resolved.length,
+    avgCognitiveLoad: all.length > 0 ? Math.round(totalCogLoad / all.length) : 0,
+    avgMttrMinutes: resolved.length > 0 ? Math.round(totalMttrMs / resolved.length / 60000) : 0,
+    bySeverity,
   };
 }
 
-// ─── Historical Seed Data for Executive Intelligence Dashboard ───
-
-export function seedHistoricalIncidents(force = false): { seeded: number; message: string } {
-  const database = getDb();
-
-  const count = (database.prepare('SELECT COUNT(*) as count FROM incidents').get() as { count: number }).count;
-  if (count >= 6 && !force) {
-    return { seeded: 0, message: `Database already has ${count} incidents. Pass force=true to re-seed.` };
-  }
-
-  const now = Date.now();
-  const DAY_MS = 24 * 60 * 60 * 1000;
-  const MIN_MS = 60 * 1000;
-
-  const sampleIncidents = [
-    {
-      id: 'INC-4819',
-      title: 'Token validation latency spike & 504 Gateway Timeouts',
-      severity: 'SEV-1',
-      status: 'resolved',
-      channelName: 'war-room-4819',
-      openedAt: now - 18 * DAY_MS,
-      resolvedAt: now - 18 * DAY_MS + 26 * MIN_MS,
-      affectedServices: ['auth-service', 'api-gateway', 'redis-session'],
-      costAccrued: 18500,
-      cognitiveLoadScore: 68,
-      oodaPhase: 'ACT',
-      team: 'Identity & Auth',
-      rootCause: {
-        category: 'Resource Exhaustion',
-        subcategory: 'Redis connection pool saturation',
-        description: 'Redis connection pool saturated due to burst of token refresh requests during mobile app update roll-out.',
-      },
-      tags: ['auth', 'redis', 'timeouts', 'api-gateway'],
-      playbook: [
-        { text: 'Scaled Redis read replicas from 2 to 6', durationMs: 420000, effective: 1 },
-        { text: 'Increased client connection pool maxTotal from 50 to 200 in auth-service configuration', durationMs: 360000, effective: 1 },
-        { text: 'Enabled circuit breaker on JWT verification fallback to local public-key cache', durationMs: 240000, effective: 1 },
-      ],
-      postmortem: {
-        title: 'Postmortem: INC-4819 Token validation latency spike',
-        summary: 'Mobile app v4.2 update rollout caused synchronized token refresh requests that exceeded auth-service Redis connection pool capacity, resulting in cascading 504 gateway timeouts for 26 minutes.',
-        rootCause: 'Connection pool starvation in auth-service Redis client library under peak token refresh load.',
-        lessonsLearned: 'Always implement jitter on client-side refresh timers. Auto-scale Redis replica read pools proactively before mobile app rollouts.',
-      },
+export function getDatabaseHealth(): {
+  status: 'healthy' | 'degraded' | 'error';
+  tables: Record<string, number>;
+  fileSizeBytes: number;
+  walSizeBytes: number;
+  uptimeSeconds: number;
+} {
+  return {
+    status: 'healthy',
+    tables: {
+      incidents: incidentsStore.size,
+      evidence: Array.from(evidenceStore.values()).reduce((sum, list) => sum + list.length, 0),
+      transcripts: Array.from(transcriptsStore.values()).reduce((sum, list) => sum + list.length, 0),
+      postmortems: postmortemsStore.size,
+      knowledge_base: knowledgeBaseStore.length,
     },
-    {
-      id: 'INC-4822',
-      title: 'Payment processing failures with Postgres connection pool exhaustion',
-      severity: 'SEV-1',
-      status: 'resolved',
-      channelName: 'war-room-4822',
-      openedAt: now - 14 * DAY_MS,
-      resolvedAt: now - 14 * DAY_MS + 38 * MIN_MS,
-      affectedServices: ['payment-service', 'postgres-primary', 'billing-gateway'],
-      costAccrued: 42000,
-      cognitiveLoadScore: 82,
-      oodaPhase: 'ACT',
-      team: 'Payments Team',
-      rootCause: {
-        category: 'Database Contention',
-        subcategory: 'Connection pool exhaustion',
-        description: 'Unindexed query on transactions table holding connection locks during bulk settlement batch run.',
-      },
-      tags: ['payments', 'postgres', 'locks', 'slow-query'],
-      playbook: [
-        { text: 'Ran pg_terminate_backend on idle-in-transaction queries older than 60 seconds', durationMs: 180000, effective: 1 },
-        { text: 'Added concurrent composite index on transactions(user_id, status, created_at)', durationMs: 900000, effective: 1 },
-        { text: 'Restarted payment-service deployment pods to refresh leaked pool connections', durationMs: 300000, effective: 1 },
-      ],
-      postmortem: {
-        title: 'Postmortem: INC-4822 Payment processing failures',
-        summary: 'Nightly settlement cron triggered unindexed table scan that held Postgres row locks, leading to connection exhaustion for live checkout requests.',
-        rootCause: 'Missing composite index on transactions table allowing sequential table scans to monopolize connection pool.',
-        lessonsLearned: 'Mandate EXPLAIN ANALYZE reviews in PRs for queries in batch jobs touching core tables.',
-      },
-    },
-    {
-      id: 'INC-4835',
-      title: 'Stripe webhook deadlock causing payment double-charge timeouts',
-      severity: 'SEV-1',
-      status: 'resolved',
-      channelName: 'war-room-4835',
-      openedAt: now - 8 * DAY_MS,
-      resolvedAt: now - 8 * DAY_MS + 45 * MIN_MS,
-      affectedServices: ['payment-service', 'checkout-api', 'redis-cluster'],
-      costAccrued: 55000,
-      cognitiveLoadScore: 78,
-      oodaPhase: 'ACT',
-      team: 'Payments Team',
-      rootCause: {
-        category: 'Concurrency Bug',
-        subcategory: 'Distributed lock timeout too short',
-        description: 'Redlock TTL was set to 2000ms while payment gateway callback took up to 3500ms under load, triggering lock expirations and lock contention deadlocks.',
-      },
-      tags: ['payments', 'webhooks', 'deadlock', 'stripe'],
-      playbook: [
-        { text: 'Temporarily throttled incoming Stripe webhook worker concurrency to 10', durationMs: 240000, effective: 1 },
-        { text: 'Increased Redis lock lease time from 2000ms to 12000ms in payment-service config', durationMs: 600000, effective: 1 },
-        { text: 'Retried failed dead-letter-queue transactions with idempotency keys', durationMs: 480000, effective: 1 },
-      ],
-      postmortem: {
-        title: 'Postmortem: INC-4835 Stripe webhook deadlock',
-        summary: 'Latency increase on third-party payment partner triggered distributed lock lease expiration before transactions completed, creating duplicate processing races.',
-        rootCause: 'Aggressive 2-second lock lease duration without renewal heartbeats.',
-        lessonsLearned: 'Implement background heartbeat extension for distributed locks in payment pipeline.',
-      },
-    },
-    {
-      id: 'INC-4841',
-      title: 'Cascading 500s across checkout pipeline due to unhandled NullPointer in v2.4.1',
-      severity: 'SEV-0',
-      status: 'resolved',
-      channelName: 'war-room-4841',
-      openedAt: now - 3 * DAY_MS,
-      resolvedAt: now - 3 * DAY_MS + 52 * MIN_MS,
-      affectedServices: ['payment-service', 'fraud-engine', 'checkout-api'],
-      costAccrued: 85000,
-      cognitiveLoadScore: 94,
-      oodaPhase: 'ACT',
-      team: 'Payments Team',
-      rootCause: {
-        category: 'Software Regression',
-        subcategory: 'Missing null check on new currency field',
-        description: 'Deployment of v2.4.1 introduced a new currency code field without null check for legacy carts, crashing payment worker threads.',
-      },
-      tags: ['payments', 'checkout', 'regression', 'sev-0'],
-      playbook: [
-        { text: 'Initiated immediate canary rollback of payment-service from v2.4.1 to v2.4.0', durationMs: 420000, effective: 1 },
-        { text: 'Flushed poisoned cart sessions in Redis cache', durationMs: 180000, effective: 1 },
-        { text: 'Verified end-to-end checkout synthetics return HTTP 200', durationMs: 120000, effective: 1 },
-      ],
-      postmortem: {
-        title: 'Postmortem: INC-4841 Cascading 500s on Checkout',
-        summary: 'Critical SEV-0 outage lasting 52 minutes halting all checkout flows worldwide due to backwards-incompatible currency field deserialization.',
-        rootCause: 'Software defect introduced in commit 8f2a1b without backwards-compatibility test on legacy session data.',
-        lessonsLearned: 'Payments Team requires automated canary analysis (ACA) and mandatory shadow-traffic validation before full production release.',
-      },
-    },
-    {
-      id: 'INC-4850',
-      title: 'Elasticsearch cluster yellow status due to unassigned replica shards',
-      severity: 'SEV-2',
-      status: 'resolved',
-      channelName: 'war-room-4850',
-      openedAt: now - 10 * DAY_MS,
-      resolvedAt: now - 10 * DAY_MS + 16 * MIN_MS,
-      affectedServices: ['search-indexer', 'elasticsearch-cluster'],
-      costAccrued: 4500,
-      cognitiveLoadScore: 42,
-      oodaPhase: 'ACT',
-      team: 'Search & Data Platform',
-      rootCause: {
-        category: 'Disk Exhaustion',
-        subcategory: 'ES high watermark hit',
-        description: 'Disk space exceeded 85% high watermark on node 3, preventing new shard allocation.',
-      },
-      tags: ['search', 'elasticsearch', 'storage', 'disk'],
-      playbook: [
-        { text: 'Deleted expired log indices older than 30 days via curator', durationMs: 240000, effective: 1 },
-        { text: 'Triggered cluster shard rebalance via POST /_cluster/reroute', durationMs: 360000, effective: 1 },
-      ],
-      postmortem: {
-        title: 'Postmortem: INC-4850 Elasticsearch cluster degradation',
-        summary: 'Log index lifecycle management failed to purge stale index data, causing node 3 disk utilization to hit flood stage.',
-        rootCause: 'Disk capacity threshold breached on single Elasticsearch data node.',
-        lessonsLearned: 'Set up disk growth rate alerting at 75% capacity instead of 85%.',
-      },
-    },
-    {
-      id: 'INC-4859',
-      title: 'Kafka consumer lag exceeding 100k messages on email notifications',
-      severity: 'SEV-2',
-      status: 'resolved',
-      channelName: 'war-room-4859',
-      openedAt: now - 5 * DAY_MS,
-      resolvedAt: now - 5 * DAY_MS + 22 * MIN_MS,
-      affectedServices: ['notification-worker', 'kafka-broker', 'email-gateway'],
-      costAccrued: 6200,
-      cognitiveLoadScore: 50,
-      oodaPhase: 'ACT',
-      team: 'Core Infrastructure',
-      rootCause: {
-        category: 'Third-Party Rate Limit',
-        subcategory: 'Email gateway 429 throttling',
-        description: 'Marketing campaign blast exceeded transactional email API quota, causing Kafka consumers to back off and accumulate lag.',
-      },
-      tags: ['kafka', 'notifications', 'rate-limit'],
-      playbook: [
-        { text: 'Separated transactional notifications topic from marketing notifications topic', durationMs: 480000, effective: 1 },
-        { text: 'Scaled notification-worker pods from 4 to 12 partitions', durationMs: 300000, effective: 1 },
-      ],
-      postmortem: {
-        title: 'Postmortem: INC-4859 Notification consumer lag',
-        summary: 'Bulk email campaign flooded single Kafka partition shared with OTP/password reset emails.',
-        rootCause: 'Lack of multi-tenant rate limiting and shared topic usage for different priority queues.',
-        lessonsLearned: 'Enforce topic separation between critical transactional emails and bulk marketing messages.',
-      },
-    },
-    {
-      id: 'INC-4863',
-      title: 'BGP route flap causing intermittent DNS resolution failures',
-      severity: 'SEV-1',
-      status: 'resolved',
-      channelName: 'war-room-4863',
-      openedAt: now - 21 * DAY_MS,
-      resolvedAt: now - 21 * DAY_MS + 31 * MIN_MS,
-      affectedServices: ['dns-resolver', 'edge-router', 'core-api'],
-      costAccrued: 31000,
-      cognitiveLoadScore: 74,
-      oodaPhase: 'ACT',
-      team: 'Core Infrastructure',
-      rootCause: {
-        category: 'Network Infrastructure',
-        subcategory: 'Upstream BGP flap',
-        description: 'Upstream transit provider flapped routes 14 times in 10 minutes, triggering DNS lookup packet loss.',
-      },
-      tags: ['dns', 'bgp', 'network', 'edge'],
-      playbook: [
-        { text: 'Withdrew BGP announcement from problematic ISP transit peer', durationMs: 360000, effective: 1 },
-        { text: 'Rerouted traffic through backup Tier-1 transit provider', durationMs: 240000, effective: 1 },
-      ],
-      postmortem: {
-        title: 'Postmortem: INC-4863 Upstream BGP Flapping Outage',
-        summary: 'Intermittent DNS packet loss for 12% of North America traffic due to external transit route flapping.',
-        rootCause: 'BGP route instability on upstream provider peer connection.',
-        lessonsLearned: 'Implement BGP route flap dampening and redundant multi-cloud DNS Anycast.',
-      },
-    },
-    {
-      id: 'INC-4870',
-      title: 'Checkout cart sync failures due to Redis evictions under peak traffic',
-      severity: 'SEV-1',
-      status: 'investigating',
-      channelName: 'war-room-live',
-      openedAt: now - 45 * MIN_MS,
-      resolvedAt: null,
-      affectedServices: ['payment-service', 'checkout-api', 'cart-service'],
-      costAccrued: 14500,
-      cognitiveLoadScore: 76,
-      oodaPhase: 'ORIENT',
-      team: 'Payments Team',
-      rootCause: {
-        category: 'Resource Exhaustion',
-        subcategory: 'Redis maxmemory eviction policy',
-        description: 'Cart sessions getting evicted prematurely causing user sessions to drop at final checkout step.',
-      },
-      tags: ['payments', 'redis', 'checkout', 'active'],
-      playbook: [
-        { text: 'Increase Redis maxmemory from 16GB to 32GB on session cluster', durationMs: 180000, effective: 1 },
-        { text: 'Switch eviction policy from volatile-lru to allkeys-lfu', durationMs: 120000, effective: 1 },
-      ],
-      postmortem: null,
-    },
-  ];
+    fileSizeBytes: 0,
+    walSizeBytes: 0,
+    uptimeSeconds: Math.round(process.uptime()),
+  };
+}
 
-  const transaction = database.transaction(() => {
-    for (const inc of sampleIncidents) {
-      // 1. Upsert incident
-      upsertIncident({
-        id: inc.id,
-        title: inc.title,
-        severity: inc.severity,
-        status: inc.status,
-        channelName: inc.channelName,
-        openedAt: inc.openedAt,
-        resolvedAt: inc.resolvedAt,
-        affectedServices: inc.affectedServices,
-        costAccrued: inc.costAccrued,
-        cognitiveLoadScore: inc.cognitiveLoadScore,
-        oodaPhase: inc.oodaPhase,
-      });
+export function withTransaction<T>(fn: (db: unknown) => T): T {
+  return fn(getDb());
+}
 
-      // 2. Incident team attribution
-      database.prepare(`
-        INSERT INTO incident_teams (incident_id, team_name, is_primary_owner)
-        VALUES (?, ?, 1)
-        ON CONFLICT DO NOTHING
-      `).run(inc.id, inc.team);
-
-      // 3. Root causes
-      if (inc.rootCause) {
-        database.prepare(`
-          INSERT INTO root_causes (incident_id, category, subcategory, description)
-          VALUES (?, ?, ?, ?)
-          ON CONFLICT(incident_id) DO UPDATE SET
-            category = excluded.category,
-            subcategory = excluded.subcategory,
-            description = excluded.description
-        `).run(inc.id, inc.rootCause.category, inc.rootCause.subcategory, inc.rootCause.description);
-      }
-
-      // 4. Tags
-      const tagStmt = database.prepare('INSERT OR IGNORE INTO incident_tags (incident_id, tag) VALUES (?, ?)');
-      for (const t of inc.tags) {
-        tagStmt.run(inc.id, t);
-      }
-
-      // 5. Playbook steps
-      const pbStmt = database.prepare(`
-        INSERT INTO resolution_playbook (incident_id, step_order, action_text, was_effective, duration_ms)
-        VALUES (?, ?, ?, ?, ?)
-      `);
-      for (let i = 0; i < inc.playbook.length; i++) {
-        const step = inc.playbook[i];
-        pbStmt.run(inc.id, i + 1, step.text, step.effective, step.durationMs);
-      }
-
-      // 6. Postmortem
-      if (inc.postmortem) {
-        upsertPostmortem({
-          incidentId: inc.id,
-          title: inc.postmortem.title,
-          summary: inc.postmortem.summary,
-          rootCause: inc.postmortem.rootCause,
-          lessonsLearned: inc.postmortem.lessonsLearned,
-        });
-      }
-    }
-  });
-
-  transaction();
-  return { seeded: sampleIncidents.length, message: `Successfully seeded ${sampleIncidents.length} historical incidents with teams, root causes, and playbooks.` };
+/**
+ * Mock database interface for legacy callers that execute .prepare().
+ */
+export function getDb(): {
+  prepare: (sql: string) => {
+    all: (...args: unknown[]) => unknown[];
+    get: (...args: unknown[]) => unknown;
+    run: (...args: unknown[]) => { changes: number };
+  };
+  exec: (sql: string) => void;
+  pragma: (sql: string) => void;
+} {
+  return {
+    prepare: (sql: string) => {
+      const lowerSql = sql.toLowerCase();
+      return {
+        all: (...args: unknown[]) => {
+          if (lowerSql.includes('from incidents')) {
+            const excludeId = args[0] as string | undefined;
+            return Array.from(incidentsStore.values()).filter((i) => i.id !== excludeId);
+          }
+          if (lowerSql.includes('from knowledge_base')) {
+            return knowledgeBaseStore;
+          }
+          if (lowerSql.includes('from evidence_items')) {
+            return Array.from(evidenceStore.values()).flat();
+          }
+          return [];
+        },
+        get: (...args: unknown[]) => {
+          if (lowerSql.includes('from incidents')) {
+            const id = args[0] as string;
+            return incidentsStore.get(id);
+          }
+          if (lowerSql.includes('from postmortems')) {
+            const id = args[0] as string;
+            return postmortemsStore.get(id);
+          }
+          return undefined;
+        },
+        run: () => ({ changes: 1 }),
+      };
+    },
+    exec: () => {},
+    pragma: () => {},
+  };
 }

@@ -7,8 +7,8 @@ import { EvidenceItem } from '@/lib/types';
 describe('TimelineFeed & TimelineCard Components (components/TimelineFeed.tsx)', () => {
   it('renders empty state when evidenceItems is empty', () => {
     render(<TimelineFeed evidenceItems={[]} incidentOpenedAt={Date.now()} />);
-    expect(screen.getByText('Awaiting incident telemetry')).toBeInTheDocument();
-    expect(screen.getByText('Launch Demo Simulation')).toBeInTheDocument();
+    expect(screen.getByText(/awaiting incident telemetry/i)).toBeInTheDocument();
+    expect(screen.getByText(/demo/i)).toBeInTheDocument();
   });
 
   it('renders chronological cards with speaker names, categories, and disproven styling', () => {

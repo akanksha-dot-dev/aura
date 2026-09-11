@@ -1,4 +1,0 @@
-Secret will not be stored or displayed on the console after download. Please keep it in a safe place.
-
-Key: ec92018f05204b78b5a8afc8dbe89fae
-Secret: 9ae0eb999dfc446a987232211014c1c0

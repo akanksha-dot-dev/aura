@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
 
     if (!geminiKey && !openAIKey) {
       return NextResponse.json(
-        { error: 'No LLM API key configured. Set GEMINI_API_KEY or OPENAI_API_KEY.' },
+        { error: 'No LLM API key configured. Set GEMINI_API_KEY or OPENAI_API_KEY. (OPENAI_API_KEY is not configured)' },
         { status: 502 }
       );
     }
