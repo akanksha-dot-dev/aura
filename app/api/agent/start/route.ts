@@ -231,7 +231,7 @@ function buildInterruptionConfig() {
     enable: true,
     mode: 'start_of_speech',
     config: {
-      interrupt_speech_duration_ms: 160,  // 160ms voiced audio avoids speaker-to-mic feedback interruptions
+      interrupt_speech_duration_ms: 300,  // 300ms voiced audio avoids speaker-to-mic feedback interruptions
     },
   };
 }
@@ -474,7 +474,7 @@ export async function POST(request: NextRequest) {
           enable_error_message: true,
           // aiserver: optimized for conversational AI agent interaction resilience
           audio_scenario: 'aiserver',
-          noise_suppression_level: 'aggressive',
+          noise_suppression_level: 'moderate',
         },
 
         // ── Interruption: tuned for filler-word robustness ─────────────────

@@ -140,68 +140,11 @@ export function useAuraAgent({
     };
   }, [isMockReplay, channel, isJoined, uid, name, role, voiceLang, scenarioConfig, scenarioId]);
 
-  // 2. Hot-sync dynamic incident state to active Agora ConvAI agent
-  const lastSyncedEvidenceSeqRef = useRef<number>(-1);
-  const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (isMockReplay || !channel || !activeAgentIdRef.current) return;
-
-    if (syncTimeoutRef.current) {
-      clearTimeout(syncTimeoutRef.current);
-    }
-
-    syncTimeoutRef.current = setTimeout(() => {
-      const agentId = activeAgentIdRef.current;
-      if (!agentId) return;
-
-      if (lastSyncedEvidenceSeqRef.current === incidentState.eventSeq) return;
-      lastSyncedEvidenceSeqRef.current = incidentState.eventSeq;
-
-      fetch('/api/agent/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          agentId,
-          channelName: channel,
-          incidentState,
-          participants: Object.values(effectiveParticipants),
-          operatorUid: uid,
-          scenario: scenarioConfig
-            ? {
-                title: scenarioConfig.title,
-                severity: scenarioConfig.severity,
-                affectedServices: scenarioConfig.affectedServices,
-                description: scenarioConfig.description,
-                impact: scenarioConfig.impact,
-                suspectedCause: scenarioConfig.suspectedCause,
-                playbook: scenarioConfig.playbook,
-              }
-            : undefined,
-        }),
-      }).catch((err) => {
-        console.warn('[useAuraAgent] Context hot-sync notice:', err);
-      });
-    }, 1200);
-
-    return () => {
-      if (syncTimeoutRef.current) {
-        clearTimeout(syncTimeoutRef.current);
-      }
-    };
-  }, [
-    incidentState.currentOODAPhase,
-    incidentState.eventSeq,
-    incidentState.evidenceItems.length,
-    incidentState.status,
-    incidentState.incidentCommanderUid,
-    effectiveParticipants,
-    channel,
-    isMockReplay,
-    scenarioConfig,
-    uid,
-    incidentState,
-  ]);
+  // 2. Note on mid-session hot-sync:
+  // Agora ConvAI maintains continuous conversation history naturally over the active audio bridge.
+  // We intentionally do not call /api/agent/update on every evidence event mid-call, because
+  // Agora's cloud engine resets in-flight LLM buffers upon receiving /update, which caused
+  // the agent to become unresponsive after the first few statements.
 
   return { activeAgentId };
 }
