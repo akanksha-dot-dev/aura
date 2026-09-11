@@ -222,8 +222,8 @@ export function useFlightDeckTelemetry({
     mockTranscript ??
     liveTranscriptText ??
     (activeSpeakerName
-      ? `${activeSpeakerName} is transmitting telemetry and situational updates...`
-      : 'Voice channel active — monitoring real-time communications...');
+      ? `${activeSpeakerName} is transmitting...`
+      : 'Voice bridge active — monitoring communications');
 
   const tempoLevel = useMemo(() => {
     return Math.min(5, Math.max(1, Math.ceil(state.evidenceItems.length / 3) || 1));

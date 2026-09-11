@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { PersonaConfig } from '@/lib/constants';
 import {
   ScenarioConfig,
@@ -22,6 +22,19 @@ export interface LobbyScreenProps {
   isConnecting?: boolean;
 }
 
+const subscribeTheme = (callback: () => void) => {
+  if (typeof window === 'undefined') return () => {};
+  window.addEventListener('storage', callback);
+  return () => window.removeEventListener('storage', callback);
+};
+
+const getThemeSnapshot = (): 'dark' | 'light' => {
+  if (typeof window === 'undefined') return 'dark';
+  return (localStorage.getItem('aura-theme') as 'dark' | 'light') || 'dark';
+};
+
+const getServerThemeSnapshot = (): 'dark' | 'light' => 'dark';
+
 const COST_PRESETS = [
   { label: 'Standard SaaS', rate: 25 },
   { label: 'Mid-Tier Service', rate: 75 },
@@ -37,6 +50,23 @@ const SEVERITY_OPTIONS: { value: Severity; label: string; color: string }[] = [
 ];
 
 export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) {
+  const theme = useSyncExternalStore(subscribeTheme, getThemeSnapshot, getServerThemeSnapshot);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try {
+      localStorage.setItem('aura-theme', next);
+      window.dispatchEvent(new Event('storage'));
+    } catch {
+      // ignore
+    }
+  };
+
   // Scenario state
   const [activeScenarioId, setActiveScenarioId] = React.useState<string>(PRESET_SCENARIOS[0].id);
   const [customScenarios, setCustomScenarios] = React.useState<ScenarioConfig[]>([]);
@@ -220,6 +250,110 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
           gap: 1.5rem;
           position: relative;
           z-index: 1;
+        }
+
+        /* ─── Mission Deck Top Bar ─── */
+        .flightdeck-topbar {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 8px 14px;
+          background: var(--bg-surface);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-sm);
+          box-shadow: var(--shadow-card);
+        }
+
+        .flightdeck-topbar__brand {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .flightdeck-topbar__title {
+          font-family: var(--font-mono);
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          color: var(--text-primary);
+        }
+
+        .flightdeck-topbar__tag {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          font-weight: 600;
+          color: var(--color-fact);
+          background: var(--color-fact-dim);
+          border: 1px solid rgba(59, 212, 162, 0.25);
+          padding: 1px 6px;
+          border-radius: 2px;
+          letter-spacing: 0.05em;
+        }
+
+        .flightdeck-topbar__actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .flightdeck-topbar__toggle-group {
+          display: flex;
+          align-items: center;
+          gap: 2px;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-sm);
+          padding: 2px;
+        }
+
+        .flightdeck-topbar__btn {
+          background: transparent;
+          border: 1px solid transparent;
+          color: var(--text-secondary);
+          font-family: var(--font-mono);
+          font-size: 11px;
+          font-weight: 600;
+          padding: 3px 8px;
+          border-radius: var(--radius-sm);
+          cursor: pointer;
+          transition: all var(--duration-fast) var(--ease-standard);
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+        }
+
+        .flightdeck-topbar__btn:hover {
+          color: var(--text-primary);
+          background: rgba(255, 255, 255, 0.06);
+        }
+
+        .flightdeck-topbar__btn--active {
+          background: rgba(212, 168, 83, 0.15);
+          color: var(--color-aura);
+          border-color: rgba(212, 168, 83, 0.35);
+        }
+
+        .flightdeck-topbar__theme-btn {
+          border-color: var(--border-subtle);
+          background: var(--bg-glass);
+        }
+
+        .flightdeck-topbar__theme-btn:hover {
+          border-color: var(--border-default);
+          color: var(--color-aura);
+        }
+
+        .flightdeck-topbar__share-btn {
+          background: rgba(212, 168, 83, 0.12);
+          border-color: rgba(212, 168, 83, 0.3);
+          color: var(--color-aura);
+        }
+
+        .flightdeck-topbar__share-btn:hover {
+          background: rgba(212, 168, 83, 0.2);
+          border-color: var(--color-aura);
+          color: var(--color-aura);
         }
 
         /* ─── Mission Hero Header ─── */
@@ -479,6 +613,50 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
           border: 1px solid rgba(212, 168, 83, 0.25);
           color: var(--color-aura);
           letter-spacing: 0.04em;
+        }
+
+        .flightdeck-launch-btn--live {
+          background: var(--color-aura);
+          border: 1px solid var(--color-aura);
+          color: #0C0B0F;
+          box-shadow: 0 2px 12px rgba(212, 168, 83, 0.25);
+        }
+
+        .flightdeck-launch-btn--live:hover:not(:disabled) {
+          filter: brightness(1.1);
+          background: var(--color-aura);
+          box-shadow: 0 4px 18px rgba(212, 168, 83, 0.4);
+        }
+
+        .flightdeck-launch-badge--live {
+          background: rgba(0, 0, 0, 0.25);
+          color: #0C0B0F;
+          border: 1px solid rgba(0, 0, 0, 0.2);
+          font-weight: 700;
+        }
+
+        .flightdeck-launch-btn--replay {
+          background: var(--bg-surface-raised);
+          border: 1px solid var(--border-subtle);
+          color: var(--text-secondary);
+          padding: 11px 18px;
+        }
+
+        .flightdeck-launch-btn--replay:hover:not(:disabled) {
+          border-color: var(--color-aura);
+          color: var(--text-primary);
+          background: var(--bg-surface-hover);
+        }
+
+        .flightdeck-launch-play--replay {
+          background: rgba(212, 168, 83, 0.15);
+          color: var(--color-aura);
+        }
+
+        .flightdeck-launch-badge--replay {
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid var(--border-subtle);
+          color: var(--text-muted);
         }
 
         /* ─── Responder Selection Grid ─── */
@@ -1240,6 +1418,71 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
       `}</style>
 
       <div className="flightdeck-content">
+        {/* Mission Staging Top Bar with Theme & Audio Controls */}
+        <div className="flightdeck-topbar" role="navigation" aria-label="Pre-flight deck utilities">
+          <div className="flightdeck-topbar__brand">
+            <span className="flightdeck-status-dot" aria-hidden="true" />
+            <span className="flightdeck-topbar__title">AURA // MISSION STAGING</span>
+            <span className="flightdeck-topbar__tag">SD-RTN™ 48kHz READY</span>
+          </div>
+
+          <div className="flightdeck-topbar__actions">
+            {/* Voice Accent Language Selector */}
+            <div className="flightdeck-topbar__toggle-group" role="radiogroup" aria-label="Voice Accent Language">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={voiceLang === 'en-IN'}
+                className={`flightdeck-topbar__btn ${voiceLang === 'en-IN' ? 'flightdeck-topbar__btn--active' : ''}`}
+                onClick={() => handleVoiceLangToggle('en-IN')}
+                title="Indian English voice model (en-IN)"
+              >
+                🇮🇳 en-IN
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={voiceLang === 'en-US'}
+                className={`flightdeck-topbar__btn ${voiceLang === 'en-US' ? 'flightdeck-topbar__btn--active' : ''}`}
+                onClick={() => handleVoiceLangToggle('en-US')}
+                title="US English voice model (en-US)"
+              >
+                🇺🇸 en-US
+              </button>
+            </div>
+
+            {/* Theme Toggle Button */}
+            <button
+              type="button"
+              className="flightdeck-topbar__btn flightdeck-topbar__theme-btn"
+              onClick={toggleTheme}
+              title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+              aria-label={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+            >
+              {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
+            </button>
+
+            {/* Share War Room Button */}
+            <button
+              id="share-war-room-btn"
+              type="button"
+              className="flightdeck-topbar__btn flightdeck-topbar__share-btn"
+              onClick={() => setIsInviteOpen(true)}
+              title="Share War Room Link with Team"
+              aria-label="Share War Room"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="18" cy="5" r="3"/>
+                <circle cx="6" cy="12" r="3"/>
+                <circle cx="18" cy="19" r="3"/>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+              </svg>
+              <span>Invite Team</span>
+            </button>
+          </div>
+        </div>
+
         {/* Header with Visual Badge & Wordmark */}
         <header className="flightdeck-header">
           <div className="flightdeck-status-pill" aria-label="System status">
@@ -1252,55 +1495,6 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
           <p className="flightdeck-tagline">
             Real-time multi-speaker acoustic intelligence • Live contradiction arbitration • Continuous SRE debrief
           </p>
-
-          {/* ── Share War Room Button ─────────────────────────────────────── */}
-          <button
-            id="share-war-room-btn"
-            type="button"
-            onClick={() => setIsInviteOpen(true)}
-            style={{
-              marginTop: '18px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              background: 'linear-gradient(135deg, rgba(108,92,231,0.25) 0%, rgba(78,205,196,0.15) 100%)',
-              border: '1px solid rgba(108,92,231,0.5)',
-              borderRadius: '10px',
-              color: '#fff',
-              cursor: 'pointer',
-              fontSize: '13px',
-              fontWeight: 600,
-              padding: '10px 20px',
-              transition: 'all 0.2s',
-              backdropFilter: 'blur(8px)',
-              boxShadow: '0 0 20px rgba(108,92,231,0.2)',
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = 'linear-gradient(135deg, rgba(108,92,231,0.4) 0%, rgba(78,205,196,0.25) 100%)';
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 30px rgba(108,92,231,0.4)';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = 'linear-gradient(135deg, rgba(108,92,231,0.25) 0%, rgba(78,205,196,0.15) 100%)';
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 20px rgba(108,92,231,0.2)';
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="18" cy="5" r="3"/>
-              <circle cx="6" cy="12" r="3"/>
-              <circle cx="18" cy="19" r="3"/>
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-            </svg>
-            Share War Room &amp; Invite Team
-            <span style={{
-              background: 'rgba(78,205,196,0.2)',
-              border: '1px solid rgba(78,205,196,0.4)',
-              borderRadius: '4px',
-              fontSize: '10px',
-              padding: '2px 6px',
-              color: '#4ECDC4',
-            }}>LIVE</span>
-          </button>
         </header>
 
         {/* Connecting Banner */}
@@ -1676,8 +1870,7 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
                 { uid: activeScenario.personas[0].uid, displayName: activeScenario.personas[0].displayName, role: activeScenario.personas[0].role, avatarColor: activeScenario.personas[0].avatarColor },
                 { simulateReplay: false }
               )}
-              className="flightdeck-launch-btn"
-              style={{ background: 'linear-gradient(135deg, #00f0ff 0%, #0070f3 100%)', color: '#040d1a', fontWeight: 700 }}
+              className="flightdeck-launch-btn flightdeck-launch-btn--live"
             >
               <div className="flightdeck-launch-left">
                 <span className="flightdeck-launch-play" aria-hidden="true" style={{ fontSize: '14px' }}>🎙</span>
@@ -1685,31 +1878,35 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
                   {isConnecting ? 'CONNECTING TO LIVE BRIDGE...' : 'ENTER LIVE INCIDENT BRIDGE (TALK TO AURA)'}
                 </span>
               </div>
-              <span className="flightdeck-launch-badge" style={{ background: 'rgba(0, 0, 0, 0.25)', color: '#040d1a', fontWeight: 700 }}>
+              <span className="flightdeck-launch-badge flightdeck-launch-badge--live">
                 REAL-TIME BIDIRECTIONAL VOICE
               </span>
             </button>
 
-            {activeScenario.id === 'payment-outage' && (
-              <button
-                type="button"
-                disabled={isConnecting}
-                onClick={() => handleJoinPersona(
-                  { uid: activeScenario.personas[0].uid, displayName: activeScenario.personas[0].displayName, role: activeScenario.personas[0].role, avatarColor: activeScenario.personas[0].avatarColor },
+            <button
+              type="button"
+              disabled={isConnecting}
+              onClick={() => {
+                const targetScenario = activeScenario.id === 'payment-outage'
+                  ? activeScenario
+                  : PRESET_SCENARIOS[0];
+                handleJoinPersona(
+                  { uid: targetScenario.personas[0]?.uid || 'sarah_ic', displayName: targetScenario.personas[0]?.displayName || 'Sarah Chen', role: targetScenario.personas[0]?.role || 'Incident Commander', avatarColor: 'var(--color-conflict)' },
                   { simulateReplay: true }
-                )}
-                className="flightdeck-launch-btn"
-                style={{ background: 'var(--bg-surface-raised)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', padding: '10px 14px' }}
-              >
-                <div className="flightdeck-launch-left">
-                  <span className="flightdeck-launch-play" aria-hidden="true">▶</span>
-                  <span style={{ fontSize: '11px', letterSpacing: '0.04em' }}>
-                    Run Scripted Scenario Simulation (Mock Audio Demo)
-                  </span>
-                </div>
-                <span className="flightdeck-launch-badge" style={{ fontSize: '9px' }}>RECORDED REPLAY</span>
-              </button>
-            )}
+                );
+              }}
+              className="flightdeck-launch-btn flightdeck-launch-btn--replay"
+            >
+              <div className="flightdeck-launch-left">
+                <span className="flightdeck-launch-play flightdeck-launch-play--replay" aria-hidden="true">▶</span>
+                <span style={{ fontSize: '12px', letterSpacing: '0.02em' }}>
+                  Run Scripted Scenario Simulation (Mock Audio Demo)
+                </span>
+              </div>
+              <span className="flightdeck-launch-badge flightdeck-launch-badge--replay">
+                AUTOMATED REPLAY
+              </span>
+            </button>
           </div>
         </section>
 

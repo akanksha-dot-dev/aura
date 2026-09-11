@@ -200,10 +200,34 @@ function DashboardContent() {
     onSpeech: (speaker, transcript) => {
       setMockSpeaker(speaker);
       setMockTranscript(transcript);
-      transcripts.appendTranscript(speaker || 'Incident Responder', transcript);
+      if (speaker) {
+        transcripts.appendTranscript(speaker, transcript);
+      }
     },
     onCelebration: () => modals.openModal('postmortem'),
   });
+
+  // Effective volume levels in mock replay mode so avatars light up during speech turns
+  const effectiveVolumeLevels = useMemo(() => {
+    if (!isMockReplay) return volumeLevels;
+    if (!mockSpeaker) return {};
+    const lower = mockSpeaker.toLowerCase();
+    const vols: Record<string, number> = {};
+    if (lower.includes('aura')) {
+      vols['aura_agent'] = 85;
+    } else if (lower.includes('sarah')) {
+      vols['sarah_ic'] = 80;
+    } else if (lower.includes('marcus')) {
+      vols['marcus_sre'] = 75;
+    } else if (lower.includes('priya')) {
+      vols['priya_pm'] = 70;
+    }
+    return vols;
+  }, [isMockReplay, mockSpeaker, volumeLevels]);
+
+  const isAgentSpeaking = isMockReplay
+    ? (mockSpeaker?.toLowerCase().includes('aura') ?? false)
+    : (volumeLevels['aura_agent'] ?? 0) > 20;
 
   // 5. Participants & Telemetry
   const effectiveParticipants: Record<string, Participant> = useMemo(() => {
@@ -239,7 +263,7 @@ function DashboardContent() {
   const telemetry = useFlightDeckTelemetry({
     state,
     effectiveParticipants,
-    volumeLevels,
+    volumeLevels: effectiveVolumeLevels,
     mockSpeaker,
     mockTranscript,
     liveTranscriptSpeaker: transcripts.liveTranscriptSpeaker,
@@ -261,7 +285,7 @@ function DashboardContent() {
 
   return (
     <>
-      <SimulationBanner isMockReplay={isMockReplay} />
+      <SimulationBanner isMockReplay={isMockReplay} speedMultiplier={speedParam} />
 
       <div
         className={`command-center ${telemetry.activeConflict ? 'has-conflict' : ''} ${
@@ -302,10 +326,10 @@ function DashboardContent() {
 
         <SpeakerPanel
           participants={effectiveParticipants}
-          localVolumeLevel={volumeLevels}
+          localVolumeLevel={effectiveVolumeLevels}
           agentUid="aura_agent"
           agentLastSpokeAt={effectiveParticipants['aura_agent']?.lastSpokeAt ?? state.openedAt}
-          agentIsSpeaking={(volumeLevels['aura_agent'] ?? 0) > 20}
+          agentIsSpeaking={isAgentSpeaking}
           cognitiveLoadScore={state.cognitiveLoadScore}
           tempoLevel={telemetry.tempoLevel}
           isCollapsed={isSpeakerCollapsed}
