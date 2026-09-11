@@ -4,7 +4,7 @@ import { PRESET_SCENARIOS } from '@/lib/scenarios';
 import { buildEffectiveSystemPrompt } from '@/lib/promptBuilder';
 import { EvidenceItem, IncidentState } from '@/lib/types';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 /**
  * POST /api/agent/update — Hot-update the ConvAI agent's context when participants or evidence change.

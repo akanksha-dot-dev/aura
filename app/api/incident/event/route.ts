@@ -3,7 +3,7 @@ import { addEvidenceToIncident, updateIncidentState } from '@/lib/incidentStore'
 import { createDashboardEvent, publishDashboardEvent } from '@/lib/rtmPublisher';
 import { ActionStatus, EvidenceItem, RTMDashboardEvent } from '@/lib/types';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 export async function POST(req: NextRequest) {
   try {

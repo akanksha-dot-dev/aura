@@ -10,7 +10,7 @@ import {
   getEvidenceByIncident,
 } from '@/lib/db';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 function getSpeakerName(uid?: string, channelName?: string): string {
   if (!uid) return 'Unknown';

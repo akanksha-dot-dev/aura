@@ -4,7 +4,7 @@ import { getIncidentState, initializeLiveIncident } from '@/lib/incidentStore';
 import { PRESET_SCENARIOS } from '@/lib/scenarios';
 import { AURA_SYSTEM_PROMPT, buildEffectiveSystemPrompt } from '@/lib/promptBuilder';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 // ────────────────────────────────────────────────────────────────────────────────────
 // TTS Configuration Factory

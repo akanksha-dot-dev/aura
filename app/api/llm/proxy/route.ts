@@ -5,7 +5,7 @@ import type { IncidentState } from '@/lib/types';
 import { insertTranscript } from '@/lib/db';
 
 export { buildDynamicContext } from '@/lib/incidentStore';
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 // ── Filler Word Detection — 6 classes matching AURA system prompt ──────────
 const FILLER_PATTERNS = {

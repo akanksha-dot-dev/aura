@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { RtcTokenBuilder, RtmTokenBuilder, RtcRole } from 'agora-token';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 interface TokenRequest {
   channelName?: string;

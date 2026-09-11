@@ -123,9 +123,9 @@
 - **Evidence:** T1-01 §3.2, T1-05 §3.2, T1-06 §3.3 `[Grade A]`.
 
 ### D-012: Serverless Plane — Stateless Next.js API Routes
-- **Choice:** Serverless Route Handlers (`runtime = 'nodejs'`); media stays 100% on Agora SD-RTN.
+- **Choice:** Serverless Edge Route Handlers (`runtime = 'edge'`); media stays 100% on Agora SD-RTN.
 - **Door:** 🚪 One-Way.
-- **Rationale:** Zero server management overhead, zero egress bandwidth costs, instant scaling.
+- **Rationale:** Zero server management overhead, zero egress bandwidth costs, instant scaling on Cloudflare Pages.
 - **Evidence:** T1-07 §1.3 `[Grade A]`.
 
 ### D-013: Domain & Branding — `aura.akanksha.dev`

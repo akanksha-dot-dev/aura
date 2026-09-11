@@ -28,7 +28,7 @@ aura/
 │   ├── AGORA-API.md              # Agora SDK & REST API quick reference
 │   └── TESTING.md                # Automated toolchain & hands-on manual QA guide
 ├── app/                          # Next.js 16 App Router (Turbopack)
-│   ├── api/                      # 18 active Node.js route handlers (`runtime = 'nodejs'`)
+│   ├── api/                      # 18 active Edge route handlers (`runtime = 'edge'`)
 │   │   ├── agent/                # /start, /stop, /interrupt, /update
 │   │   ├── escalate/             # Manual and auto-escalation trigger
 │   │   ├── incident/event/       # Bracket-tag real-time telemetry ingestion
@@ -102,7 +102,7 @@ graph TD
   - Strict type safety: Use Zod schemas from [`lib/types.ts`](file:///lib/types.ts) — never use `any`.
   - Pure CSS: Use CSS custom properties (`var(--color-*)`) — never add Tailwind.
   - Emotion-specific springs: Import from [`lib/springs.ts`](file:///lib/springs.ts).
-- For all `/api/*` routes, ensure `export const runtime = 'nodejs'`.
+- For all `/api/*` routes, ensure `export const runtime = 'edge'` (required by Cloudflare Pages `@cloudflare/next-on-pages`).
 
 ### Step 3: Run Automated Quality Gates
 Before concluding any task, execute the full validation toolchain:
@@ -165,7 +165,7 @@ Every command must exit with code `0`.
 - **NO paid cloud dependencies** — Zero ElevenLabs, zero paid databases.
 
 ### ✅ REQUIRED
-- **ALL `/api/*` routes**: `export const runtime = 'nodejs'`.
+- **ALL `/api/*` routes**: `export const runtime = 'edge'` (Cloudflare Pages edge runtime requirement).
 - **ALL animations**: Use emotion-specific springs from `lib/springs.ts`.
 - **ALL colors**: Use CSS custom properties (`var(--color-fact)`).
 - **ALL containers**: Apply `container-type: inline-size` for container queries.

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { listIncidents, getIncidentStats, upsertIncident, upsertPostmortem } from '@/lib/db';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 /**
  * POST /api/incidents — Persist or update an incident or postmortem report in the database.

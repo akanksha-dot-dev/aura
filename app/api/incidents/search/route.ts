@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { searchIncidents } from '@/lib/db';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 /**
  * GET /api/incidents/search?q=... — Full-text search across past incidents.
