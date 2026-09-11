@@ -122,23 +122,23 @@ async function hmacSha256(key: Uint8Array, data: Uint8Array): Promise<Buffer> {
   throw new Error('No crypto implementation available in current runtime');
 }
 
-function packServiceRtc(channelName: string, account: string, expire: number, isPublisher: boolean): Buffer {
+function packServiceRtc(channelName: string, account: string, privilegeExpire = 0, isPublisher = true): Buffer {
   const serviceBuf = new ByteBuf();
   serviceBuf.putUint16(1); // Service type 1: RTC
 
   const privileges: Record<number, number> = {
-    1: expire, // kPrivilegeJoinChannel
+    1: privilegeExpire, // kPrivilegeJoinChannel
   };
   if (isPublisher) {
-    privileges[2] = expire; // kPrivilegePublishAudioStream
-    privileges[3] = expire; // kPrivilegePublishVideoStream
-    privileges[4] = expire; // kPrivilegePublishDataStream
+    privileges[2] = privilegeExpire; // kPrivilegePublishAudioStream
+    privileges[3] = privilegeExpire; // kPrivilegePublishVideoStream
+    privileges[4] = privilegeExpire; // kPrivilegePublishDataStream
   }
   serviceBuf.putTreeMapUInt32(privileges);
 
   const rtcParamBuf = new ByteBuf();
   rtcParamBuf.putString(channelName);
-  rtcParamBuf.putString(account === '0' || !account ? '' : account);
+  rtcParamBuf.putString(account === 0 as unknown || !account ? '' : `${account}`);
 
   return Buffer.concat([serviceBuf.pack(), rtcParamBuf.pack()]);
 }
@@ -149,7 +149,7 @@ function packServiceRtm(userId: string, expire: number): Buffer {
   serviceBuf.putTreeMapUInt32({ 1: expire }); // kPrivilegeLogin
 
   const rtmParamBuf = new ByteBuf();
-  rtmParamBuf.putString(userId === '0' || !userId ? '' : userId);
+  rtmParamBuf.putString(userId || '');
 
   return Buffer.concat([serviceBuf.pack(), rtmParamBuf.pack()]);
 }
@@ -163,14 +163,14 @@ async function buildToken(
   const issueTs = Math.floor(Date.now() / 1000);
   const salt = Math.floor(Math.random() * 99999999) + 1;
 
-  let signing = await hmacSha256(
-    Buffer.from(appCertificate, 'utf8'),
-    new ByteBuf().putUint32(issueTs).pack()
-  );
-  signing = await hmacSha256(
-    signing,
-    new ByteBuf().putUint32(salt).pack()
-  );
+  const issueBuf = new ByteBuf().putUint32(issueTs).pack();
+  const saltBuf = new ByteBuf().putUint32(salt).pack();
+
+  // Agora Token007 signing key derivation:
+  // 1. HMAC-SHA256(key = issueTs, message = appCertificate)
+  // 2. HMAC-SHA256(key = salt, message = step1_result)
+  let signing = await hmacSha256(issueBuf, Buffer.from(appCertificate, 'utf8'));
+  signing = await hmacSha256(saltBuf, signing);
 
   let signingInfo = new ByteBuf()
     .putString(appId)
@@ -184,9 +184,10 @@ async function buildToken(
     signingInfo = Buffer.concat([signingInfo, s]);
   }
 
+  // 3. Final signature: HMAC-SHA256(key = signing, message = signingInfo)
   const signature = await hmacSha256(signing, signingInfo);
   const content = Buffer.concat([
-    new ByteBuf().putString(signature.toString('binary')).pack(),
+    new ByteBuf().putBytes(signature).pack(),
     signingInfo,
   ]);
 
@@ -204,9 +205,8 @@ export class UniversalRtcTokenBuilder {
     tokenExpire = 3600,
     privilegeExpire = 0
   ): Promise<string> {
-    const expire = privilegeExpire > 0 ? privilegeExpire : tokenExpire;
     const isPublisher = role === RtcRole.PUBLISHER;
-    const services = [packServiceRtc(channelName, account, expire, isPublisher)];
+    const services = [packServiceRtc(channelName, account, privilegeExpire, isPublisher)];
     return buildToken(appId, appCertificate, services, tokenExpire);
   }
 
@@ -219,11 +219,10 @@ export class UniversalRtcTokenBuilder {
     tokenExpire = 3600,
     privilegeExpire = 0
   ): Promise<string> {
-    const expire = privilegeExpire > 0 ? privilegeExpire : tokenExpire;
     const isPublisher = role === RtcRole.PUBLISHER;
     const services = [
-      packServiceRtc(channelName, account, expire, isPublisher),
-      packServiceRtm(account, expire),
+      packServiceRtc(channelName, account, privilegeExpire, isPublisher),
+      packServiceRtm(account, tokenExpire),
     ];
     return buildToken(appId, appCertificate, services, tokenExpire);
   }
