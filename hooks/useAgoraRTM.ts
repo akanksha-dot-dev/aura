@@ -321,16 +321,26 @@ export function useAgoraRTM({
             }
           }
 
-          const AgoraRTM = (await import('agora-rtm-sdk')).default;
-          try {
-            client = new AgoraRTM.RTM(trimmedAppId, uid, {
-              useStringUserId: true,
-              logLevel: 'error',
-            }) as unknown as RtmClientInstance;
-          } catch (initErr) {
-            console.info('[useAgoraRTM] Telemetry standby: Agora RTM client unavailable:', initErr);
-            broadcastError('Agora telemetry standby (RTM unavailable)');
-            return;
+          const globalClientCache =
+            typeof window !== 'undefined'
+              ? ((window as unknown as { __AURA_RTM_CLIENT_CACHE__?: Map<string, RtmClientInstance> }).__AURA_RTM_CLIENT_CACHE__ ??= new Map())
+              : new Map<string, RtmClientInstance>();
+
+          if (globalClientCache.has(uid)) {
+            client = globalClientCache.get(uid)!;
+          } else {
+            const AgoraRTM = (await import('agora-rtm-sdk')).default;
+            try {
+              client = new AgoraRTM.RTM(trimmedAppId, uid, {
+                useStringUserId: true,
+                logLevel: 'none',
+              }) as unknown as RtmClientInstance;
+              globalClientCache.set(uid, client);
+            } catch (initErr) {
+              console.info('[useAgoraRTM] Telemetry standby: Agora RTM client unavailable:', initErr);
+              broadcastError('Agora telemetry standby (RTM unavailable)');
+              return;
+            }
           }
         }
 
@@ -499,7 +509,7 @@ export function useAgoraRTM({
               if (!rawText || typeof rawText !== 'string') return;
 
               const dispatchEpistemicItem = (
-                category: 'fact' | 'hypothesis' | 'decision' | 'action',
+                category: 'fact' | 'hypothesis' | 'decision' | 'action' | 'conflict',
                 content: string,
                 extra: {
                   confidence?: number;
@@ -508,6 +518,8 @@ export function useAgoraRTM({
                   rationale?: string;
                   assignedTo?: string;
                   eta?: number;
+                  hypothesisA?: string;
+                  hypothesisB?: string;
                 } = {}
               ) => {
                 const cleanContent = content.trim().replace(/^["']|["']$/g, '');
@@ -521,7 +533,8 @@ export function useAgoraRTM({
                 const eventId = `ev-${now}-${Math.random().toString(36).substring(2, 6)}`;
                 const isHypothesis = category === 'hypothesis';
                 const isAction = category === 'action';
-                const status = isHypothesis ? 'active' : 'confirmed';
+                const isConflict = category === 'conflict';
+                const status = (isHypothesis || isConflict) ? 'active' : 'confirmed';
 
                 const evidenceItem: EvidenceItem = {
                   id: eventId,
@@ -534,6 +547,8 @@ export function useAgoraRTM({
                   serviceAffected: extra.service || 'core',
                   relatedTo: [],
                   decidingMetric: extra.decidingMetric,
+                  hypothesisA: extra.hypothesisA,
+                  hypothesisB: extra.hypothesisB,
                   status,
                   assignedTo: extra.assignedTo || (isAction ? (activeSession?.userName || userName || 'Responder') : undefined),
                   actionStatus: isAction ? 'pending' : undefined,
@@ -583,6 +598,44 @@ export function useAgoraRTM({
                 });
               }
 
+              const conflictTag = rawText.match(/\[LOG_CONFLICT:\s*([^|\]]+?)\s*\|\s*([^|\]]+?)(?:\s*\|\s*([^\]]+?))?\]/i);
+              if (conflictTag) {
+                const hypoA = conflictTag[1].trim();
+                const hypoB = conflictTag[2].trim();
+                const decidingMetric = conflictTag[3]?.trim();
+                dispatchEpistemicItem('conflict', `${hypoA} vs ${hypoB}`, {
+                  hypothesisA: hypoA,
+                  hypothesisB: hypoB,
+                  decidingMetric,
+                  confidence: 85,
+                });
+              }
+
+              const resolveConflictTag = rawText.match(/\[RESOLVE_CONFLICT:\s*([^|\]]+?)(?:\s*\|\s*([^\]]+?))?\]/i);
+              if (resolveConflictTag) {
+                const target = resolveConflictTag[1].trim();
+                const rationale = resolveConflictTag[2]?.trim() || 'Resolved';
+                const resolveEvt: RTMDashboardEvent = {
+                  id: `ev-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                  seq: ++monotonicClientSeq,
+                  timestamp: Date.now(),
+                  type: 'dashboard_event',
+                  eventType: 'evidence_updated',
+                  payload: { id: target, target, status: 'resolved', rationale },
+                };
+                dispatchToSubscribers(resolveEvt);
+                if (typeof window !== 'undefined') {
+                  fetch('/api/incident/event', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      channelName: activeSession?.subscribedChannel || channelName || 'incident-war-room',
+                      item: { category: 'conflict_resolved', content: target, rationale },
+                    }),
+                  }).catch(() => {});
+                }
+              }
+
               const decTag = rawText.match(/\[LOG_DECISION:\s*([^|\]]+?)(?:\s*\|\s*([^\]]+?))?\]/i);
               if (decTag) {
                 dispatchEpistemicItem('decision', decTag[1], {
@@ -596,6 +649,20 @@ export function useAgoraRTM({
                   assignedTo: actTag[2]?.trim(),
                   eta: actTag[3] ? Number(actTag[3]) : undefined,
                 });
+              }
+
+              const completeActionTag = rawText.match(/\[COMPLETE_ACTION:\s*([^|\]]+?)\]/i);
+              if (completeActionTag) {
+                const target = completeActionTag[1].trim();
+                const completeEvt: RTMDashboardEvent = {
+                  id: `ev-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                  seq: ++monotonicClientSeq,
+                  timestamp: Date.now(),
+                  type: 'dashboard_event',
+                  eventType: 'action_status_changed',
+                  payload: { actionId: target, status: 'completed' },
+                };
+                dispatchToSubscribers(completeEvt);
               }
 
               // B. Natural spoken confirmations fallback

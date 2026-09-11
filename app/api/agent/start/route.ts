@@ -248,7 +248,7 @@ function buildInterruptionConfig() {
 // ──────────────────────────────────────────────────────────────────────────────────
 
 function buildAsrConfig(language: string) {
-  const lang = language?.trim() || 'en-US';
+  const lang = language?.trim() || 'en-IN';
   return {
     credential_mode: 'managed',
     vendor: 'deepgram',

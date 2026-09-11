@@ -284,7 +284,18 @@ function incidentReducer(
 
         case 'evidence_updated': {
           const idToUpdate = String(payload.id || event.id);
-          const idx = nextEvidence.findIndex((e) => e.id === idToUpdate);
+          let idx = nextEvidence.findIndex((e) => e.id === idToUpdate);
+          if (idx === -1) {
+            const targetLower = String(payload.target || idToUpdate).toLowerCase();
+            idx = nextEvidence.findIndex(
+              (e) =>
+                (e.category === 'conflict' || e.category === 'hypothesis') &&
+                (e.content.toLowerCase().includes(targetLower) ||
+                  targetLower.includes(e.content.toLowerCase()) ||
+                  (e.hypothesisA && (e.hypothesisA.toLowerCase().includes(targetLower) || targetLower.includes(e.hypothesisA.toLowerCase()))) ||
+                  (e.hypothesisB && (e.hypothesisB.toLowerCase().includes(targetLower) || targetLower.includes(e.hypothesisB.toLowerCase()))))
+            );
+          }
           if (idx >= 0) {
             nextEvidence[idx] = {
               ...nextEvidence[idx],

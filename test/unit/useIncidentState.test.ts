@@ -330,5 +330,49 @@ describe('useIncidentState Hook & Reducer (hooks/useIncidentState.ts)', () => {
       expect(result.current.state.status).toBe('resolved');
       expect(result.current.state.currentOODAPhase).toBe('RESOLVED');
     });
+
+    it('handles conflict evidence and resolves it via target fuzzy matching in evidence_updated', () => {
+      const { result } = renderHook(() => useIncidentState());
+      act(() => {
+        result.current.processEvent({
+          type: 'dashboard_event',
+          id: 'conf-1',
+          seq: 1,
+          timestamp: Date.now(),
+          eventType: 'evidence_added',
+          payload: {
+            id: 'conf-1',
+            category: 'conflict',
+            content: 'DNS latency vs DB connection pool',
+            hypothesisA: 'DNS latency',
+            hypothesisB: 'DB connection pool',
+            decidingMetric: 'Query duration',
+            status: 'active',
+          },
+        });
+      });
+
+      expect(result.current.state.evidenceItems).toHaveLength(1);
+      expect(result.current.state.evidenceItems[0].category).toBe('conflict');
+      expect(result.current.state.evidenceItems[0].status).toBe('active');
+
+      // Resolve via target matching hypothesisA
+      act(() => {
+        result.current.processEvent({
+          type: 'dashboard_event',
+          id: 'res-1',
+          seq: 2,
+          timestamp: Date.now(),
+          eventType: 'evidence_updated',
+          payload: {
+            target: 'DNS latency',
+            status: 'resolved',
+            rationale: 'DNS response normal, DB pool verified exhausted',
+          },
+        });
+      });
+
+      expect(result.current.state.evidenceItems[0].status).toBe('resolved');
+    });
   });
 });

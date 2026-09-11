@@ -54,14 +54,16 @@ function DashboardContent() {
   const [isActionsCollapsed, setIsActionsCollapsed] = useState(false);
   const [isSummaryDismissed, setIsSummaryDismissed] = useState(false);
   const [voiceLang, setVoiceLang] = useState<string>(() =>
-    typeof window !== 'undefined' ? sessionStorage.getItem('aura_voice_lang') || 'en-US' : 'en-US'
+    typeof window !== 'undefined' ? sessionStorage.getItem('aura_voice_lang') || 'en-IN' : 'en-IN'
   );
 
+  const isValidSession = Boolean(searchParams.get('uid') || searchParams.get('persona') || isMockReplay);
+
   useEffect(() => {
-    if (!searchParams.get('uid') && !searchParams.get('persona') && !isMockReplay) {
+    if (!isValidSession) {
       router.replace('/lobby');
     }
-  }, [searchParams, isMockReplay, router]);
+  }, [isValidSession, router]);
 
   // 2. Scenario & Central State Engine
   const scenarioConfig = useScenarioConfig(scenarioId, channel);
@@ -108,7 +110,7 @@ function DashboardContent() {
     useAgoraRTC({ channelName: channel, uid });
 
   useEffect(() => {
-    if (isMockReplay || isJoined || !channel || !uid) return;
+    if (!isValidSession || isMockReplay || isJoined || !channel || !uid) return;
     let active = true;
     joinChannel().catch((err: unknown) => {
       if (!active) return;
@@ -118,7 +120,7 @@ function DashboardContent() {
       }
     });
     return () => { active = false; };
-  }, [isMockReplay, isJoined, channel, uid, joinChannel]);
+  }, [isValidSession, isMockReplay, isJoined, channel, uid, joinChannel]);
 
   const toggleMute = useCallback(() => {
     if (!localAudioTrack) return;
@@ -131,7 +133,14 @@ function DashboardContent() {
     });
   }, [localAudioTrack]);
 
-  const transcripts = useWarRoomTranscripts({ channel, uid, name, processEvent, isMockReplay });
+  const transcripts = useWarRoomTranscripts({
+    channel,
+    uid,
+    name,
+    processEvent,
+    isMockReplay,
+    enabled: isValidSession,
+  });
 
   useSpeechRecognitionFallback({
     isMockReplay,

@@ -23,6 +23,11 @@ describe('promptBuilder unit tests', () => {
     expect(AURA_SYSTEM_PROMPT).toContain('REAL-TIME TELEMETRY PROTOCOL (MACHINE-READABLE SYNC)');
     expect(AURA_SYSTEM_PROMPT).toContain('[LOG_FACT:');
     expect(AURA_SYSTEM_PROMPT).toContain('[LOG_HYPOTHESIS:');
+    expect(AURA_SYSTEM_PROMPT).toContain('[LOG_CONFLICT:');
+    expect(AURA_SYSTEM_PROMPT).toContain('[RESOLVE_CONFLICT:');
+    expect(AURA_SYSTEM_PROMPT).toContain('[COMPLETE_ACTION:');
+    expect(AURA_SYSTEM_PROMPT).toContain('OPERATIONAL ROLE & COMMAND EXECUTION BOUNDARY');
+    expect(AURA_SYSTEM_PROMPT).toContain('ADVISORY Voice Incident Commander');
   });
 
   it('buildDynamicIncidentContext correctly builds solo operator mode context', () => {

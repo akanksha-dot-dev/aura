@@ -11,6 +11,7 @@ export interface WarRoomTranscriptsOptions {
   name: string;
   processEvent: (event: RTMDashboardEvent) => void;
   isMockReplay: boolean;
+  enabled?: boolean;
 }
 
 /**
@@ -23,6 +24,7 @@ export function useWarRoomTranscripts({
   name,
   processEvent,
   isMockReplay,
+  enabled = true,
 }: WarRoomTranscriptsOptions) {
   const [transcriptHistory, setTranscriptHistory] = useState<TranscriptEntry[]>([]);
   const [liveTranscriptText, setLiveTranscriptText] = useState<string | null>(null);
@@ -74,7 +76,7 @@ export function useWarRoomTranscripts({
         return [...prev, { id: entry.id, speakerName: speakerDisplay, timestamp: entry.timestamp, text: entry.text }];
       });
     },
-    enabled: !isMockReplay,
+    enabled: enabled && !isMockReplay,
   });
 
   return {
