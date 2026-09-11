@@ -46,7 +46,7 @@ function buildTtsConfig(): { config: TtsConfig; name: string } {
           model: 'speech-2.6-turbo',
           voice_setting: {
             voice_id: 'English_captivating_female1',
-            speed: 0.95,
+            speed: 1.0,
             vol: 1.0,
             pitch: 0,
           },
@@ -74,7 +74,7 @@ function buildTtsConfig(): { config: TtsConfig; name: string } {
         model: 'speech-2.6-turbo',
         voice_setting: {
           voice_id: 'English_captivating_female1',
-          speed: 0.95,
+          speed: 1.0,
         },
       },
     },
@@ -120,7 +120,7 @@ function buildLlmConfig(
   const baseConfig = {
     greeting_message: dynamicGreeting,
     failure_message: 'AURA incident commander standing by.',
-    max_history: 60,     // Increased for richer context window
+    max_history: 30,     // Lean 30-turn context keeps Time-To-First-Token ultra-fast
     system_messages: [{ role: 'system', content: effectiveSystemPrompt }],
     ...mcpBlock,
   };
@@ -213,16 +213,9 @@ function buildTurnDetectionConfig() {
       },
 
       end_of_speech: {
-        mode: 'semantic',   // Semantic EOS: understands incomplete sentences
-        semantic_config: {
-          // Silence after speech before declaring end-of-turn
-          silence_duration_ms: 350,
-
-          // Maximum wait time for semantic determination (3000ms gives snappy responses)
-          max_wait_ms: 3000,
-
-          // Distinguishes mid-sentence thinking pause from true end-of-turn
-          pause_state_enabled: true,
+        mode: 'vad', // Pure VAD EOS: fires immediately upon utterance completion
+        vad_config: {
+          silence_duration_ms: 400, // 400ms silence closes turn immediately (eliminates 3s semantic wait)
         },
       },
     },
