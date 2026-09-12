@@ -10,6 +10,8 @@ export interface TimelineCardProps {
   item: EvidenceItem;
   displayConfidence: number;
   defaultExpanded?: boolean;
+  sequenceIndex?: number;
+  allItems?: EvidenceItem[];
 }
 
 const PERSONA_COLORS: Record<string, string> = {
@@ -70,9 +72,23 @@ export function TimelineCard({
   item,
   displayConfidence,
   defaultExpanded = true,
+  sequenceIndex,
+  allItems = [],
 }: TimelineCardProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const isHypothesis = item.category === 'hypothesis';
+
+  // Chronological & Causal Ancestry Traceability
+  const parentItem = React.useMemo(() => {
+    if (!item.relatedTo || item.relatedTo.length === 0 || allItems.length === 0) return null;
+    return allItems.find((candidate) => item.relatedTo.includes(candidate.id) && candidate.id !== item.id) || null;
+  }, [item.relatedTo, allItems, item.id]);
+
+  const parentSeqIndex = React.useMemo(() => {
+    if (!parentItem || allItems.length === 0) return null;
+    const idx = allItems.findIndex((c) => c.id === parentItem.id);
+    return idx >= 0 ? idx + 1 : null;
+  }, [parentItem, allItems]);
   const isDisproven = isHypothesis && item.status === 'disproven';
   const isConfirmed = isHypothesis && item.status === 'confirmed';
   const isStale = isHypothesis && item.status === 'stale';
@@ -332,6 +348,41 @@ export function TimelineCard({
         .timeline-card__category-inline--action { color: var(--color-action); }
         .timeline-card__category-inline--conflict { color: var(--color-conflict); }
 
+        .timeline-card__seq-badge {
+          font-family: var(--font-mono);
+          font-size: 9.5px;
+          font-weight: 700;
+          color: var(--text-muted);
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid var(--border-hairline);
+          padding: 1px 4px;
+          border-radius: var(--radius-xs);
+          letter-spacing: 0.02em;
+          flex-shrink: 0;
+        }
+
+        .timeline-card__causal-tag {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-family: var(--font-mono);
+          font-size: 9px;
+          font-weight: 500;
+          color: var(--color-aura);
+          background: rgba(212, 168, 83, 0.08);
+          border: 1px solid rgba(212, 168, 83, 0.22);
+          padding: 1px 5px;
+          border-radius: var(--radius-xs);
+          letter-spacing: 0.02em;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+
+        .timeline-card__causal-arrow {
+          font-size: 10px;
+          opacity: 0.8;
+        }
+
         .timeline-card__header-right {
           display: flex;
           align-items: center;
@@ -481,6 +532,12 @@ export function TimelineCard({
 
       <div className="timeline-card__header">
         <div className="timeline-card__meta-left">
+          {sequenceIndex !== undefined && (
+            <span className="timeline-card__seq-badge" title={`Event #${sequenceIndex} in chronological sequence`}>
+              #{sequenceIndex}
+            </span>
+          )}
+
           <span className="timeline-card__time">
             {formatTime(item.timestamp)}
           </span>
@@ -494,7 +551,7 @@ export function TimelineCard({
               isSpeaking={false}
             />
             <span className="timeline-card__speaker-name">{speakerInfo.name}</span>
-            {speakerInfo.role && (
+            {speakerInfo.role && speakerInfo.name !== 'AURA' && speakerInfo.role !== 'AURA AI' && (
               <span className="timeline-card__speaker-role">({speakerInfo.role})</span>
             )}
           </div>
@@ -508,10 +565,23 @@ export function TimelineCard({
           >
             {isConfirmed ? 'Confirmed Fact' : item.category.charAt(0).toUpperCase() + item.category.slice(1)}
           </span>
+
+          {parentItem && parentSeqIndex !== null && (
+            <>
+              <span className="timeline-card__sep" aria-hidden="true">·</span>
+              <span
+                className="timeline-card__causal-tag"
+                title={`Causally connected: Derived from Event #${parentSeqIndex} (${parentItem.category})`}
+              >
+                <span className="timeline-card__causal-arrow" aria-hidden="true">↳</span>
+                <span>In response to #{parentSeqIndex}</span>
+              </span>
+            </>
+          )}
         </div>
 
         <div className="timeline-card__header-right">
-          {displayConfidence != null && (
+          {isHypothesis && displayConfidence != null ? (
             <span
               className={`timeline-card__confidence-pill ${
                 isConfirmed
@@ -524,7 +594,35 @@ export function TimelineCard({
             >
               {isConfirmed ? '100%' : isDisproven ? '0%' : `${displayConfidence}%`}
             </span>
-          )}
+          ) : item.category === 'decision' ? (
+            <span
+              className="timeline-card__confidence-pill"
+              style={{ color: 'var(--color-decision)', borderColor: 'rgba(123, 140, 255, 0.35)', background: 'rgba(123, 140, 255, 0.08)' }}
+              title="Finalized IC Decision"
+            >
+              COMMITTED
+            </span>
+          ) : item.category === 'action' ? (
+            <span
+              className="timeline-card__confidence-pill"
+              style={{
+                color: item.actionStatus === 'done' ? 'var(--color-fact)' : 'var(--color-action)',
+                borderColor: item.actionStatus === 'done' ? 'rgba(16, 185, 129, 0.35)' : 'rgba(232, 125, 62, 0.35)',
+                background: item.actionStatus === 'done' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(232, 125, 62, 0.08)'
+              }}
+              title={`Action Status: ${(item.actionStatus || 'pending').toUpperCase()}`}
+            >
+              {(item.actionStatus || 'pending').toUpperCase()}
+            </span>
+          ) : item.category === 'fact' ? (
+            <span
+              className="timeline-card__confidence-pill"
+              style={{ color: 'var(--color-fact)', borderColor: 'rgba(16, 185, 129, 0.3)', background: 'rgba(16, 185, 129, 0.06)' }}
+              title="Verified Ground Truth Fact"
+            >
+              VERIFIED
+            </span>
+          ) : null}
           <button
             type="button"
             className="timeline-card__toggle-btn"

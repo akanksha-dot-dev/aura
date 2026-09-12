@@ -615,24 +615,28 @@ export function useAgoraRTM({
               if (resolveConflictTag) {
                 const target = resolveConflictTag[1].trim();
                 const rationale = resolveConflictTag[2]?.trim() || 'Resolved';
-                const resolveEvt: RTMDashboardEvent = {
-                  id: `ev-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-                  seq: ++monotonicClientSeq,
-                  timestamp: Date.now(),
-                  type: 'dashboard_event',
-                  eventType: 'evidence_updated',
-                  payload: { id: target, target, status: 'resolved', rationale },
-                };
-                dispatchToSubscribers(resolveEvt);
-                if (typeof window !== 'undefined') {
-                  fetch('/api/incident/event', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      channelName: activeSession?.subscribedChannel || channelName || 'incident-war-room',
-                      item: { category: 'conflict_resolved', content: target, rationale },
-                    }),
-                  }).catch(() => {});
+                // Guard against noise / single-word accidental matches (e.g. ASR transcript artifacts)
+                if (target.length >= 3) {
+                  const resolveEvt: RTMDashboardEvent = {
+                    id: `ev-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                    seq: ++monotonicClientSeq,
+                    timestamp: Date.now(),
+                    type: 'dashboard_event',
+                    eventType: 'evidence_updated',
+                    payload: { id: target, target, status: 'resolved', rationale },
+                  };
+                  dispatchToSubscribers(resolveEvt);
+                  if (typeof window !== 'undefined') {
+                    fetch('/api/incident/event', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        channelName: activeSession?.subscribedChannel || channelName || 'incident-war-room',
+                        eventType: 'evidence_updated',
+                        payload: { id: target, target, status: 'resolved', rationale },
+                      }),
+                    }).catch(() => {});
+                  }
                 }
               }
 

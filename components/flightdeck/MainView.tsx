@@ -21,6 +21,8 @@ export interface MainViewProps {
   channelName?: string;
   suspectedCause?: string;
   scenarioSummary?: string;
+  currentSpeakerName?: string | null;
+  currentTranscript?: string;
 }
 
 export function MainView({
@@ -36,6 +38,8 @@ export function MainView({
   channelName,
   suspectedCause,
   scenarioSummary,
+  currentSpeakerName,
+  currentTranscript,
 }: MainViewProps) {
   const [internalActiveTab, setInternalActiveTab] = useState<'timeline' | 'topology' | 'analytics'>('timeline');
   const activeTab = controlledActiveTab ?? internalActiveTab;
@@ -45,6 +49,9 @@ export function MainView({
     onTabChange?.(tab);
   };
 
+  const isAura = currentSpeakerName?.toLowerCase().includes('aura');
+  const hasVoiceActivity = Boolean(currentSpeakerName || currentTranscript);
+
   return (
     <>
       <style>{`
@@ -53,32 +60,48 @@ export function MainView({
           display: flex;
           flex-direction: column;
           min-height: 0;
-          background: var(--bg-base);
+          background: rgba(8, 9, 12, 0.85);
           overflow: hidden;
           position: relative;
+        }
+
+        [data-theme="light"] .main-view {
+          background: #F8FAFC;
         }
 
         .main-view__header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 0 16px;
-          height: 40px;
-          background: var(--bg-surface);
-          border-bottom: 1px solid var(--border-subtle);
+          padding: 0 14px;
+          height: 38px;
+          background: rgba(12, 14, 18, 0.95);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
           flex-shrink: 0;
           z-index: 10;
+        }
+
+        [data-theme="light"] .main-view__header {
+          background: #FFFFFF;
+          border-bottom-color: rgba(0, 0, 0, 0.08);
         }
 
         .main-view__tabs {
           position: relative;
           display: inline-flex;
           align-items: center;
-          background: var(--bg-surface-raised);
-          border: 1px solid var(--border-subtle);
-          border-radius: var(--radius-sm);
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 6px;
           padding: 2px;
           gap: 2px;
+        }
+
+        [data-theme="light"] .main-view__tabs {
+          background: rgba(0, 0, 0, 0.04);
+          border-color: rgba(0, 0, 0, 0.08);
         }
 
         .main-view__tab {
@@ -94,12 +117,10 @@ export function MainView({
           align-items: center;
           justify-content: center;
           gap: 6px;
-          padding: 0 9px;
-          border-radius: 3px;
-          transition: all var(--duration-fast) var(--ease-standard);
+          padding: 0 10px;
+          border-radius: 4px;
+          transition: all 0.15s ease;
           user-select: none;
-          position: relative;
-          z-index: 2;
         }
 
         .main-view__tab:hover {
@@ -107,11 +128,17 @@ export function MainView({
         }
 
         .main-view__tab--active {
-          background: var(--bg-surface);
-          color: var(--color-aura);
-          font-weight: 600;
-          border-color: var(--border-subtle);
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+          background: rgba(255, 255, 255, 0.08);
+          color: #D4A853;
+          font-weight: 700;
+          border-color: rgba(212, 168, 83, 0.3);
+          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        [data-theme="light"] .main-view__tab--active {
+          background: #FFFFFF;
+          border-color: rgba(0, 0, 0, 0.12);
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
         }
 
         .main-view__tab-icon {
@@ -121,16 +148,17 @@ export function MainView({
 
         .main-view__tab-count {
           font-family: var(--font-mono);
-          font-size: 9.5px;
-          background: rgba(255, 255, 255, 0.04);
-          padding: 1px 4px;
-          border-radius: 2px;
+          font-size: 9px;
+          font-weight: 700;
+          background: rgba(255, 255, 255, 0.06);
+          padding: 1px 4.5px;
+          border-radius: 3px;
           color: var(--text-muted);
         }
 
         .main-view__tab--active .main-view__tab-count {
-          background: rgba(212, 168, 83, 0.12);
-          color: var(--color-aura);
+          background: rgba(212, 168, 83, 0.2);
+          color: #D4A853;
         }
 
         .main-view__meta-hint {
@@ -138,6 +166,136 @@ export function MainView({
           font-size: 9.5px;
           letter-spacing: 0.06em;
           color: var(--text-muted);
+        }
+
+        /* ─── Dynamic Live Acoustic Intel Banner (Active Voice HUD) ─── */
+        .main-view__acoustic-hud {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 6px 14px;
+          background: rgba(14, 16, 22, 0.95);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+          font-family: var(--font-sans);
+          z-index: 8;
+          flex-shrink: 0;
+          transition: all 0.2s ease;
+        }
+
+        [data-theme="light"] .main-view__acoustic-hud {
+          background: rgba(248, 250, 252, 0.95);
+          border-bottom-color: rgba(0, 0, 0, 0.08);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        .acoustic-hud__speaker-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: rgba(212, 168, 83, 0.1);
+          border: 1px solid rgba(212, 168, 83, 0.3);
+          padding: 2px 8px;
+          border-radius: 4px;
+          flex-shrink: 0;
+        }
+
+        .acoustic-hud__pulse-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #D4A853;
+          box-shadow: 0 0 6px #D4A853;
+        }
+
+        .acoustic-hud__pulse-dot--active {
+          background: #10B981;
+          box-shadow: 0 0 8px #10B981;
+          animation: aura-voice-dot-pulse 1.2s ease-in-out infinite;
+        }
+
+        @keyframes aura-voice-dot-pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        .acoustic-hud__speaker-name {
+          font-family: var(--font-mono);
+          font-size: 10px;
+          font-weight: 700;
+          color: #D4A853;
+        }
+
+        .acoustic-hud__role-tag {
+          font-family: var(--font-mono);
+          font-size: 8.5px;
+          font-weight: 600;
+          color: var(--text-muted);
+        }
+
+        .acoustic-hud__transcript {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          min-width: 0;
+          flex: 1;
+        }
+
+        .acoustic-hud__eq {
+          display: flex;
+          align-items: flex-end;
+          gap: 2px;
+          height: 12px;
+          flex-shrink: 0;
+        }
+
+        .hud-eq-bar {
+          width: 2.5px;
+          height: 4px;
+          background: #D4A853;
+          border-radius: 1px;
+          animation: hud-eq-dance 0.8s ease-in-out infinite alternate;
+        }
+
+        .hud-eq-bar:nth-child(2) { animation-delay: 0.2s; height: 10px; }
+        .hud-eq-bar:nth-child(3) { animation-delay: 0.4s; height: 6px; }
+
+        @keyframes hud-eq-dance {
+          0% { height: 3px; }
+          100% { height: 12px; }
+        }
+
+        .acoustic-hud__text-wrap {
+          display: flex;
+          align-items: center;
+          min-width: 0;
+          flex: 1;
+          overflow: hidden;
+        }
+
+        .acoustic-hud__text {
+          font-size: 11px;
+          color: var(--text-primary);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .acoustic-hud__cursor {
+          display: inline-block;
+          width: 4px;
+          height: 11px;
+          background: #D4A853;
+          margin-left: 3px;
+          animation: cursor-blink 1s steps(2, start) infinite;
+          flex-shrink: 0;
+        }
+
+        @keyframes cursor-blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
         }
 
         .main-view__panel {
@@ -201,7 +359,7 @@ export function MainView({
               {activeTab !== 'topology' && <kbd className="keyboard-hint-badge" title="Press T to switch view">T</kbd>}
             </button>
 
-            {/* NEW: Analytics tab */}
+            {/* Analytics Tab */}
             <button
               type="button"
               role="tab"
@@ -221,25 +379,45 @@ export function MainView({
                 </svg>
               </span>
               <span>Analytics</span>
+              <span className="main-view__tab-count">{incident?.participants ? Object.keys(incident.participants).length : 4}</span>
             </button>
           </div>
 
           <div className="main-view__meta-hint">
-            {activeTab === 'timeline' ? (
-              <span>CHRONOLOGICAL TELEMETRY STREAM</span>
-            ) : activeTab === 'topology' ? (
-              <span>FORCE-DIRECTED CAUSAL INFERENCE</span>
-            ) : (
-              <span>INCIDENT METRICS DASHBOARD</span>
-            )}
+            <span>CHRONOLOGICAL TELEMETRY & CAUSAL INFERENCE</span>
           </div>
         </div>
 
-        {/* AI Similar Incident Banner inside Main View */}
-        {incident && channelName && (
+        {/* Dynamic Live Acoustic Intel Banner */}
+        <div className="main-view__acoustic-hud" role="region" aria-label="Real-time acoustic intel">
+          <div className="acoustic-hud__speaker-badge">
+            <span className={`acoustic-hud__pulse-dot ${hasVoiceActivity ? 'acoustic-hud__pulse-dot--active' : ''}`} aria-hidden="true" />
+            <span className="acoustic-hud__speaker-name">{currentSpeakerName || 'AURA'}</span>
+            <span className="acoustic-hud__role-tag">
+              {isAura ? 'AI COMMANDER' : currentSpeakerName ? 'VOICE INGRESS' : 'STANDBY'}
+            </span>
+          </div>
+
+          <div className="acoustic-hud__transcript">
+            <div className="acoustic-hud__eq" aria-hidden="true">
+              <span className="hud-eq-bar" />
+              <span className="hud-eq-bar" />
+              <span className="hud-eq-bar" />
+            </div>
+            <div className="acoustic-hud__text-wrap">
+              <span className="acoustic-hud__text">
+                {currentTranscript || 'AURA real-time voice intelligence monitoring Agora SD-RTN™ audio bridge. Push-to-Talk or speak freely.'}
+              </span>
+              {currentTranscript && <span className="acoustic-hud__cursor" aria-hidden="true" />}
+            </div>
+          </div>
+        </div>
+
+        {/* Similar Incident Advisory Banner */}
+        {incident && !isResolved && (
           <SimilarIncidentBanner
             incident={incident}
-            channelName={channelName}
+            channelName={channelName || ''}
           />
         )}
 

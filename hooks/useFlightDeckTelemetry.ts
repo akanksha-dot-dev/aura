@@ -37,7 +37,8 @@ export function useFlightDeckTelemetry({
 }: FlightDeckTelemetryOptions) {
   // Derived Topology Graph Data (Nodes & Edges) for MainView
   const topologyNodes = useMemo<TopologyNode[]>(() => {
-    return state.evidenceItems.map((item) => ({
+    // 1. Evidence items
+    const evidenceNodes: TopologyNode[] = state.evidenceItems.map((item) => ({
       id: item.id,
       category: item.category,
       content:
@@ -49,36 +50,123 @@ export function useFlightDeckTelemetry({
       timestamp: item.timestamp,
       status: item.status,
     }));
-  }, [state.evidenceItems]);
+
+    // 2. Service Architecture Core Nodes
+    const services = state.affectedServices.length > 0
+      ? state.affectedServices
+      : ['payment-api', 'checkout-service', 'postgres-primary'];
+
+    const serviceNodes: TopologyNode[] = services.map((svc, idx) => ({
+      id: `svc-${svc}`,
+      category: idx === 0 ? 'conflict' : idx === 1 ? 'hypothesis' : 'fact',
+      content: `[SVC] ${svc}`,
+      fullContent: `Core Service: ${svc}`,
+      speakerUid: 'system',
+      speakerName: 'Service Mesh',
+      confidence: 85,
+      timestamp: state.openedAt - (2000 * (idx + 1)),
+      status: 'active',
+    }));
+
+    return [...serviceNodes, ...evidenceNodes];
+  }, [state.evidenceItems, state.affectedServices, state.openedAt]);
 
   const topologyEdges = useMemo<TopologyEdge[]>(() => {
     const edges: TopologyEdge[] = [];
-    const nodeIds = new Set(state.evidenceItems.map((e) => e.id));
+    const seenEdges = new Set<string>();
+    const nodeIds = new Set(topologyNodes.map((n) => n.id));
 
+    const addEdge = (source: string, target: string, type: TopologyEdge['type']) => {
+      if (!source || !target || source === target) return;
+      if (!nodeIds.has(source) || !nodeIds.has(target)) return;
+      const key = `${source}->${target}`;
+      if (seenEdges.has(key)) return;
+      seenEdges.add(key);
+      edges.push({ source, target, type });
+    };
+
+    // Service Mesh backbone dependency links
+    const services = state.affectedServices.length > 0
+      ? state.affectedServices
+      : ['payment-api', 'checkout-service', 'postgres-primary'];
+
+    for (let i = 0; i < services.length - 1; i++) {
+      addEdge(`svc-${services[i]}`, `svc-${services[i + 1]}`, 'dependency');
+    }
+
+    // Connect evidence items to related services
     state.evidenceItems.forEach((item) => {
-      // 1. Causal edges from relatedTo
-      item.relatedTo.forEach((relId) => {
-        if (nodeIds.has(relId)) {
-          edges.push({
-            source: relId,
-            target: item.id,
-            type: 'causal',
-          });
+      services.forEach((svc) => {
+        const cleanSvc = svc.toLowerCase().replace(/[-_]/g, ' ');
+        const cleanContent = item.content.toLowerCase();
+        if (cleanContent.includes(cleanSvc) || cleanContent.includes(svc.toLowerCase()) || (item.serviceAffected && item.serviceAffected.includes(svc))) {
+          addEdge(`svc-${svc}`, item.id, 'causal');
         }
       });
+    });
 
-      // 2. Conflict edges
+    // 1. Explicit causal & relatedTo links
+    state.evidenceItems.forEach((item) => {
+      item.relatedTo.forEach((relId) => {
+        addEdge(relId, item.id, 'causal');
+      });
+
+      // Explicit conflict edges between hypothesis A and B
       if (item.category === 'conflict') {
-        if (
-          item.relatedTo.length >= 2 &&
-          nodeIds.has(item.relatedTo[0]) &&
-          nodeIds.has(item.relatedTo[1])
-        ) {
-          edges.push({
-            source: item.relatedTo[0],
-            target: item.relatedTo[1],
-            type: 'conflict',
-          });
+        if (item.relatedTo.length >= 2) {
+          addEdge(item.relatedTo[0], item.relatedTo[1], 'conflict');
+        } else {
+          // If conflict item references hypotheses in content, connect preceding hypotheses
+          const prevHypotheses = state.evidenceItems.filter(
+            (e) => e.category === 'hypothesis' && e.timestamp <= item.timestamp
+          );
+          if (prevHypotheses.length >= 2) {
+            addEdge(prevHypotheses[prevHypotheses.length - 2].id, item.id, 'conflict');
+            addEdge(prevHypotheses[prevHypotheses.length - 1].id, item.id, 'conflict');
+          } else if (prevHypotheses.length === 1) {
+            addEdge(prevHypotheses[0].id, item.id, 'conflict');
+          }
+        }
+      }
+    });
+
+    // 2. Sequential Chronological Spine (Traceability: what was discovered next)
+    const sorted = [...state.evidenceItems].sort((a, b) => a.timestamp - b.timestamp);
+    for (let i = 1; i < sorted.length; i++) {
+      addEdge(sorted[i - 1].id, sorted[i].id, 'temporal');
+    }
+
+    // 3. Epistemic Causal Progressions (Fact -> Hypothesis -> Decision -> Action)
+    sorted.forEach((item, idx) => {
+      if (item.category === 'action') {
+        // Link to the latest preceding decision, or fallback to latest hypothesis
+        const prevDecisions = sorted.slice(0, idx).filter((e) => e.category === 'decision');
+        if (prevDecisions.length > 0) {
+          addEdge(prevDecisions[prevDecisions.length - 1].id, item.id, 'dependency');
+        } else {
+          const prevHypo = sorted.slice(0, idx).filter((e) => e.category === 'hypothesis');
+          if (prevHypo.length > 0) {
+            addEdge(prevHypo[prevHypo.length - 1].id, item.id, 'dependency');
+          }
+        }
+      } else if (item.category === 'decision') {
+        // Link to the leading hypothesis that justified this decision
+        const prevHypo = sorted.slice(0, idx).filter((e) => e.category === 'hypothesis');
+        if (prevHypo.length > 0) {
+          addEdge(prevHypo[prevHypo.length - 1].id, item.id, 'causal');
+        }
+      } else if (item.category === 'hypothesis') {
+        // Link to facts sharing the affected service, or the latest fact
+        const matchingFacts = sorted
+          .slice(0, idx)
+          .filter((e) => e.category === 'fact' && e.serviceAffected && e.serviceAffected === item.serviceAffected);
+        if (matchingFacts.length > 0) {
+          matchingFacts.forEach((f) => addEdge(f.id, item.id, 'causal'));
+        } else {
+          const prevFacts = sorted.slice(0, idx).filter((e) => e.category === 'fact');
+          if (prevFacts.length > 0) {
+            addEdge(prevFacts[prevFacts.length - 1].id, item.id, 'causal');
+          }
         }
       }
     });
@@ -174,8 +262,8 @@ export function useFlightDeckTelemetry({
     mockTranscript ??
     liveTranscriptText ??
     (activeSpeakerName
-      ? `${activeSpeakerName} is transmitting telemetry and situational updates...`
-      : 'Voice channel active — monitoring real-time communications...');
+      ? `${activeSpeakerName} is transmitting...`
+      : 'Voice bridge active — monitoring communications');
 
   const tempoLevel = useMemo(() => {
     return Math.min(5, Math.max(1, Math.ceil(state.evidenceItems.length / 3) || 1));

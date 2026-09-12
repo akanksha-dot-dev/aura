@@ -18,7 +18,7 @@ export function CostCounter({
   incidentStatus,
   openedAt,
   resolvedAt,
-  baseRate = 150,
+  baseRate = 1,
   onRateChange,
   isPaused: externalIsPaused,
   onTogglePause: externalOnTogglePause,
@@ -34,7 +34,7 @@ export function CostCounter({
   };
 
   const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
-  const [customRateInput, setCustomRateInput] = React.useState(baseRate.toString());
+  const [customRateInput, setCustomRateInput] = React.useState((baseRate * 60).toString());
   const cost = useCostCounter(incidentStatus, openedAt, resolvedAt, baseRate, isPaused);
   const isResolved = incidentStatus === 'resolved';
 
@@ -43,6 +43,13 @@ export function CostCounter({
     currency: 'USD',
     maximumFractionDigits: 0,
   }).format(cost);
+
+  const minuteRate = baseRate * 60;
+  const minuteRateFormatted = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  }).format(minuteRate);
 
   const estimatedSavings = new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -57,24 +64,25 @@ export function CostCounter({
   }).format(baseRate * 3600);
 
   const PRESETS = [
-    { label: 'Halt ($0/s)', rate: 0 },
-    { label: 'SaaS ($25/s)', rate: 25 },
-    { label: 'Mid ($75/s)', rate: 75 },
-    { label: 'E-Comm ($150/s)', rate: 150 },
-    { label: 'Fintech ($500/s)', rate: 500 },
-    { label: 'Cloud ($1k/s)', rate: 1000 },
+    { label: 'Halt ($0/min)', rate: 0 },
+    { label: 'Calm ($60/min)', rate: 1 },
+    { label: 'Standard ($120/min)', rate: 2 },
+    { label: 'SaaS ($300/min)', rate: 5 },
+    { label: 'High ($600/min)', rate: 10 },
+    { label: 'Critical ($1.5k/min)', rate: 25 },
   ];
 
   const handleSelectRate = (rate: number) => {
     onRateChange?.(rate);
-    setCustomRateInput(rate.toString());
+    setCustomRateInput((rate * 60).toString());
     setIsPopoverOpen(false);
   };
 
   const handleApplyCustom = (e: React.FormEvent) => {
     e.preventDefault();
-    const parsed = Math.max(0, Math.min(100000, Number(customRateInput) || 0));
-    onRateChange?.(parsed);
+    const parsedMinRate = Math.max(0, Math.min(6000000, Number(customRateInput) || 0));
+    const rateInSec = Math.round(parsedMinRate / 60);
+    onRateChange?.(rateInSec);
     setIsPopoverOpen(false);
   };
 
@@ -275,7 +283,7 @@ export function CostCounter({
       <div
         className="cost-counter-container"
         role="status"
-        aria-label={`Accrued incident cost: ${formattedCost} at ${baseRate} dollars per second`}
+        aria-label={`Accrued incident cost: ${formattedCost} at ${minuteRateFormatted} per minute`}
         onClick={() => setIsPopoverOpen(!isPopoverOpen)}
         title="Click to adjust incident financial burn rate"
       >
@@ -306,18 +314,14 @@ export function CostCounter({
             {formattedCost}
           </span>
           <span className="cost-counter-edit-badge" aria-hidden="true">
-            {isPaused ? 'PAUSED' : `$${baseRate}/s`}
+            {isPaused ? 'PAUSED' : `${minuteRateFormatted}/min`}
           </span>
         </div>
-        {isResolved ? (
+        {isResolved && (
           <span className="cost-counter-savings">
             Saved: ~{estimatedSavings}
           </span>
-        ) : isPaused ? (
-          <span className="cost-rate-badge" style={{ color: 'var(--color-hypothesis)' }}>
-            ⏸ Halted
-          </span>
-        ) : null}
+        )}
 
         {isPopoverOpen && !isResolved && (
           <div
@@ -343,7 +347,7 @@ export function CostCounter({
               {isPaused ? '▶ Resume Loss Calculation' : '⏸ Stop / Pause Loss Calculation'}
             </button>
             <div className="cost-popover__hourly">
-              Current: ${baseRate}/s ({hourlyRateFormatted}/hr)
+              Current: {minuteRateFormatted}/min ({hourlyRateFormatted}/hr)
             </div>
             <div className="cost-popover__presets">
               {PRESETS.map((p) => (
@@ -361,12 +365,12 @@ export function CostCounter({
               <input
                 type="number"
                 min="1"
-                max="100000"
+                max="1000000"
                 value={customRateInput}
                 onChange={(e) => setCustomRateInput(e.target.value)}
                 className="cost-popover__input"
-                placeholder="Custom $/sec"
-                aria-label="Custom financial burn rate in dollars per second"
+                placeholder="Custom $/min"
+                aria-label="Custom financial burn rate in dollars per minute"
               />
               <button type="submit" className="cost-popover__apply-btn">
                 Set

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { IncidentState, ClassificationType } from '@/lib/types';
 
@@ -170,17 +170,41 @@ function ArcGauge({ value, max = 100, color, label }: { value: number; max?: num
 }
 
 // ── Speaker contribution bar chart ──────────────────────────────────────────
-function SpeakerBars({ participants }: { participants: IncidentState['participants'] }) {
-  const entries = Object.values(participants)
+function SpeakerBars({
+  participants,
+  evidenceItems = [],
+}: {
+  participants: IncidentState['participants'];
+  evidenceItems?: IncidentState['evidenceItems'];
+}) {
+  let entries = Object.values(participants || {})
     .sort((a, b) => b.totalSpeakingMs - a.totalSpeakingMs)
     .slice(0, 6);
+
+  if (entries.length === 0 && evidenceItems.length > 0) {
+    const speakerCounts: Record<string, number> = {};
+    for (const item of evidenceItems) {
+      const spk = item.speakerName || 'Operator';
+      speakerCounts[spk] = (speakerCounts[spk] || 0) + 1;
+    }
+    entries = Object.entries(speakerCounts).map(([name, count], i) => ({
+      uid: `spk-${i}`,
+      displayName: name,
+      role: 'Responder',
+      isIncidentCommander: false,
+      totalSpeakingMs: count * 12000,
+      joinedAt: 0,
+      lastSpokeAt: 0,
+    }));
+  }
+
   const maxMs = Math.max(...entries.map(p => p.totalSpeakingMs), 1);
 
   return (
     <div className="analytics-speaker-bars">
       {entries.map((p, i) => {
         const pct = (p.totalSpeakingMs / maxMs) * 100;
-        const isAura = p.uid === 'aura_agent';
+        const isAura = p.uid === 'aura_agent' || p.displayName === 'AURA';
         return (
           <div key={p.uid} className="analytics-speaker-row">
             <span className="analytics-speaker-name">{p.displayName}</span>
@@ -206,7 +230,13 @@ function SpeakerBars({ participants }: { participants: IncidentState['participan
 
 // ── Main Component ───────────────────────────────────────────────────────────
 export function AnalyticsDashboard({ incident, costRate }: AnalyticsDashboardProps) {
-  const now = Date.now();
+  const [now, setNow] = useState(Date.now);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const elapsedMs = now - incident.openedAt;
   const elapsedMin = Math.max(1, elapsedMs / 60000);
 
@@ -225,16 +255,15 @@ export function AnalyticsDashboard({ incident, costRate }: AnalyticsDashboardPro
 
   // Cost accrual sparkline (sample every ~30s of elapsed time, max 20 points)
   const costSparkline = useMemo(() => {
-    const totalCostPerSec = costRate / 3600;
     const steps = Math.min(20, Math.max(2, Math.floor(elapsedMin / 0.5)));
     const msPerStep = elapsedMs / steps;
     return Array.from({ length: steps }, (_, i) => {
       const elapsedAtPoint = msPerStep * (i + 1);
-      return (totalCostPerSec * elapsedAtPoint) / 1000;
+      return costRate * (elapsedAtPoint / 1000);
     });
   }, [elapsedMs, elapsedMin, costRate]);
 
-  const totalCost = (costRate / 3600) * (elapsedMs / 1000);
+  const totalCost = costRate * (elapsedMs / 1000);
 
   // Evidence rate over time
   const evidenceRateSparkline = useMemo(() => {
@@ -257,6 +286,13 @@ export function AnalyticsDashboard({ incident, costRate }: AnalyticsDashboardPro
   const totalActions = incident.evidenceItems.filter(e => e.category === 'action').length;
   const actionCompletionRate = totalActions > 0 ? Math.round((resolvedActions / totalActions) * 100) : 0;
 
+  const participantCount = useMemo(() => {
+    const explicit = Object.keys(incident.participants || {}).length;
+    if (explicit > 0) return explicit;
+    const speakers = new Set(incident.evidenceItems.map(e => e.speakerName || e.speakerUid).filter(Boolean));
+    return Math.max(speakers.size, 2);
+  }, [incident.participants, incident.evidenceItems]);
+
   function fmt(ms: number) {
     const m = Math.floor(ms / 60000);
     const s = Math.floor((ms % 60000) / 1000);
@@ -270,10 +306,10 @@ export function AnalyticsDashboard({ incident, costRate }: AnalyticsDashboardPro
       <div className="analytics-metrics-row">
         <div className="analytics-metric-card">
           <div className="analytics-metric-value" style={{ color: 'var(--color-action)' }}>
-            ${totalCost.toFixed(0)}
+            ${Math.round(totalCost)}
           </div>
           <div className="analytics-metric-label">Total Cost Accrued</div>
-          <div className="analytics-metric-sub">${costRate}/hr burn rate</div>
+          <div className="analytics-metric-sub">${Math.round(costRate * 60)}/min burn rate</div>
         </div>
         <div className="analytics-metric-card">
           <div className="analytics-metric-value" style={{ color: 'var(--color-fact)' }}>
@@ -287,7 +323,7 @@ export function AnalyticsDashboard({ incident, costRate }: AnalyticsDashboardPro
             {incident.evidenceItems.length}
           </div>
           <div className="analytics-metric-label">Total Events</div>
-          <div className="analytics-metric-sub">{Object.keys(incident.participants).length} participants</div>
+          <div className="analytics-metric-sub">{participantCount} participants</div>
         </div>
         <div className="analytics-metric-card">
           <div className="analytics-metric-value" style={{ color: actionCompletionRate >= 80 ? 'var(--color-fact)' : 'var(--color-hypothesis)' }}>
@@ -298,7 +334,7 @@ export function AnalyticsDashboard({ incident, costRate }: AnalyticsDashboardPro
         </div>
       </div>
 
-      {/* ── Row 2: Charts ── */}
+      {/* ── Row 2: Deep Structured Breakdown (3 Columns) ── */}
       <div className="analytics-charts-row">
         {/* Evidence Breakdown Donut */}
         <div className="analytics-chart-card">
@@ -337,32 +373,33 @@ export function AnalyticsDashboard({ incident, costRate }: AnalyticsDashboardPro
           </div>
         </div>
 
+        {/* Speaker contribution */}
+        <div className="analytics-chart-card">
+          <div className="analytics-chart-title">Speaker Contribution</div>
+          <SpeakerBars participants={incident.participants} evidenceItems={incident.evidenceItems} />
+        </div>
+      </div>
+
+      {/* ── Row 3: Time Series Trends (2 Balanced Columns) ── */}
+      <div className="analytics-charts-row analytics-charts-row--duo">
         {/* Cost Accrual Sparkline */}
-        <div className="analytics-chart-card analytics-chart-card--wide">
+        <div className="analytics-chart-card">
           <div className="analytics-chart-title">Cost Accrual Over Time</div>
           <Sparkline values={costSparkline} color="var(--color-action)" height={60} />
           <div className="analytics-chart-axis">
             <span>Incident Start</span><span>Now</span>
           </div>
+          <div className="analytics-chart-subtitle">Calculated at ${Math.round(costRate * 60)}/min loss velocity</div>
         </div>
-      </div>
 
-      {/* ── Row 3: Evidence Rate + Speaker Contribution ── */}
-      <div className="analytics-charts-row">
         {/* Evidence activity rate */}
-        <div className="analytics-chart-card analytics-chart-card--wide">
+        <div className="analytics-chart-card">
           <div className="analytics-chart-title">Evidence Capture Rate</div>
-          <Sparkline values={evidenceRateSparkline.length ? evidenceRateSparkline : [0, 0]} color="var(--color-fact)" height={50} />
+          <Sparkline values={evidenceRateSparkline.length ? evidenceRateSparkline : [0, 0]} color="var(--color-fact)" height={60} />
           <div className="analytics-chart-axis">
             <span>Incident Start</span><span>Now</span>
           </div>
-          <div className="analytics-chart-subtitle">Events captured per time window</div>
-        </div>
-
-        {/* Speaker contribution */}
-        <div className="analytics-chart-card analytics-chart-card--wide">
-          <div className="analytics-chart-title">Speaker Contribution</div>
-          <SpeakerBars participants={incident.participants} />
+          <div className="analytics-chart-subtitle">Classification telemetry velocity per window</div>
         </div>
       </div>
 

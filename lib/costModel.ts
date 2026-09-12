@@ -8,10 +8,10 @@ import { Severity } from './types';
  * SEV-3: Minor operational friction ($50/min)
  */
 export const BASE_SEVERITY_BURN_RATES: Record<Severity, number> = {
-  'SEV-0': 2500,
-  'SEV-1': 500,
-  'SEV-2': 150,
-  'SEV-3': 50,
+  'SEV-0': 180, // $180/min ($3/sec)
+  'SEV-1': 120, // $120/min ($2/sec)
+  'SEV-2': 60,  // $60/min ($1/sec)
+  'SEV-3': 30,  // $30/min ($0.5/sec)
 };
 
 const CRITICAL_SERVICE_KEYWORDS = [

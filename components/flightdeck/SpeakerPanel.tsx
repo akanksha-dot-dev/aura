@@ -45,7 +45,7 @@ function AuraProcessingIndicator() {
       <span className="aura-processing-dot" />
       <span className="aura-processing-dot" />
       <span className="aura-processing-dot" />
-      <span style={{ marginLeft: 3 }}>Analyzing</span>
+      <span style={{ marginLeft: 3 }}>Synthesizing Telemetry</span>
     </span>
   );
 }
@@ -81,20 +81,37 @@ export interface SpeakerPanelProps {
 }
 
 const PERSONA_COLORS: Record<string, string> = {
-  sarah_ic: 'var(--color-conflict)',
-  marcus_sre: 'var(--color-fact)',
-  priya_pm: 'var(--color-decision)',
-  aura_agent: 'var(--color-aura)',
+  sarah_ic: '#F43F5E',
+  marcus_sre: '#10B981',
+  priya_pm: '#6366F1',
+  aura_agent: '#D4A853',
 };
+
+const CALLSIGN_TAGS: Record<string, string> = {
+  sarah_ic: 'CMD-01',
+  marcus_sre: 'SRE-02',
+  priya_pm: 'PRD-03',
+  aura_agent: 'AI-00',
+};
+
+function getCallsign(uid: string): string {
+  if (CALLSIGN_TAGS[uid]) return CALLSIGN_TAGS[uid];
+  const lower = uid.toLowerCase();
+  if (lower.includes('sarah')) return 'CMD-01';
+  if (lower.includes('marcus')) return 'SRE-02';
+  if (lower.includes('priya')) return 'PRD-03';
+  if (lower.includes('aura')) return 'AI-00';
+  return 'SPEC-04';
+}
 
 function getAvatarColor(uid: string): string {
   if (PERSONA_COLORS[uid]) return PERSONA_COLORS[uid];
   const palette = [
-    'var(--color-conflict)',
-    'var(--color-fact)',
-    'var(--color-decision)',
-    'var(--color-hypothesis)',
-    'var(--color-action)',
+    '#F43F5E',
+    '#10B981',
+    '#6366F1',
+    '#F59E0B',
+    '#F97316',
   ];
   let hash = 0;
   for (let i = 0; i < uid.length; i++) {
@@ -174,10 +191,10 @@ export function SpeakerPanel({
 
   const vitalityStatus =
     cognitiveLoadScore >= 70
-      ? { label: 'Elevated', color: 'var(--color-conflict)' }
+      ? { label: 'Elevated', color: '#F43F5E' }
       : cognitiveLoadScore >= 40
-      ? { label: 'Active', color: 'var(--color-orient)' }
-      : { label: 'Calm', color: 'var(--color-fact)' };
+      ? { label: 'Active', color: '#F59E0B' }
+      : { label: 'Calm', color: '#10B981' };
 
   return (
     <>
@@ -186,16 +203,23 @@ export function SpeakerPanel({
           grid-area: speakers;
           width: 100%;
           height: 100%;
-          background: var(--bg-surface);
-          border-right: 1px solid var(--border-hairline);
-          box-shadow: var(--shadow-inner-glow);
+          background: rgba(10, 11, 15, 0.88);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          border-right: 1px solid rgba(255, 255, 255, 0.08);
           display: flex;
           flex-direction: column;
           justify-content: space-between;
-          padding: 12px;
+          padding: 12px 10px;
           overflow: hidden;
           user-select: none;
-          transition: width var(--transition-panel), padding var(--transition-panel);
+          transition: width 0.25s ease, padding 0.25s ease;
+          box-sizing: border-box;
+        }
+
+        [data-theme="light"] .speaker-panel {
+          background: rgba(255, 255, 255, 0.94);
+          border-right-color: rgba(0, 0, 0, 0.08);
         }
 
         .speaker-panel--collapsed {
@@ -205,24 +229,28 @@ export function SpeakerPanel({
         .speaker-panel__top {
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 10px;
           overflow-y: auto;
           min-height: 0;
         }
 
         .speaker-panel__title {
-          font-family: var(--font-sans);
-          font-size: 11px;
-          font-weight: 600;
+          font-family: var(--font-mono);
+          font-size: 10.5px;
+          font-weight: 700;
           color: var(--text-muted);
-          letter-spacing: 0.04em;
+          letter-spacing: 0.08em;
           text-transform: uppercase;
           display: flex;
           align-items: center;
           justify-content: space-between;
           padding-bottom: 8px;
-          border-bottom: 1px solid var(--border-hairline);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
           min-height: 28px;
+        }
+
+        [data-theme="light"] .speaker-panel__title {
+          border-bottom-color: rgba(0, 0, 0, 0.08);
         }
 
         .speaker-panel__title--collapsed {
@@ -238,12 +266,19 @@ export function SpeakerPanel({
 
         .speaker-panel__count {
           font-family: var(--font-mono);
-          font-size: 10px;
-          background: var(--bg-surface-raised);
-          padding: 1px 6px;
-          border-radius: var(--radius-sm);
-          border: 1px solid var(--border-hairline);
+          font-size: 9.5px;
+          background: rgba(255, 255, 255, 0.05);
+          padding: 2px 6px;
+          border-radius: 4px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
           color: var(--text-secondary);
+          font-weight: 600;
+        }
+
+        [data-theme="light"] .speaker-panel__count {
+          background: rgba(0, 0, 0, 0.04);
+          border-color: rgba(0, 0, 0, 0.08);
+          color: #475569;
         }
 
         .speaker-panel__collapse-btn {
@@ -252,26 +287,25 @@ export function SpeakerPanel({
           justify-content: center;
           width: 20px;
           height: 20px;
-          border-radius: var(--radius-sm);
-          background: var(--bg-surface-raised);
-          border: 1px solid var(--border-hairline);
-          box-shadow: var(--shadow-inner-glow);
+          border-radius: 4px;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid rgba(255, 255, 255, 0.08);
           color: var(--text-muted);
           cursor: pointer;
           font-family: var(--font-mono);
           font-size: 10px;
-          transition: all var(--duration-fast) var(--ease-standard);
+          transition: all 0.15s ease;
         }
 
         .speaker-panel__collapse-btn:hover {
           color: var(--text-primary);
-          border-color: var(--border-emphasis);
+          border-color: rgba(212, 168, 83, 0.4);
         }
 
         .speaker-panel__roster {
           display: flex;
           flex-direction: column;
-          gap: 5px;
+          gap: 6px;
         }
 
         .speaker-panel__roster--collapsed {
@@ -280,40 +314,56 @@ export function SpeakerPanel({
           padding-top: 4px;
         }
 
-        .speaker-panel__empty {
-          font-family: var(--font-sans);
-          font-size: var(--text-xs);
-          color: var(--text-muted);
-          padding: 8px 0;
-        }
-
-        /* ─── Sleek Participant Rows ─── */
+        /* ─── Elevated Participant Rows ─── */
         .speaker-row {
           display: flex;
           flex-direction: column;
-          gap: 3px;
-          padding: 5px 8px;
-          background: var(--bg-surface-raised);
-          border-radius: var(--radius-sm);
-          border: 1px solid var(--border-hairline);
-          box-shadow: var(--shadow-inner-glow);
-          transition: all var(--duration-fast) var(--ease-standard);
+          gap: 4px;
+          padding: 7px 9px;
+          background: rgba(255, 255, 255, 0.025);
+          border-radius: 6px;
+          border: 1px solid rgba(255, 255, 255, 0.07);
+          transition: all 0.15s ease;
+          position: relative;
+        }
+
+        [data-theme="light"] .speaker-row {
+          background: #FFFFFF;
+          border-color: rgba(0, 0, 0, 0.07);
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
         }
 
         .speaker-row:hover {
-          background: var(--bg-surface-hover);
-          border-color: var(--border-emphasis);
+          background: rgba(255, 255, 255, 0.05);
+          border-color: rgba(255, 255, 255, 0.14);
+        }
+
+        [data-theme="light"] .speaker-row:hover {
+          background: rgba(0, 0, 0, 0.02);
+          border-color: rgba(0, 0, 0, 0.12);
         }
 
         .speaker-row--speaking {
-          border-color: rgba(16, 185, 129, 0.4);
-          background: rgba(16, 185, 129, 0.04);
+          border-color: rgba(16, 185, 129, 0.5) !important;
+          background: rgba(16, 185, 129, 0.06) !important;
+          box-shadow: 0 0 14px rgba(16, 185, 129, 0.15);
         }
 
+        /* AURA Elevated AI Card */
         .speaker-row--aura {
-          border: 1px solid rgba(245, 158, 11, 0.22);
-          background: rgba(245, 158, 11, 0.03);
-          box-shadow: inset 0 1px 0 0 rgba(245, 158, 11, 0.12);
+          background: linear-gradient(180deg, rgba(212, 168, 83, 0.08) 0%, rgba(212, 168, 83, 0.02) 100%);
+          border: 1px solid rgba(212, 168, 83, 0.35);
+          box-shadow: 0 2px 14px rgba(212, 168, 83, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+
+        [data-theme="light"] .speaker-row--aura {
+          background: linear-gradient(180deg, rgba(212, 168, 83, 0.09) 0%, rgba(212, 168, 83, 0.03) 100%);
+          border-color: rgba(212, 168, 83, 0.4);
+        }
+
+        .speaker-row--aura.speaker-row--speaking {
+          border-color: #D4A853 !important;
+          box-shadow: 0 0 18px rgba(212, 168, 83, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
         }
 
         .speaker-row--collapsed {
@@ -325,15 +375,11 @@ export function SpeakerPanel({
           box-shadow: none;
         }
 
-        .speaker-row--collapsed:hover {
-          background: var(--bg-surface-hover);
-        }
-
         .speaker-row__header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: var(--space-2);
+          gap: 8px;
           min-width: 0;
         }
 
@@ -352,26 +398,26 @@ export function SpeakerPanel({
           display: flex;
           align-items: center;
           justify-content: center;
-          transition: box-shadow 0.2s ease;
         }
 
-        .speaker-row__avatar-wrap--speaking {
-          animation: speaker-ring-pulse 1.5s ease-in-out infinite;
+        .speaker-row__avatar-wrap--speaking::after {
+          content: '';
+          position: absolute;
+          inset: -3px;
+          border-radius: 50%;
+          border: 1.5px solid #10B981;
+          animation: aura-voice-ring-pulse 1.4s ease-out infinite;
+          pointer-events: none;
         }
 
-        @keyframes speaker-ring-pulse {
-          0%, 100% {
-            box-shadow: 0 0 0 0px var(--color-fact);
-          }
-          50% {
-            box-shadow: 0 0 0 2px var(--color-fact), 0 0 8px rgba(59, 212, 162, 0.4);
-          }
+        @keyframes aura-voice-ring-pulse {
+          0% { transform: scale(0.95); opacity: 1; }
+          100% { transform: scale(1.35); opacity: 0; }
         }
 
         .speaker-row__info {
           display: flex;
           flex-direction: column;
-          gap: 1px;
           min-width: 0;
           flex: 1;
         }
@@ -385,66 +431,85 @@ export function SpeakerPanel({
 
         .speaker-row__name {
           font-family: var(--font-sans);
-          font-size: 12px;
-          font-weight: 500;
+          font-size: 11.5px;
+          font-weight: 600;
           color: var(--text-primary);
-          letter-spacing: var(--tracking-tight);
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        .speaker-row__role-tag {
-          font-family: var(--font-sans);
-          font-size: 11px;
-          color: var(--text-muted);
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
         }
 
-        .speaker-row__role-tag--aura {
-          color: var(--color-aura);
+        .speaker-row__callsign-tag {
+          font-family: var(--font-mono);
+          font-size: 8.5px;
+          font-weight: 700;
+          padding: 1px 4px;
+          border-radius: 3px;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: var(--text-secondary);
+          flex-shrink: 0;
+        }
+
+        [data-theme="light"] .speaker-row__callsign-tag {
+          background: rgba(0, 0, 0, 0.04);
+          border-color: rgba(0, 0, 0, 0.08);
+          color: #475569;
         }
 
         .speaker-row__ic-badge {
           display: inline-flex;
           align-items: center;
           padding: 1px 4px;
-          background: rgba(212, 168, 83, 0.12);
-          border: 1px solid rgba(212, 168, 83, 0.3);
-          border-radius: 2px;
-          color: var(--color-aura);
+          background: rgba(212, 168, 83, 0.15);
+          border: 1px solid rgba(212, 168, 83, 0.35);
+          border-radius: 3px;
+          color: #D4A853;
           font-family: var(--font-mono);
-          font-size: 9px;
+          font-size: 8.5px;
           font-weight: 700;
           flex-shrink: 0;
         }
 
+        .speaker-row__role-tag {
+          font-family: var(--font-sans);
+          font-size: 10px;
+          color: var(--text-muted);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
         .speaker-row__spatial-tag {
           font-family: var(--font-mono);
-          font-size: 9px;
+          font-size: 8px;
+          font-weight: 600;
           color: var(--text-muted);
-          background: rgba(255, 255, 255, 0.04);
-          border: 1px solid var(--border-subtle);
-          border-radius: 2px;
-          padding: 0 4px;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          border-radius: 3px;
+          padding: 1px 4px;
           flex-shrink: 0;
         }
 
         .speaker-row__heatbar-wrap {
           display: flex;
           align-items: center;
-          gap: var(--space-2);
+          gap: 6px;
           width: 100%;
+          margin-top: 2px;
         }
 
         .speaker-row__heatbar-track {
           flex: 1;
-          height: 2px;
+          height: 2.5px;
           background: rgba(255, 255, 255, 0.06);
           border-radius: 99px;
           overflow: hidden;
+        }
+
+        [data-theme="light"] .speaker-row__heatbar-track {
+          background: rgba(0, 0, 0, 0.06);
         }
 
         .speaker-row__heatbar-fill {
@@ -455,61 +520,75 @@ export function SpeakerPanel({
 
         .speaker-row__time {
           font-family: var(--font-mono);
-          font-size: 10px;
+          font-size: 9px;
           color: var(--text-muted);
           font-variant-numeric: tabular-nums;
           white-space: nowrap;
           flex-shrink: 0;
         }
 
-        /* ─── AURA Waveform Canvas ─── */
-        .speaker-row__waveform-wrap {
+        /* ─── AURA Voice Equalizer Strip ─── */
+        .aura-voice-eq {
           display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 100%;
-          height: 24px;
-          margin-top: 4px;
-          background: rgba(0, 0, 0, 0.4);
-          border-radius: var(--radius-xs);
-          border: 1px solid rgba(212, 168, 83, 0.2);
+          align-items: flex-end;
+          gap: 2px;
+          height: 14px;
+          padding: 1px 0;
         }
 
-        .speaker-row__waveform {
-          display: block;
-          width: 100%;
-          height: 24px;
+        .aura-voice-bar {
+          flex: 1;
+          background: linear-gradient(180deg, #D4A853 0%, rgba(212, 168, 83, 0.35) 100%);
+          border-radius: 1px;
+          min-height: 2px;
+          transition: height 0.08s ease;
+        }
+
+        .aura-voice-bar--active {
+          animation: aura-bar-dance 0.7s ease-in-out infinite alternate;
+        }
+
+        .aura-voice-bar--idle {
+          animation: aura-bar-idle 1.8s ease-in-out infinite alternate;
+        }
+
+        @keyframes aura-bar-dance {
+          0% { height: 3px; }
+          100% { height: 13px; }
+        }
+
+        @keyframes aura-bar-idle {
+          0% { height: 3px; opacity: 0.4; }
+          100% { height: 8px; opacity: 0.8; }
         }
 
         /* ─── Streamlined Acoustic Telemetry ─── */
         .speaker-panel__bridge-telemetry {
           display: flex;
           align-items: center;
-          gap: 6px;
-          margin: var(--space-2) 0;
-          padding: 5px 8px;
-          background: var(--bg-surface-raised);
-          border: 1px solid var(--border-subtle);
-          box-shadow: var(--shadow-inner-glow);
-          border-radius: var(--radius-xs);
+          justify-content: space-between;
+          padding: 6px 8px;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 5px;
           font-family: var(--font-mono);
-          font-size: 10px;
+          font-size: 9.5px;
           color: var(--text-secondary);
         }
 
-        .bridge-telemetry__dot {
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-          background: var(--color-fact);
-          box-shadow: 0 0 6px var(--color-fact);
-          flex-shrink: 0;
+        [data-theme="light"] .speaker-panel__bridge-telemetry {
+          background: rgba(0, 0, 0, 0.03);
+          border-color: rgba(0, 0, 0, 0.08);
+          color: #475569;
         }
 
-        .bridge-telemetry__line {
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
+        .bridge-telemetry__dot {
+          width: 5px;
+          height: 5px;
+          border-radius: 50%;
+          background: #10B981;
+          box-shadow: 0 0 6px #10B981;
+          flex-shrink: 0;
         }
 
         /* ─── Consolidated Bridge Vitality (Integrated Quadrant) ─── */
@@ -519,32 +598,36 @@ export function SpeakerPanel({
           gap: 8px;
           padding: 10px 0 0 0;
           background: transparent;
-          border-top: 1px solid var(--border-hairline);
+          border-top: 1px solid rgba(255, 255, 255, 0.08);
           flex-shrink: 0;
+        }
+
+        [data-theme="light"] .speaker-panel__bottom {
+          border-top-color: rgba(0, 0, 0, 0.08);
         }
 
         .bridge-vitality__header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          font-family: var(--font-sans);
-          font-size: 11px;
-          font-weight: 600;
-          letter-spacing: 0.04em;
+          font-family: var(--font-mono);
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.06em;
           text-transform: uppercase;
           color: var(--text-muted);
         }
 
         .bridge-vitality__status-pill {
           font-family: var(--font-mono);
-          font-size: 10px;
-          font-weight: 500;
+          font-size: 9.5px;
+          font-weight: 600;
           padding: 1px 6px;
-          border-radius: var(--radius-sm);
-          background: var(--bg-surface-raised);
-          border: 1px solid var(--border-hairline);
+          border-radius: 4px;
+          border: 1px solid;
         }
       `}</style>
+
       <aside
         className={`speaker-panel ${collapsed ? 'speaker-panel--collapsed' : ''}`}
         aria-label="Responder roster and operational metrics"
@@ -571,10 +654,19 @@ export function SpeakerPanel({
           </div>
 
           <div className={`speaker-panel__roster ${collapsed ? 'speaker-panel__roster--collapsed' : ''}`}>
+            {/* AURA Agent Card (Always Present at Top of Roster) */}
+            <AuraAgentRow
+              agentUid={agentUid}
+              agentIsSpeaking={agentIsSpeaking}
+              agentLastSpokeAt={agentLastSpokeAt}
+              collapsed={collapsed}
+              waveformCanvasRef={waveformCanvasRef}
+            />
+
             {participantList.length === 0 ? (
               !collapsed && (
-                <div className="speaker-panel__empty">
-                  Waiting for responders...
+                <div style={{ fontFamily: 'var(--font-sans)', fontSize: 11, color: 'var(--text-muted)', padding: '6px 0' }}>
+                  Awaiting squad call-in...
                 </div>
               )
             ) : (
@@ -587,12 +679,14 @@ export function SpeakerPanel({
                 );
                 const heatColor =
                   ratio >= 50
-                    ? 'var(--color-fact)'
+                    ? '#10B981'
                     : ratio >= 20
-                    ? 'var(--color-orient)'
-                    : 'var(--color-conflict)';
+                    ? '#F59E0B'
+                    : '#F43F5E';
 
                 const cleanInfo = getCleanSpeakerInfo(p.displayName, p.uid);
+                const callsign = getCallsign(p.uid);
+                const soundstage = getPersonaSoundstagePosition(p.uid);
 
                 return (
                   <div
@@ -619,6 +713,7 @@ export function SpeakerPanel({
                           <div className="speaker-row__info">
                             <div className="speaker-row__name-row">
                               <span className="speaker-row__name">{p.displayName}</span>
+                              <span className="speaker-row__callsign-tag">{callsign}</span>
                               {p.isIncidentCommander && (
                                 <span
                                   className="speaker-row__ic-badge"
@@ -628,13 +723,16 @@ export function SpeakerPanel({
                                 </span>
                               )}
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, marginTop: 1 }}>
                               <span className="speaker-row__role-tag">{p.role}</span>
-                              <span
-                                className="speaker-row__spatial-tag"
-                                title={`Agora 3D Spatial Soundstage: ${getPersonaSoundstagePosition(p.uid, p.role).label}`}
-                              >
-                                {getPersonaSoundstagePosition(p.uid, p.role).label}
+                              <span className="speaker-row__spatial-tag" title="Spatial audio panning">
+                                {soundstage?.pan !== undefined
+                                  ? soundstage.pan < 0
+                                    ? `${Math.abs(Math.round(soundstage.pan * 60))}°L`
+                                    : soundstage.pan > 0
+                                    ? `${Math.round(soundstage.pan * 60)}°R`
+                                    : 'CTR'
+                                  : '3D'}
                               </span>
                             </div>
                           </div>
@@ -662,23 +760,19 @@ export function SpeakerPanel({
                 );
               })
             )}
-
-            {/* AURA Agent Row (Always Present) */}
-            <AuraAgentRow
-              agentUid={agentUid}
-              agentIsSpeaking={agentIsSpeaking}
-              agentLastSpokeAt={agentLastSpokeAt}
-              collapsed={collapsed}
-              waveformCanvasRef={waveformCanvasRef}
-            />
           </div>
         </div>
 
         {/* Streamlined Acoustic Telemetry */}
         {!collapsed && (
           <div className="speaker-panel__bridge-telemetry" aria-label="Acoustic Bridge Status">
-            <span className="bridge-telemetry__dot" aria-hidden="true" />
-            <span className="bridge-telemetry__line">Agora SD-RTN™ · 3D Spatial Soundstage · 48kHz HD Audio</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span className="bridge-telemetry__dot" aria-hidden="true" />
+              <span>SD-RTN™ · 48kHz HD</span>
+            </div>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, opacity: 0.7 }}>
+              Opus Low-Lat
+            </span>
           </div>
         )}
 
@@ -689,7 +783,11 @@ export function SpeakerPanel({
               <span>Bridge Vitality</span>
               <span
                 className="bridge-vitality__status-pill"
-                style={{ color: vitalityStatus.color, borderColor: vitalityStatus.color }}
+                style={{
+                  color: vitalityStatus.color,
+                  borderColor: vitalityStatus.color,
+                  backgroundColor: `${vitalityStatus.color}15`,
+                }}
               >
                 {vitalityStatus.label}
               </span>
@@ -703,7 +801,7 @@ export function SpeakerPanel({
   );
 }
 
-/** AURA Agent row with neural ring, processing indicator, and relative time */
+/** AURA Agent row with official emblem, radar rings, voice waveform, and relative time */
 function AuraAgentRow({
   agentIsSpeaking,
   agentLastSpokeAt,
@@ -735,52 +833,68 @@ function AuraAgentRow({
 
   return (
     <div
-      className={`speaker-row speaker-row--aura ${collapsed ? 'speaker-row--collapsed' : ''}`}
+      className={`speaker-row speaker-row--aura ${isActive ? 'speaker-row--speaking' : ''} ${collapsed ? 'speaker-row--collapsed' : ''}`}
       title={collapsed ? 'AURA (AI Incident Commander)' : undefined}
     >
       <div className="speaker-row__header">
         <div className="speaker-row__meta">
-          {/* Avatar with neural ring overlay */}
+          {/* Avatar with official emblem */}
           <div
-            style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+            style={{
+              position: 'relative',
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              background: 'rgba(212, 168, 83, 0.15)',
+              border: '1px solid rgba(212, 168, 83, 0.45)',
+              boxShadow: isActive ? '0 0 12px rgba(212, 168, 83, 0.4)' : 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              overflow: 'hidden',
+              transition: 'all 0.2s ease',
+            }}
           >
             {isActive && <AuraNeuralRing isSpeaking={isActive} radius={18} />}
-            <VoiceBadge
-              displayName="AURA"
-              avatarColor="var(--color-aura)"
-              isSpeaking={isActive}
+            <img
+              src="/logo.png"
+              alt="AURA"
+              width={22}
+              height={22}
+              style={{ objectFit: 'contain' }}
             />
           </div>
           {!collapsed && (
             <div className="speaker-row__info">
               <div className="speaker-row__name-row">
-                <span className="speaker-row__name" style={{ color: 'var(--color-aura)' }}>AURA</span>
-                <span className="speaker-row__ic-badge" style={{ borderColor: 'var(--color-aura)' }}>AI</span>
+                <span className="speaker-row__name" style={{ color: '#D4A853', fontWeight: 700 }}>AURA</span>
+                <span className="speaker-row__ic-badge">AI COMMANDER</span>
                 {isActive && (
                   <span style={{
-                    marginLeft: 4,
+                    marginLeft: 'auto',
                     fontFamily: 'var(--font-mono)',
-                    fontSize: 9,
+                    fontSize: 8.5,
                     fontWeight: 700,
-                    color: 'var(--color-aura)',
+                    color: '#D4A853',
                     letterSpacing: '0.05em',
                     textTransform: 'uppercase',
-                    animation: 'aura-neural-pulse 1.5s ease-in-out infinite',
+                    animation: 'aura-pulse-glow 1.5s ease-in-out infinite',
                   }}>
                     ● LIVE
                   </span>
                 )}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginTop: 1 }}>
                 {isProcessing ? (
                   <AuraProcessingIndicator />
                 ) : (
-                  <span className="speaker-row__role-tag speaker-row__role-tag--aura">
+                  <span className="speaker-row__role-tag" style={{ color: 'var(--text-secondary)' }}>
                     AI Incident Commander
                   </span>
                 )}
                 {!isActive && agentLastSpokeAt > 0 && (
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-disabled)', flexShrink: 0 }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 8.5, color: 'var(--text-muted)', flexShrink: 0 }}>
                     {relativeTime}
                   </span>
                 )}
@@ -790,15 +904,28 @@ function AuraAgentRow({
         </div>
       </div>
 
-      {/* Golden Voice Waveform */}
+      {/* Dynamic Voice Equalizer Strip */}
       {!collapsed && (
-        <div className="speaker-row__waveform-wrap">
+        <div style={{ marginTop: 4 }}>
+          <div className="aura-voice-eq" aria-hidden="true">
+            {Array.from({ length: 18 }).map((_, i) => (
+              <span
+                key={i}
+                className={`aura-voice-bar ${isActive ? 'aura-voice-bar--active' : 'aura-voice-bar--idle'}`}
+                style={{
+                  animationDelay: `${(i * 65) % 600}ms`,
+                  height: isActive ? `${4 + ((i * 7) % 10)}px` : `${2 + ((i * 3) % 6)}px`,
+                }}
+              />
+            ))}
+          </div>
           <canvas
             ref={waveformCanvasRef}
             className="speaker-row__waveform"
             width={210}
-            height={24}
-            aria-label="AURA voice activity waveform"
+            height={0}
+            style={{ display: 'none' }}
+            aria-hidden="true"
           />
         </div>
       )}

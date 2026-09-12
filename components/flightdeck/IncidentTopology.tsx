@@ -24,21 +24,32 @@ function formatTime(timestamp: number): string {
 }
 
 function wrapText(text: string, maxCharsPerLine: number = 24): [string, string?] {
+  if (!text) return [''];
   if (text.length <= maxCharsPerLine) {
     return [text];
   }
-  const words = text.split(' ');
+  const words = text.split(/\s+/);
   let line1 = '';
   let line2 = '';
   for (const word of words) {
     if (!line2 && (line1 ? line1 + ' ' + word : word).length <= maxCharsPerLine) {
       line1 = line1 ? line1 + ' ' + word : word;
-    } else {
+    } else if ((line2 ? line2 + ' ' + word : word).length <= maxCharsPerLine) {
       line2 = line2 ? line2 + ' ' + word : word;
+    } else if (!line2) {
+      line2 = word;
     }
   }
-  if (line2.length > maxCharsPerLine) {
-    line2 = line2.substring(0, maxCharsPerLine - 1) + '…';
+  if (!line1 && line2) {
+    line1 = line2;
+    line2 = '';
+  }
+  if (line2 && text.length > line1.length + line2.length + 1) {
+    if (line2.length > maxCharsPerLine - 2) {
+      line2 = line2.substring(0, maxCharsPerLine - 2) + '…';
+    } else {
+      line2 = line2 + '…';
+    }
   }
   return [line1, line2 || undefined];
 }
@@ -130,6 +141,7 @@ export function IncidentTopology({
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 700, height: 450 });
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   // Simulation state for React rendering
   const [simNodes, setSimNodes] = useState<SimulationNode[]>([]);
@@ -157,7 +169,7 @@ export function IncidentTopology({
     return () => ro.disconnect();
   }, []);
 
-  // 2. Initialize or update force simulation
+  // 2. Initialize or update force simulation with chronological lineage
   useEffect(() => {
     const { width, height } = dimensions;
 
@@ -166,7 +178,12 @@ export function IncidentTopology({
       existingSimNodes.map((n) => [n.id, n])
     );
 
-    const newSimNodes: SimulationNode[] = nodes.map((node) => {
+    const sortedByTime = [...nodes].sort((a, b) => a.timestamp - b.timestamp);
+    const minTime = sortedByTime[0]?.timestamp || Date.now();
+    const maxTime = sortedByTime[sortedByTime.length - 1]?.timestamp || Date.now();
+    const timeSpan = maxTime - minTime || 1;
+
+    const newSimNodes: SimulationNode[] = sortedByTime.map((node, i) => {
       const existing = existingMap.get(node.id);
       if (existing) {
         return {
@@ -178,13 +195,15 @@ export function IncidentTopology({
         };
       }
 
-      // Position near center with gentle radial distribution
-      const angle = Math.random() * Math.PI * 2;
-      const dist = 40 + Math.random() * 60;
+      // Chronological horizontal distribution across the canvas
+      const tNorm = nodes.length > 1 ? (node.timestamp - minTime) / timeSpan : 0.5;
+      const targetX = width * 0.16 + tNorm * (width * 0.68);
+      const staggerY = ((i % 3) - 1) * 75;
+
       return {
         ...node,
-        x: width / 2 + Math.cos(angle) * dist,
-        y: height / 2 + Math.sin(angle) * dist,
+        x: targetX + (Math.random() - 0.5) * 30,
+        y: height / 2 + staggerY + (Math.random() - 0.5) * 20,
       };
     });
 
@@ -196,34 +215,46 @@ export function IncidentTopology({
 
     if (!simulationRef.current) {
       const sim = forceSimulation<SimulationNode>(newSimNodes)
-        .force('charge', forceManyBody<SimulationNode>().strength(-450))
+        .force('charge', forceManyBody<SimulationNode>().strength(-480))
         .force(
           'link',
           forceLink<SimulationNode, SimulationLink>(newSimLinks)
             .id((d) => d.id)
-            .distance(180)
+            .distance((link) => {
+              if (link.type === 'temporal') return 145;
+              if (link.type === 'dependency') return 160;
+              return 180;
+            })
             .strength(0.35)
         )
-        .force('center', forceCenter<SimulationNode>(width / 2, height / 2))
+        .force('center', forceCenter<SimulationNode>(width / 2, height / 2 + 10))
         .force(
           'collision',
-          forceCollide<SimulationNode>().radius(105)
+          forceCollide<SimulationNode>().radius(112)
         )
-        .force('x', forceX<SimulationNode>(width / 2).strength(0.06))
-        .force('y', forceY<SimulationNode>(height / 2).strength(0.08))
+        .force(
+          'x',
+          forceX<SimulationNode>((d) => {
+            const tNorm = nodes.length > 1 ? (d.timestamp - minTime) / timeSpan : 0.5;
+            return width * 0.16 + tNorm * (width * 0.68);
+          }).strength(0.10)
+        )
+        .force('y', forceY<SimulationNode>(height / 2 + 10).strength(0.08))
         .alphaDecay(0.025);
 
       let rafId: number;
       sim.on('tick', () => {
         // Enforce safe boundary clamping for 200x54 cards
+        // padYTop is 68px to ensure cards never collide with top-right legend
+        const padX = 130;
+        const padYTop = 68;
+        const padYBottom = 75;
         for (const node of sim.nodes()) {
-          const padX = 115;
-          const padY = 45;
           if (typeof node.x === 'number') {
             node.x = Math.max(padX, Math.min(width - padX, node.x));
           }
           if (typeof node.y === 'number') {
-            node.y = Math.max(padY, Math.min(height - padY, node.y));
+            node.y = Math.max(padYTop, Math.min(height - padYBottom, node.y));
           }
         }
         cancelAnimationFrame(rafId);
@@ -247,36 +278,43 @@ export function IncidentTopology({
         typeof forceLink<SimulationNode, SimulationLink>
       >;
       if (linkForce) {
-        linkForce.links(newSimLinks).distance(180);
+        linkForce.links(newSimLinks).distance((link) => {
+          if (link.type === 'temporal') return 145;
+          if (link.type === 'dependency') return 160;
+          return 180;
+        });
       }
 
       const chargeForce = sim.force('charge') as ReturnType<
         typeof forceManyBody<SimulationNode>
       >;
       if (chargeForce) {
-        chargeForce.strength(-450);
+        chargeForce.strength(-480);
       }
 
       const collideForce = sim.force('collision') as ReturnType<
         typeof forceCollide<SimulationNode>
       >;
       if (collideForce) {
-        collideForce.radius(105);
+        collideForce.radius(112);
       }
 
       const centerForce = sim.force('center') as ReturnType<typeof forceCenter<SimulationNode>>;
       if (centerForce) {
-        centerForce.x(width / 2).y(height / 2);
+        centerForce.x(width / 2).y(height / 2 + 10);
       }
 
       const xForce = sim.force('x') as ReturnType<typeof forceX<SimulationNode>>;
       if (xForce) {
-        xForce.x(width / 2).strength(0.06);
+        xForce.x((d) => {
+          const tNorm = nodes.length > 1 ? (d.timestamp - minTime) / timeSpan : 0.5;
+          return width * 0.16 + tNorm * (width * 0.68);
+        }).strength(0.10);
       }
 
       const yForce = sim.force('y') as ReturnType<typeof forceY<SimulationNode>>;
       if (yForce) {
-        yForce.y(height / 2).strength(0.08);
+        yForce.y(height / 2 + 10).strength(0.08);
       }
 
       sim.alpha(0.3).restart();
@@ -304,6 +342,14 @@ export function IncidentTopology({
     onNodeHover?.(null);
   }, [onNodeHover]);
 
+  const handleNodeClick = useCallback(
+    (nodeId: string) => {
+      setSelectedNodeId((prev) => (prev === nodeId ? null : nodeId));
+      onNodeClick?.(nodeId);
+    },
+    [onNodeClick]
+  );
+
   const handleRecenter = useCallback(() => {
     if (simulationRef.current) {
       simulationRef.current.alpha(0.5).restart();
@@ -315,20 +361,45 @@ export function IncidentTopology({
     return simNodes.find((n) => n.id === hoveredNodeId) || null;
   }, [hoveredNodeId, simNodes]);
 
+  const selectedNode = useMemo(() => {
+    if (!selectedNodeId) return null;
+    return simNodes.find((n) => n.id === selectedNodeId) || null;
+  }, [selectedNodeId, simNodes]);
+
   const nodeMap = useMemo(() => {
     return new Map<string, SimulationNode>(simNodes.map((n) => [n.id, n]));
   }, [simNodes]);
 
-  // Ancestor / descendant highlighting when hovering a node
+  const selectedNeighbors = useMemo(() => {
+    if (!selectedNodeId) return { sources: [] as SimulationNode[], targets: [] as SimulationNode[] };
+    const sources: SimulationNode[] = [];
+    const targets: SimulationNode[] = [];
+    edges.forEach((edge) => {
+      const sId = typeof edge.source === 'object' ? (edge.source as TopologyNode).id : edge.source;
+      const tId = typeof edge.target === 'object' ? (edge.target as TopologyNode).id : edge.target;
+      if (tId === selectedNodeId) {
+        const sNode = nodeMap.get(sId);
+        if (sNode && !sources.some((s) => s.id === sNode.id)) sources.push(sNode);
+      }
+      if (sId === selectedNodeId) {
+        const tNode = nodeMap.get(tId);
+        if (tNode && !targets.some((t) => t.id === tNode.id)) targets.push(tNode);
+      }
+    });
+    return { sources, targets };
+  }, [selectedNodeId, edges, nodeMap]);
+
+  // Ancestor / descendant highlighting when hovering or selecting a node
+  const activeFocusId = hoveredNodeId || selectedNodeId;
   const connectedInfo = useMemo(() => {
-    if (!hoveredNodeId) return { nodeIds: new Set<string>(), edgeIndices: new Set<number>() };
-    const nodeIds = new Set<string>([hoveredNodeId]);
+    if (!activeFocusId) return { nodeIds: new Set<string>(), edgeIndices: new Set<number>() };
+    const nodeIds = new Set<string>([activeFocusId]);
     const edgeIndices = new Set<number>();
 
     edges.forEach((edge, idx) => {
       const sId = typeof edge.source === 'object' ? (edge.source as TopologyNode).id : edge.source;
       const tId = typeof edge.target === 'object' ? (edge.target as TopologyNode).id : edge.target;
-      if (sId === hoveredNodeId || tId === hoveredNodeId) {
+      if (sId === activeFocusId || tId === activeFocusId) {
         nodeIds.add(sId);
         nodeIds.add(tId);
         edgeIndices.add(idx);
@@ -336,7 +407,7 @@ export function IncidentTopology({
     });
 
     return { nodeIds, edgeIndices };
-  }, [hoveredNodeId, edges]);
+  }, [activeFocusId, edges]);
 
   if (nodes.length === 0) {
     return (
@@ -402,7 +473,7 @@ export function IncidentTopology({
 
         .topology-controls {
           position: absolute;
-          bottom: 14px;
+          top: 12px;
           left: 14px;
           display: flex;
           align-items: center;
@@ -512,9 +583,23 @@ export function IncidentTopology({
         }
 
         .topology-edge--causal {
-          stroke: rgba(123, 140, 255, 0.35);
+          stroke: rgba(123, 140, 255, 0.38);
           stroke-dasharray: 4 4;
           animation: signalFlow 1.2s linear infinite;
+        }
+
+        .topology-edge--temporal {
+          stroke: rgba(212, 168, 83, 0.45);
+          stroke-width: 1.3;
+          stroke-dasharray: 4 3;
+          animation: signalFlow 2s linear infinite;
+        }
+
+        .topology-edge--dependency {
+          stroke: rgba(232, 125, 62, 0.55);
+          stroke-width: 1.4;
+          stroke-dasharray: 5 3;
+          animation: signalFlow 1.6s linear infinite;
         }
 
         .topology-edge--conflict {
@@ -529,7 +614,7 @@ export function IncidentTopology({
         }
 
         .topology-edge--highlighted {
-          stroke-width: 2 !important;
+          stroke-width: 2.2 !important;
           opacity: 1 !important;
         }
 
@@ -543,6 +628,93 @@ export function IncidentTopology({
 
         .topology-node--dimmed {
           opacity: 0.25;
+        }
+
+        .topology-node--selected rect {
+          stroke: var(--color-aura) !important;
+          stroke-width: 2 !important;
+          filter: drop-shadow(0 0 6px rgba(212, 168, 83, 0.45));
+        }
+
+        .topology-inspector {
+          position: absolute;
+          bottom: 14px;
+          right: 14px;
+          width: 310px;
+          max-height: calc(100% - 70px);
+          overflow-y: auto;
+          background: rgba(14, 16, 21, 0.96);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border: 1px solid var(--border-emphasis);
+          border-radius: var(--radius-md);
+          box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8), var(--shadow-inner-glow);
+          padding: 14px;
+          z-index: 45;
+          font-family: var(--font-sans);
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          animation: tooltip-fade 0.15s ease-out;
+        }
+
+        .topology-inspector__header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+        }
+
+        .topology-inspector__close {
+          background: none;
+          border: none;
+          color: var(--text-muted);
+          cursor: pointer;
+          font-size: 13px;
+          padding: 2px 6px;
+          border-radius: var(--radius-xs);
+          line-height: 1;
+        }
+
+        .topology-inspector__close:hover {
+          color: var(--text-primary);
+          background: rgba(255, 255, 255, 0.08);
+        }
+
+        .topology-inspector__content {
+          font-size: 12px;
+          line-height: 1.45;
+          color: var(--text-primary);
+          margin: 0;
+          word-break: break-word;
+        }
+
+        .topology-inspector__meta {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 10px;
+          font-family: var(--font-mono);
+          color: var(--text-muted);
+          border-top: 1px solid var(--border-subtle);
+          padding-top: 6px;
+        }
+
+        .topology-inspector__relations {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          font-size: 10px;
+          font-family: var(--font-mono);
+          border-top: 1px solid var(--border-subtle);
+          padding-top: 6px;
+        }
+
+        .topology-inspector__rel-item {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          color: var(--text-secondary);
         }
       `}</style>
 
@@ -604,6 +776,28 @@ export function IncidentTopology({
             <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="rgba(123, 140, 255, 0.7)" />
           </marker>
           <marker
+            id="topo-arrowhead-temporal"
+            viewBox="0 0 10 10"
+            refX="6"
+            refY="5"
+            markerWidth="4.5"
+            markerHeight="4.5"
+            orient="auto-start-reverse"
+          >
+            <path d="M 0 1.8 L 7.5 5 L 0 8.2 z" fill="rgba(212, 168, 83, 0.75)" />
+          </marker>
+          <marker
+            id="topo-arrowhead-dependency"
+            viewBox="0 0 10 10"
+            refX="6"
+            refY="5"
+            markerWidth="5"
+            markerHeight="5"
+            orient="auto-start-reverse"
+          >
+            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="rgba(232, 125, 62, 0.85)" />
+          </marker>
+          <marker
             id="topo-arrowhead-conflict"
             viewBox="0 0 10 10"
             refX="6"
@@ -637,13 +831,19 @@ export function IncidentTopology({
 
             const isConflict = link.type === 'conflict';
             const isContradicts = link.type === 'contradicts';
-            const isHighlighted = hoveredNodeId ? connectedInfo.edgeIndices.has(idx) : false;
-            const isDimmed = hoveredNodeId ? !isHighlighted : false;
+            const isTemporal = link.type === 'temporal';
+            const isDependency = link.type === 'dependency';
+            const isHighlighted = activeFocusId ? connectedInfo.edgeIndices.has(idx) : false;
+            const isDimmed = activeFocusId ? !isHighlighted : false;
 
             let edgeClass = isConflict
               ? 'topology-edge topology-edge--conflict'
               : isContradicts
               ? 'topology-edge topology-edge--contradicts'
+              : isTemporal
+              ? 'topology-edge topology-edge--temporal'
+              : isDependency
+              ? 'topology-edge topology-edge--dependency'
               : 'topology-edge topology-edge--causal';
 
             if (isHighlighted) edgeClass += ' topology-edge--highlighted';
@@ -679,6 +879,10 @@ export function IncidentTopology({
                     ? undefined
                     : isContradicts
                     ? 'url(#topo-arrowhead-conflict)'
+                    : isTemporal
+                    ? 'url(#topo-arrowhead-temporal)'
+                    : isDependency
+                    ? 'url(#topo-arrowhead-dependency)'
                     : 'url(#topo-arrowhead)'
                 }
               />
@@ -693,8 +897,9 @@ export function IncidentTopology({
             const colors = getNodeColors(node.category, node.status);
             const isDisproven = node.status === 'disproven';
             const isHovered = node.id === hoveredNodeId;
-            const isConnected = hoveredNodeId ? connectedInfo.nodeIds.has(node.id) : false;
-            const isDimmed = hoveredNodeId ? !isConnected : false;
+            const isSelected = node.id === selectedNodeId;
+            const isConnected = activeFocusId ? connectedInfo.nodeIds.has(node.id) : false;
+            const isDimmed = activeFocusId ? !isConnected : false;
 
             const halfW = CARD_WIDTH / 2;
             const halfH = CARD_HEIGHT / 2;
@@ -703,11 +908,11 @@ export function IncidentTopology({
             return (
               <g
                 key={node.id}
-                className={`topology-node-group ${isDimmed ? 'topology-node--dimmed' : ''}`}
+                className={`topology-node-group ${isDimmed ? 'topology-node--dimmed' : ''} ${isSelected ? 'topology-node--selected' : ''}`}
                 transform={`translate(${node.x}, ${node.y})`}
                 onMouseEnter={() => handleMouseEnter(node.id)}
                 onMouseLeave={handleMouseLeave}
-                onClick={() => onNodeClick?.(node.id)}
+                onClick={() => handleNodeClick(node.id)}
                 style={{ cursor: 'pointer' }}
               >
                 {/* Node Card Outer Highlight Glow on Hover */}
@@ -734,8 +939,8 @@ export function IncidentTopology({
                   height={CARD_HEIGHT}
                   rx="6"
                   fill="var(--bg-surface-raised)"
-                  stroke={isHovered ? colors.stroke : isConnected ? colors.stroke : 'var(--border-subtle)'}
-                  strokeWidth={isHovered || isConnected ? '1.5' : '1'}
+                  stroke={isSelected ? 'var(--color-aura)' : isHovered ? colors.stroke : isConnected ? colors.stroke : 'var(--border-subtle)'}
+                  strokeWidth={isSelected ? '2' : isHovered || isConnected ? '1.5' : '1'}
                   opacity={isDisproven ? 0.5 : 1}
                 />
 
@@ -785,19 +990,34 @@ export function IncidentTopology({
                   {node.category.toUpperCase()}
                 </text>
 
-                {/* Confidence Percentage Tag */}
-                <text
-                  x={halfW - 10}
-                  y={-halfH + 16}
-                  textAnchor="end"
-                  fill="var(--text-muted)"
-                  fontSize="9"
-                  fontFamily="var(--font-mono)"
-                  fontWeight="500"
-                  pointerEvents="none"
-                >
-                  {node.confidence}%
-                </text>
+                {/* Confidence Percentage Tag (Only for Hypotheses) */}
+                {node.category === 'hypothesis' ? (
+                  <text
+                    x={halfW - 10}
+                    y={-halfH + 16}
+                    textAnchor="end"
+                    fill="var(--text-muted)"
+                    fontSize="9"
+                    fontFamily="var(--font-mono)"
+                    fontWeight="500"
+                    pointerEvents="none"
+                  >
+                    {node.confidence}%
+                  </text>
+                ) : node.category === 'decision' ? (
+                  <text
+                    x={halfW - 10}
+                    y={-halfH + 16}
+                    textAnchor="end"
+                    fill="var(--color-decision)"
+                    fontSize="8.5"
+                    fontFamily="var(--font-mono)"
+                    fontWeight="600"
+                    pointerEvents="none"
+                  >
+                    COMMIT
+                  </text>
+                ) : null}
 
                 {/* Content Statement Line 1 */}
                 <text
@@ -848,7 +1068,7 @@ export function IncidentTopology({
       </svg>
 
       {/* 3. Interactive Glass Tooltip Popover on Hover */}
-      {hoveredNode && hoveredNode.x != null && hoveredNode.y != null && (
+      {hoveredNode && !selectedNode && hoveredNode.x != null && hoveredNode.y != null && (
         <div
           className="topology-tooltip"
           style={{
@@ -882,6 +1102,64 @@ export function IncidentTopology({
             <span>•</span>
             <span>{formatTime(hoveredNode.timestamp)}</span>
           </div>
+        </div>
+      )}
+
+      {/* 4. Selected Node Full-Text Inspector Popover */}
+      {selectedNode && (
+        <div className="topology-inspector" role="dialog" aria-label="Incident Node Details">
+          <div className="topology-inspector__header">
+            <span
+              className="topology-tooltip-badge"
+              style={{
+                background: getNodeColors(selectedNode.category, selectedNode.status).fill,
+                color: getNodeColors(selectedNode.category, selectedNode.status).badge,
+                borderColor: getNodeColors(selectedNode.category, selectedNode.status).stroke,
+              }}
+            >
+              {selectedNode.category.toUpperCase()}
+            </span>
+            <span className="topology-tooltip-confidence">
+              {selectedNode.confidence}% CONF
+            </span>
+            {selectedNode.status && selectedNode.status !== 'active' && (
+              <span className={`topology-tooltip-status status-${selectedNode.status}`}>
+                {selectedNode.status.toUpperCase()}
+              </span>
+            )}
+            <button
+              type="button"
+              className="topology-inspector__close"
+              onClick={() => setSelectedNodeId(null)}
+              aria-label="Close inspector"
+            >
+              ✕
+            </button>
+          </div>
+          <p className="topology-inspector__content">
+            {selectedNode.fullContent || selectedNode.content}
+          </p>
+          <div className="topology-inspector__meta">
+            <span>By {selectedNode.speakerName}</span>
+            <span>•</span>
+            <span>{formatTime(selectedNode.timestamp)}</span>
+          </div>
+          {(selectedNeighbors.sources.length > 0 || selectedNeighbors.targets.length > 0) && (
+            <div className="topology-inspector__relations">
+              {selectedNeighbors.sources.length > 0 && (
+                <div className="topology-inspector__rel-item">
+                  <span style={{ color: 'var(--text-muted)' }}>Preceded by:</span>
+                  <span>{selectedNeighbors.sources.map((s) => s.category.toUpperCase()).join(', ')}</span>
+                </div>
+              )}
+              {selectedNeighbors.targets.length > 0 && (
+                <div className="topology-inspector__rel-item">
+                  <span style={{ color: 'var(--text-muted)' }}>Leads to:</span>
+                  <span>{selectedNeighbors.targets.map((t) => t.category.toUpperCase()).join(', ')}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

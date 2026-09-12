@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Case 1: Standard Evidence Item Ingestion
-    if (item && item.content) {
+    if (item && item.content && item.category !== 'conflict_resolved') {
       const updatedState = addEvidenceToIncident(channelName, item as EvidenceItem);
 
       // Broadcast over Agora SD-RTN so all other war room participants receive it live
@@ -66,6 +66,18 @@ export async function POST(req: NextRequest) {
           evidenceItems: prev.evidenceItems.map((e) =>
             e.id === actionId || e.content.includes(actionId)
               ? { ...e, actionStatus: newStatus }
+              : e
+          ),
+          eventSeq: prev.eventSeq + 1,
+        }));
+      } else if (typedEventType === 'evidence_updated' && eventPayload.target) {
+        const target = String(eventPayload.target).toLowerCase();
+        const newStatus = String(eventPayload.status || 'resolved');
+        updateIncidentState(channelName, (prev) => ({
+          ...prev,
+          evidenceItems: prev.evidenceItems.map((e) =>
+            e.id.toLowerCase() === target || e.content.toLowerCase().includes(target)
+              ? { ...e, status: newStatus === 'resolved' ? 'confirmed' : newStatus === 'disproven' ? 'disproven' : 'active' }
               : e
           ),
           eventSeq: prev.eventSeq + 1,
