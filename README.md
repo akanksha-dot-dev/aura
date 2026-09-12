@@ -4,6 +4,7 @@ Real-time Voice AI Incident Commander that joins live IT war rooms as an active 
 
 Deployed at: [aura.akanksha.dev](https://aura.akanksha.dev)
 
+[Aura.pptx](https://github.com/user-attachments/files/32135730/Aura.pptx)
 ---
 
 ## Tech Stack
