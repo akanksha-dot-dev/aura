@@ -37,7 +37,8 @@ export function useFlightDeckTelemetry({
 }: FlightDeckTelemetryOptions) {
   // Derived Topology Graph Data (Nodes & Edges) for MainView
   const topologyNodes = useMemo<TopologyNode[]>(() => {
-    return state.evidenceItems.map((item) => ({
+    // 1. Evidence items
+    const evidenceNodes: TopologyNode[] = state.evidenceItems.map((item) => ({
       id: item.id,
       category: item.category,
       content:
@@ -49,12 +50,31 @@ export function useFlightDeckTelemetry({
       timestamp: item.timestamp,
       status: item.status,
     }));
-  }, [state.evidenceItems]);
+
+    // 2. Service Architecture Core Nodes
+    const services = state.affectedServices.length > 0
+      ? state.affectedServices
+      : ['payment-api', 'checkout-service', 'postgres-primary'];
+
+    const serviceNodes: TopologyNode[] = services.map((svc, idx) => ({
+      id: `svc-${svc}`,
+      category: idx === 0 ? 'conflict' : idx === 1 ? 'hypothesis' : 'fact',
+      content: `[SVC] ${svc}`,
+      fullContent: `Core Service: ${svc}`,
+      speakerUid: 'system',
+      speakerName: 'Service Mesh',
+      confidence: 85,
+      timestamp: state.openedAt - (2000 * (idx + 1)),
+      status: 'active',
+    }));
+
+    return [...serviceNodes, ...evidenceNodes];
+  }, [state.evidenceItems, state.affectedServices, state.openedAt]);
 
   const topologyEdges = useMemo<TopologyEdge[]>(() => {
     const edges: TopologyEdge[] = [];
     const seenEdges = new Set<string>();
-    const nodeIds = new Set(state.evidenceItems.map((e) => e.id));
+    const nodeIds = new Set(topologyNodes.map((n) => n.id));
 
     const addEdge = (source: string, target: string, type: TopologyEdge['type']) => {
       if (!source || !target || source === target) return;
@@ -64,6 +84,26 @@ export function useFlightDeckTelemetry({
       seenEdges.add(key);
       edges.push({ source, target, type });
     };
+
+    // Service Mesh backbone dependency links
+    const services = state.affectedServices.length > 0
+      ? state.affectedServices
+      : ['payment-api', 'checkout-service', 'postgres-primary'];
+
+    for (let i = 0; i < services.length - 1; i++) {
+      addEdge(`svc-${services[i]}`, `svc-${services[i + 1]}`, 'dependency');
+    }
+
+    // Connect evidence items to related services
+    state.evidenceItems.forEach((item) => {
+      services.forEach((svc) => {
+        const cleanSvc = svc.toLowerCase().replace(/[-_]/g, ' ');
+        const cleanContent = item.content.toLowerCase();
+        if (cleanContent.includes(cleanSvc) || cleanContent.includes(svc.toLowerCase()) || (item.serviceAffected && item.serviceAffected.includes(svc))) {
+          addEdge(`svc-${svc}`, item.id, 'causal');
+        }
+      });
+    });
 
     // 1. Explicit causal & relatedTo links
     state.evidenceItems.forEach((item) => {

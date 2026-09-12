@@ -523,7 +523,7 @@ export function TimelineFeed({
             <div className="timeline-feed__empty">
               <div className="timeline-feed__radar-badge">
                 <span className="timeline-feed__radar-dot" />
-                <span>Agora SD-RTM™ · 48kHz HD Audio Bridge Active</span>
+                <span>Agora SD-RTN™ Voice Intelligence Mesh Online</span>
               </div>
 
               <div className="timeline-feed__empty-icon" aria-hidden="true">

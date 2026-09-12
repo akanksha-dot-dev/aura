@@ -358,6 +358,8 @@ function DashboardContent() {
           channelName={channel}
           suspectedCause={scenarioConfig?.suspectedCause}
           scenarioSummary={scenarioConfig?.description || scenarioConfig?.impact}
+          currentSpeakerName={telemetry.captionSpeakerName}
+          currentTranscript={telemetry.currentTranscript}
         />
 
         <ActionTracker
