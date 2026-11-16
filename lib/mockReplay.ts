@@ -96,19 +96,19 @@ function getSpeakerName(uid: string): string {
 export const DEMO_EVENTS: MockReplayEvent[] = [
   // ─── Beat 1: The Silent Watch ───
   {
-    delayMs: 5000,   // T+0:05 — AURA joins
+    delayMs: 1500,   // T+0:01.5 — AURA joins promptly
     type: 'agent_greeting',
     spoken: 'AURA online. Incident bridge monitoring active.',
   },
   {
-    delayMs: 12000,  // T+0:12 — Sarah reports
+    delayMs: 4500,   // T+0:04.5 — Sarah reports
     type: 'human_speech',
     speakerUid: 'sarah_ic',
     speakerName: 'Sarah',
     transcript: 'Sarah on-call. Error rate just spiked to 42% on payment services. Checkout page is completely unresponsive.',
   },
   {
-    delayMs: 14000,  // T+0:14 — Tool call (silent)
+    delayMs: 6000,   // T+0:06 — Tool call (silent)
     type: 'tool_call',
     tool: 'log_fact',
     params: {
@@ -121,21 +121,21 @@ export const DEMO_EVENTS: MockReplayEvent[] = [
     },
   },
   {
-    delayMs: 15000,  // T+0:15 — AURA stays silent
+    delayMs: 7000,   // T+0:07 — AURA stays silent
     type: 'agent_silent',
     spoken: 'NO_RESPONSE',
   },
 
   // ─── Beat 2: The Contradiction ───
   {
-    delayMs: 28000,  // T+0:28 — Marcus speaks
+    delayMs: 16000,  // T+0:16 — Marcus speaks
     type: 'human_speech',
     speakerUid: 'marcus_sre',
     speakerName: 'Marcus',
     transcript: "I'm looking at Postgres. Connection pool looks completely exhausted — connection count is at 98%.",
   },
   {
-    delayMs: 30000,  // T+0:30
+    delayMs: 18000,  // T+0:18
     type: 'tool_call',
     tool: 'log_hypothesis',
     params: {
@@ -148,14 +148,14 @@ export const DEMO_EVENTS: MockReplayEvent[] = [
     },
   },
   {
-    delayMs: 38000,  // T+0:38 — Sarah contradicts
+    delayMs: 25000,  // T+0:25 — Sarah contradicts
     type: 'human_speech',
     speakerUid: 'sarah_ic',
     speakerName: 'Sarah',
     transcript: "Wait — database metrics look normal on my Grafana dashboard. I think it's the load balancer. We changed the config yesterday.",
   },
   {
-    delayMs: 40000,  // T+0:40
+    delayMs: 27000,  // T+0:27
     type: 'tool_call',
     tool: 'log_hypothesis',
     params: {
@@ -168,7 +168,7 @@ export const DEMO_EVENTS: MockReplayEvent[] = [
     },
   },
   {
-    delayMs: 41000,  // T+0:41
+    delayMs: 28000,  // T+0:28
     type: 'tool_call',
     tool: 'flag_conflict',
     params: {
@@ -182,21 +182,21 @@ export const DEMO_EVENTS: MockReplayEvent[] = [
     },
   },
   {
-    delayMs: 42000,  // T+0:42 — AURA breaks silence (THE WOW)
+    delayMs: 29000,  // T+0:29 — AURA breaks silence (THE WOW)
     type: 'agent_speech',
     spoken: "Flagging contradiction. Marcus proposes database connection pool exhaustion, Sarah proposes load balancer misconfiguration. Both are consistent with the symptoms we've confirmed. What single metric settles this — database query latency logs or load balancer 5xx rates?",
   },
 
   // ─── Beat 3: Perspective Bridge ───
   {
-    delayMs: 58000,  // T+0:58 — Priya speaks
+    delayMs: 42000,  // T+0:42 — Priya speaks
     type: 'human_speech',
     speakerUid: 'priya_pm',
     speakerName: 'Priya',
     transcript: "I don't understand the technical details, but our enterprise clients are reporting the checkout page is completely frozen. We're getting escalation emails.",
   },
   {
-    delayMs: 60000,
+    delayMs: 44000,
     type: 'tool_call',
     tool: 'log_fact',
     params: {
@@ -209,19 +209,19 @@ export const DEMO_EVENTS: MockReplayEvent[] = [
     },
   },
   {
-    delayMs: 62000,  // AURA: Perspective Translation
+    delayMs: 46000,  // AURA: Perspective Translation
     type: 'agent_speech',
     spoken: "Connecting those signals. The connection degradation Marcus noted is directly causing the checkout failures Priya reported. Same problem, two perspectives.",
   },
   {
-    delayMs: 72000,  // T+1:12 — Sarah decides
+    delayMs: 55000,  // T+0:55 — Sarah decides
     type: 'human_speech',
     speakerUid: 'sarah_ic',
     speakerName: 'Sarah',
     transcript: "Okay, let's roll back PR #492 immediately. And file a SEV-1 Jira ticket.",
   },
   {
-    delayMs: 74000,
+    delayMs: 57000,
     type: 'tool_call',
     tool: 'log_decision',
     params: {
@@ -236,19 +236,19 @@ export const DEMO_EVENTS: MockReplayEvent[] = [
 
   // ─── Beat 4: Two-Phase Commit ───
   {
-    delayMs: 76000,  // AURA: Phase 1 — Propose
+    delayMs: 59000,  // AURA: Phase 1 — Propose
     type: 'agent_speech',
     spoken: "I can create a SEV-1 Jira ticket for P-R four-nine-two rollback and broadcast status to Slack. Sarah, please confirm.",
   },
   {
-    delayMs: 82000,  // Sarah confirms
+    delayMs: 64000,  // Sarah confirms
     type: 'human_speech',
     speakerUid: 'sarah_ic',
     speakerName: 'Sarah',
     transcript: "Confirmed, go ahead.",
   },
   {
-    delayMs: 84000,
+    delayMs: 66000,
     type: 'tool_call',
     tool: 'create_jira_ticket',
     params: {
@@ -258,7 +258,7 @@ export const DEMO_EVENTS: MockReplayEvent[] = [
     },
   },
   {
-    delayMs: 85000,
+    delayMs: 67000,
     type: 'tool_call',
     tool: 'post_slack_update',
     params: {
@@ -268,12 +268,12 @@ export const DEMO_EVENTS: MockReplayEvent[] = [
     },
   },
   {
-    delayMs: 87000,  // AURA: Phase 2 — Announce result
+    delayMs: 69000,  // AURA: Phase 2 — Announce result
     type: 'agent_speech',
     spoken: "Ticket I-N-C four-eight-two-one created. Slack broadcast sent to incident checkout.",
   },
   {
-    delayMs: 90000,
+    delayMs: 72000,
     type: 'tool_call',
     tool: 'log_action_item',
     params: {
@@ -285,7 +285,7 @@ export const DEMO_EVENTS: MockReplayEvent[] = [
     },
   },
   {
-    delayMs: 91000,
+    delayMs: 73000,
     type: 'tool_call',
     tool: 'log_action_item',
     params: {
@@ -297,21 +297,21 @@ export const DEMO_EVENTS: MockReplayEvent[] = [
     },
   },
   {
-    delayMs: 93000,  // AURA: Verbal Readback
+    delayMs: 75000,  // AURA: Verbal Readback
     type: 'agent_speech',
     spoken: "Readback: Marcus will inspect connection pool logs. Priya will notify enterprise accounts. Sarah authorized rollback of P-R four-nine-two. Is that complete?",
   },
 
   // ─── Beat 5: Proactive Intelligence + Resolution of Conflict ───
   {
-    delayMs: 118000, // T+1:58 — Marcus returns with evidence
+    delayMs: 92000, // T+1:32 — Marcus returns with evidence
     type: 'human_speech',
     speakerUid: 'marcus_sre',
     speakerName: 'Marcus',
     transcript: "Alright, I've got the query logs. Connection pool was maxed out by a single unoptimized query in PR #492. The load balancer is fine.",
   },
   {
-    delayMs: 120000,
+    delayMs: 94000,
     type: 'tool_call',
     tool: 'log_fact',
     params: {
@@ -324,7 +324,7 @@ export const DEMO_EVENTS: MockReplayEvent[] = [
     },
   },
   {
-    delayMs: 121000,
+    delayMs: 95000,
     type: 'state_update',
     update: {
       // Confirm Marcus's hypothesis, disprove Sarah's
@@ -336,21 +336,21 @@ export const DEMO_EVENTS: MockReplayEvent[] = [
     },
   },
   {
-    delayMs: 123000,  // AURA: SBAR proactive brief
+    delayMs: 97000,  // AURA: SBAR proactive brief
     type: 'agent_speech',
     spoken: "Situation: SEV-1 checkout outage, three minutes elapsed, rollback in progress. Background: database connection pool confirmed as root cause from P-R four-nine-two. Assessment: Marcus's hypothesis confirmed at 85% confidence, one hypothesis disproven. Recommendation: Marcus, what are replica lag metrics showing?",
   },
 
   // ─── Beat 6: Resolution ───
   {
-    delayMs: 148000, // T+2:28 — Sarah resolves
+    delayMs: 112000, // T+1:52 — Sarah resolves
     type: 'human_speech',
     speakerUid: 'sarah_ic',
     speakerName: 'Sarah',
     transcript: "Error rates are back to normal. Incident mitigated.",
   },
   {
-    delayMs: 150000,
+    delayMs: 114000,
     type: 'tool_call',
     tool: 'log_fact',
     params: {
@@ -363,7 +363,7 @@ export const DEMO_EVENTS: MockReplayEvent[] = [
     },
   },
   {
-    delayMs: 151000,
+    delayMs: 115000,
     type: 'state_update',
     update: {
       completeAction: 'evt-008',
@@ -372,12 +372,12 @@ export const DEMO_EVENTS: MockReplayEvent[] = [
     },
   },
   {
-    delayMs: 153000,  // AURA: Resolution summary
+    delayMs: 117000,  // AURA: Resolution summary
     type: 'agent_speech',
     spoken: "Incident resolved. Duration: four minutes thirty-two seconds. Root cause confirmed: database connection pool exhaustion from unoptimized query in P-R four-nine-two. Four facts logged, one hypothesis confirmed, one disproven, two actions completed, zero unresolved. Google SRE Book postmortem generated with compliance recording and cross-talk transcript.",
   },
   {
-    delayMs: 155000,
+    delayMs: 119000,
     type: 'resolution_celebration',
   },
 ];

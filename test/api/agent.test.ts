@@ -194,6 +194,46 @@ describe('API Route: /api/agent (app/api/agent/start, stop & interrupt routes)',
       expect(data.agentId).toBe('aura_agent_12345');
       expect(data.status).toBe('stopped');
     });
+
+    it('stops ConvAI agent by channelName when agentId is not specified', async () => {
+      process.env.AGORA_APP_ID = '970ca35de60c44645bbae8a215061b33';
+      process.env.AGORA_CUSTOMER_KEY = 'test_key';
+      process.env.AGORA_CUSTOMER_SECRET = 'test_secret';
+
+      global.fetch = vi.fn().mockImplementation(async (url: string) => {
+        if (url.endsWith('/agents')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              data: {
+                list: [{ agent_id: 'chan_agent_99', channel: 'incident-war-room' }],
+              },
+            }),
+          } as Response;
+        }
+        if (url.includes('/agents/chan_agent_99')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ channel: 'incident-war-room' }),
+          } as Response;
+        }
+        return { ok: true, status: 200, json: async () => ({}) } as Response;
+      });
+
+      const req = new NextRequest('http://localhost:3000/api/agent/stop', {
+        method: 'POST',
+        body: JSON.stringify({ channelName: 'incident-war-room' }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const res = await stopAgent(req);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.channelName).toBe('incident-war-room');
+      expect(data.status).toBe('stopped');
+    });
   });
 
   describe('/api/agent/interrupt POST', () => {

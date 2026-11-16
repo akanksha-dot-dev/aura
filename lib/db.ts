@@ -129,6 +129,7 @@ const knowledgeBaseStore: DbKnowledgeItem[] = [];
 let transcriptSeq = 1;
 let knowledgeSeq = 1;
 let isSeeded = false;
+const storeStartedAt = Date.now();
 
 // ─── Pre-seed Initial Scenarios ───
 
@@ -612,7 +613,7 @@ export function getDatabaseHealth(): {
     },
     fileSizeBytes: 0,
     walSizeBytes: 0,
-    uptimeSeconds: Math.round(process.uptime()),
+    uptimeSeconds: Math.round((Date.now() - storeStartedAt) / 1000),
   };
 }
 

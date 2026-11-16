@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { findSimilarIncidents, getDb } from '@/lib/db';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 interface FormattedIncidentMatch {
   id: string;

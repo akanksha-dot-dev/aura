@@ -160,7 +160,7 @@ export interface TopologyNode {
 export interface TopologyEdge {
   source: string | TopologyNode;  // Node ID or node reference
   target: string | TopologyNode;  // Node ID or node reference
-  type: 'causal' | 'conflict' | 'supports' | 'contradicts';
+  type: 'causal' | 'conflict' | 'supports' | 'contradicts' | 'temporal' | 'dependency';
 }
 
 export const forceConfig = {

@@ -9,7 +9,7 @@ import {
   generateEscalationSpeech,
 } from '@/lib/escalationEngine';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 /**
  * POST /api/escalate — Evaluate and trigger escalation for an incident.

@@ -88,8 +88,11 @@ export function SmartPlaybook({ steps, onCreateAction, incidentStatus }: SmartPl
       {/* Header */}
       <div className="playbook-header" onClick={() => setIsCollapsed(p => !p)} role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && setIsCollapsed(p => !p)}>
         <div className="playbook-header-left">
-          <span className="playbook-icon">📋</span>
-          <span className="playbook-title">AURA Smart Playbook</span>
+          <svg className="playbook-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+            <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+          </svg>
+          <span className="playbook-title">TACTICAL PLAYBOOK</span>
           <span className="playbook-badge">{completedCount}/{totalCount}</span>
         </div>
         <div className="playbook-header-right">

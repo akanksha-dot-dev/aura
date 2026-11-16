@@ -1,18 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import os from 'os';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 function getLocalIpAddresses(): string[] {
   const ips: string[] = [];
   try {
-    const interfaces = os.networkInterfaces();
-    for (const name of Object.keys(interfaces)) {
-      const ifaceList = interfaces[name];
-      if (!ifaceList) continue;
-      for (const iface of ifaceList) {
-        if (iface.family === 'IPv4' && !iface.internal) {
-          ips.push(iface.address);
+    // Dynamically query interfaces if available, fallback safely on Edge/Cloudflare
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const nodeOs = typeof require !== 'undefined' ? require('os') : null;
+    const interfaces = nodeOs?.networkInterfaces?.();
+    if (interfaces) {
+      for (const name of Object.keys(interfaces)) {
+        const ifaceList = interfaces[name];
+        if (!ifaceList) continue;
+        for (const iface of ifaceList) {
+          if (iface.family === 'IPv4' && !iface.internal) {
+            ips.push(iface.address);
+          }
         }
       }
     }

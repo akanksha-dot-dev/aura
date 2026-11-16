@@ -36,6 +36,7 @@ export function WarRoomSummaryCard({ incident, actions, onDismiss }: WarRoomSumm
     const sorted = [...activeHypotheses].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0));
     return sorted[0];
   }, [activeHypotheses]);
+  const [isMinimized, setIsMinimized] = useState(true);
   const [elapsedMin, setElapsedMin] = useState(() =>
     Math.floor((Date.now() - incident.openedAt) / 60000)
   );
@@ -46,6 +47,50 @@ export function WarRoomSummaryCard({ incident, actions, onDismiss }: WarRoomSumm
     }, 30000);
     return () => clearInterval(timer);
   }, [incident.openedAt]);
+
+  if (isMinimized) {
+    return (
+      <motion.div
+        className="wrsummary-card wrsummary-card--minimized"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={springs.stiff}
+        role="complementary"
+        aria-label="War Room Summary (Minimized)"
+      >
+        <div
+          className="wrsummary-header-left"
+          style={{ cursor: 'pointer' }}
+          onClick={() => setIsMinimized(false)}
+          title="Click to expand situation report"
+        >
+          <div className="wrsummary-icon" aria-hidden="true">⚡</div>
+          <span className="wrsummary-title">SitRep ({activeHypotheses.length}H · {pendingActions}A · {elapsedMin}m)</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+          <button
+            type="button"
+            className="wrsummary-control-btn"
+            onClick={() => setIsMinimized(false)}
+            aria-label="Expand situation report"
+            title="Expand situation report"
+          >
+            ⤢
+          </button>
+          <button
+            type="button"
+            className="wrsummary-dismiss"
+            onClick={onDismiss}
+            aria-label="Dismiss situation report"
+            title="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -63,15 +108,26 @@ export function WarRoomSummaryCard({ incident, actions, onDismiss }: WarRoomSumm
           <div className="wrsummary-icon" aria-hidden="true">⚡</div>
           <span className="wrsummary-title">Situation Report</span>
         </div>
-        <button
-          type="button"
-          className="wrsummary-dismiss"
-          onClick={onDismiss}
-          aria-label="Dismiss situation report"
-          title="Dismiss"
-        >
-          ✕
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+          <button
+            type="button"
+            className="wrsummary-control-btn"
+            onClick={() => setIsMinimized(true)}
+            aria-label="Minimize situation report"
+            title="Minimize"
+          >
+            −
+          </button>
+          <button
+            type="button"
+            className="wrsummary-dismiss"
+            onClick={onDismiss}
+            aria-label="Dismiss situation report"
+            title="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
       </div>
 
       {/* Metrics */}

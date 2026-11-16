@@ -29,7 +29,7 @@ function LobbyContent() {
     setIsConnecting(true);
 
     // Store the full scenario config in sessionStorage for the dashboard to read
-    const activeScenario = scenario || PRESET_SCENARIOS[0];
+    const activeScenario = options?.simulateReplay ? PRESET_SCENARIOS[0] : (scenario || PRESET_SCENARIOS[0]);
     storeScenarioConfig(activeScenario);
 
     const channel = channelOverride || activeScenario.channelName;

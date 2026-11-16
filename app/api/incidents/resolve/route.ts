@@ -14,7 +14,7 @@ import {
 } from '@/lib/escalationEngine';
 import { clearAdvisorCache } from '@/lib/similarIncidentAdvisor';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

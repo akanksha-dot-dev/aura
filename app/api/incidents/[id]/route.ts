@@ -7,7 +7,7 @@ import {
   getPostmortemByIncident,
 } from '@/lib/db';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 /**
  * GET /api/incidents/[id] — Full incident detail including evidence, participants, transcript.

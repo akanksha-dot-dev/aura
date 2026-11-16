@@ -90,5 +90,15 @@ describe('API Route: /api/token (app/api/token/route.ts)', () => {
     expect(data.rtcToken.length).toBeGreaterThan(20);
     expect(typeof data.rtmToken).toBe('string');
     expect(data.rtmToken.length).toBeGreaterThan(20);
+
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { AccessToken2 } = require('agora-token/src/AccessToken2');
+    const rtcParser = new AccessToken2('', '');
+    expect(rtcParser.from_string(data.rtcToken)).toBe(true);
+    expect(rtcParser.verifySignature(process.env.AGORA_APP_CERTIFICATE)).toBe(true);
+
+    const rtmParser = new AccessToken2('', '');
+    expect(rtmParser.from_string(data.rtmToken)).toBe(true);
+    expect(rtmParser.verifySignature(process.env.AGORA_APP_CERTIFICATE)).toBe(true);
   });
 });

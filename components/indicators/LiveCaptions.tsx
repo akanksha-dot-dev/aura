@@ -33,8 +33,8 @@ export function LiveCaptions({
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 0 var(--space-4);
-          gap: var(--space-3);
+          padding: 0 8px;
+          gap: 8px;
           user-select: none;
           overflow: hidden;
         }
@@ -230,6 +230,7 @@ export function LiveCaptions({
         role="region"
         aria-live="polite"
         aria-label="Real-time speech transcription"
+        title={currentTranscript || undefined}
       >
         <div className="live-captions__content">
           <span className="live-captions__icon" aria-hidden="true">

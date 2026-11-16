@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { RtcTokenBuilder, RtmTokenBuilder, RtcRole } from 'agora-token';
+import { UniversalRtcTokenBuilder, UniversalRtmTokenBuilder, RtcRole } from '@/lib/agoraToken';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 interface TokenRequest {
   channelName?: string;
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     const expireTimeInSeconds = 3600; // 1 hour
 
     // Build RTC token with String UID / user account
-    const rtcToken = RtcTokenBuilder.buildTokenWithUserAccount(
+    const rtcToken = await UniversalRtcTokenBuilder.buildTokenWithUserAccount(
       appId,
       appCertificate,
       channelName,
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     );
 
     // Build RTM token
-    const rtmToken = RtmTokenBuilder.buildToken(
+    const rtmToken = await UniversalRtmTokenBuilder.buildToken(
       appId,
       appCertificate,
       uid,

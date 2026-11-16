@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { RtcTokenBuilder, RtcRole } from 'agora-token';
+import { UniversalRtcTokenBuilder, RtcRole } from '@/lib/agoraToken';
 import { getIncidentState, initializeLiveIncident } from '@/lib/incidentStore';
 import { PRESET_SCENARIOS } from '@/lib/scenarios';
 import { AURA_SYSTEM_PROMPT, buildEffectiveSystemPrompt } from '@/lib/promptBuilder';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 // ────────────────────────────────────────────────────────────────────────────────────
 // TTS Configuration Factory
@@ -334,7 +334,7 @@ export async function POST(request: NextRequest) {
     const agentUid = '0'; // Agora ConvAI agents must use numeric UID; '0' is the reserved agent slot
     const expireTimeInSeconds = 3600;
 
-    const agentToken = RtcTokenBuilder.buildTokenWithRtm(
+    const agentToken = await UniversalRtcTokenBuilder.buildTokenWithRtm(
       appId,
       appCertificate,
       channelName,
@@ -457,7 +457,7 @@ export async function POST(request: NextRequest) {
         agent_rtc_uid: agentUid,
         remote_rtc_uids: ['*'],
         enable_string_uid: true, // Must match human participant mode; agent UID '0' is valid in string mode
-        idle_timeout: 600,
+        idle_timeout: 120, // 2-minute safety auto-exit if bridge becomes completely silent
 
         // ── Agora Advanced Features (AI pipeline) ──────────────────────────
         advanced_features: {
