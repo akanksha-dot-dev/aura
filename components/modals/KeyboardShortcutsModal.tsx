@@ -37,6 +37,8 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
     category: 'Investigation Canvas',
     items: [
       { key: 'T', description: 'Switch between Incident Timeline and Topology Graph' },
+      { key: 'A', description: 'Toggle SRE Analytics & Cognitive Load Dashboard' },
+      { key: 'I', description: 'Toggle Google Gemini AI Insights & SBAR Copilot' },
       { key: '?', description: 'Toggle this Command-Center Hotkey Cheat Sheet' },
       { key: 'Esc', description: 'Close any active modal, drawer, or quick menu' },
     ],

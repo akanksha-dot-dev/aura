@@ -385,6 +385,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       resolved: true,
       incidentId: resolvedState.incidentId,
+      resolvedBy: resolvedBy || 'Incident Commander',
       resolvedAt: new Date(resolvedAt).toISOString(),
       score,
       rootCause: rootCause ?? null,

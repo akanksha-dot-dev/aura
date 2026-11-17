@@ -172,7 +172,7 @@ export function useFlightDeckTelemetry({
     });
 
     return edges;
-  }, [state.evidenceItems]);
+  }, [state.evidenceItems, state.affectedServices, topologyNodes]);
 
   // Derived tension history & inflection markers for NarrativeBar
   const tensionHistory = useMemo(() => {

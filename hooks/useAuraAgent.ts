@@ -39,8 +39,6 @@ export function useAuraAgent({
   scenarioId,
   isJoined,
   isMockReplay,
-  incidentState,
-  effectiveParticipants,
 }: UseAuraAgentOptions): { activeAgentId: string | null } {
   const [activeAgentId, setActiveAgentId] = useState<string | null>(null);
   const activeAgentIdRef = useRef<string | null>(null);

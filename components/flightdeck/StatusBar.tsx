@@ -834,6 +834,22 @@ export function StatusBar({
             </button>
           )}
 
+          {/* Google Gemini Engine Active Chip */}
+          <div
+            className="precision-bar__btn-chip"
+            style={{
+              borderColor: 'rgba(212, 168, 83, 0.4)',
+              background: 'rgba(212, 168, 83, 0.08)',
+              color: '#D4A853',
+              cursor: 'pointer',
+            }}
+            onClick={() => setIsSettingsOpen(true)}
+            title="Google Gemini 2.0 / 2.5 Flash Sub-250ms Live Voice & Epistemic Reasoning"
+          >
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#D4A853', boxShadow: '0 0 6px #D4A853' }} />
+            <span>⚡ Gemini</span>
+          </div>
+
           {/* Theme Switcher Button */}
           <button
             type="button"
@@ -900,6 +916,25 @@ export function StatusBar({
                 >
                   ✕
                 </button>
+              </div>
+
+              {/* AI Engine Status */}
+              <div className="precision-bar__setting-row">
+                <span className="precision-bar__setting-label">Reasoning Engine</span>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    color: '#D4A853',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                  }}
+                >
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#D4A853', boxShadow: '0 0 6px #D4A853' }} />
+                  GEMINI 2.5 FLASH
+                </span>
               </div>
 
               {/* Voice Model Accent */}

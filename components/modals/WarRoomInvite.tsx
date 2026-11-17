@@ -202,8 +202,10 @@ export function WarRoomInvite({ isOpen, onClose }: WarRoomInviteProps) {
 
   useEffect(() => {
     if (!isOpen) return;
-    setActiveTab('invite');
-    setLoading(true);
+    const id = setTimeout(() => {
+      setActiveTab('invite');
+      setLoading(true);
+    }, 0);
     fetch('/api/room/info')
       .then((r) => r.json())
       .then((data: RoomInfo) => {
@@ -212,6 +214,7 @@ export function WarRoomInvite({ isOpen, onClose }: WarRoomInviteProps) {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
+    return () => clearTimeout(id);
   }, [isOpen]);
 
   const startTunnel = useCallback(() => {
@@ -860,8 +863,8 @@ export function WarRoomInvite({ isOpen, onClose }: WarRoomInviteProps) {
                 </p>
                 <ul style={{ margin: '10px 0 0', paddingLeft: 18, fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.8 }}>
                   <li>Team members worldwide open the war room in their browser</li>
-                  <li>Agora's cloud servers call your LLM proxy and MCP tool server</li>
-                  <li>AURA's voice AI operate fully in live mode</li>
+                  <li>Agora&apos;s cloud servers call your LLM proxy and MCP tool server</li>
+                  <li>AURA&apos;s voice AI operate fully in live mode</li>
                 </ul>
               </div>
 

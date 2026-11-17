@@ -32,17 +32,19 @@ function DonutChart({ slices }: { slices: Array<{ value: number; color: string; 
   const r = 44;
   const cx = 60, cy = 60;
   const circumference = 2 * Math.PI * r;
-  let offset = 0;
+
+  type SliceItem = (typeof slices)[number];
+  type ArcItem = SliceItem & { pct: number; len: number; offset: number; dashArray: string };
 
   const arcs = slices
     .filter(s => s.value > 0)
-    .map(s => {
+    .reduce<ArcItem[]>((acc, s) => {
+      const prevOffset = acc.length > 0 ? acc[acc.length - 1].offset + acc[acc.length - 1].len : 0;
       const pct = s.value / total;
       const len = pct * circumference;
-      const arc = { ...s, pct, len, offset, dashArray: `${len} ${circumference - len}` };
-      offset += len;
-      return arc;
-    });
+      acc.push({ ...s, pct, len, offset: prevOffset, dashArray: `${len} ${circumference - len}` });
+      return acc;
+    }, []);
 
   return (
     <svg viewBox="0 0 120 120" width={120} height={120}>
@@ -131,7 +133,6 @@ function Sparkline({ values, color, height = 40, width = 200 }: { values: number
 // ── Arc Gauge (for cognitive load) ──────────────────────────────────────────
 function ArcGauge({ value, max = 100, color, label }: { value: number; max?: number; color: string; label: string }) {
   const pct = Math.min(1, value / max);
-  const angle = pct * 180; // 0..180 degrees
   const r = 44;
   const cx = 60, cy = 65;
 

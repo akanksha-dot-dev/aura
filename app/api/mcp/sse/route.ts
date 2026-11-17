@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { CONFIDENCE_CAP, AGENT_UID, PERSONAS, PERSONA_ALIASES } from '@/lib/constants';
 import { createDashboardEvent, publishDashboardEvent } from '@/lib/rtmPublisher';
 import { addEvidenceToIncident, getSpeakerDisplayName } from '@/lib/incidentStore';
-import { EvidenceItem, RTMDashboardEvent } from '@/lib/types';
+import { RTMDashboardEvent } from '@/lib/types';
 import {
   searchIncidents as dbSearchIncidents,
   findSimilarIncidents,

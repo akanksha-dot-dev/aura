@@ -13,7 +13,7 @@ export function SimulationBanner({ isMockReplay, speedMultiplier = 1 }: Simulati
   const handleSpeedChange = (nextSpeed: number) => {
     const params = new URLSearchParams(window.location.search);
     params.set('speed', nextSpeed.toString());
-    window.location.search = params.toString();
+    window.location.assign(`?${params.toString()}`);
   };
 
   const handleRestart = () => {
@@ -24,7 +24,7 @@ export function SimulationBanner({ isMockReplay, speedMultiplier = 1 }: Simulati
     const params = new URLSearchParams(window.location.search);
     params.delete('__AURA_REPLAY_MOCK_STREAM');
     params.delete('speed');
-    window.location.href = `/?${params.toString()}`;
+    window.location.assign(`/?${params.toString()}`);
   };
 
   return (

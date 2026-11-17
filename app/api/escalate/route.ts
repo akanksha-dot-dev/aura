@@ -4,7 +4,6 @@ import {
   evaluateEscalation,
   sendSlackNotification,
   formatSlackIncidentCard,
-  formatResolutionNotification,
   acknowledgeEscalation,
   generateEscalationSpeech,
 } from '@/lib/escalationEngine';

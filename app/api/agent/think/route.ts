@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getIncidentState } from '@/lib/incidentStore';
 import { createDashboardEvent, publishDashboardEvent } from '@/lib/rtmPublisher';
 
 export const runtime = 'edge';

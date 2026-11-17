@@ -1,4 +1,4 @@
-import { IncidentState, calculateCognitiveLoad, classifyOODAPhase, EvidenceItem } from './types';
+import { IncidentState, calculateCognitiveLoad, classifyOODAPhase, EvidenceItem, Participant } from './types';
 import { PRESET_SCENARIOS } from './scenarios';
 import { buildDynamicIncidentContext } from './promptBuilder';
 import {
@@ -26,7 +26,7 @@ export function initializeLiveIncident(
   }
 ): IncidentState {
   const now = Date.now();
-  const participants: Record<string, any> = {
+  const participants: Record<string, Participant> = {
     aura_agent: {
       uid: 'aura_agent',
       displayName: 'AURA',
@@ -452,7 +452,8 @@ export function removeParticipantFromIncident(
   uid: string
 ): IncidentState {
   return updateIncidentState(channelName, (prev) => {
-    const { [uid]: _, ...remaining } = prev.participants;
+    const remaining = { ...prev.participants };
+    delete remaining[uid];
     return {
       ...prev,
       participants: remaining,

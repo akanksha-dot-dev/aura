@@ -67,9 +67,12 @@ export function QuickCapture({ isOpen, onClose, onSubmit, speakerName }: QuickCa
 
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 60);
-      setValue('');
-      setError(null);
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+        setValue('');
+        setError(null);
+      }, 60);
+      return () => clearTimeout(timer);
     }
   }, [isOpen]);
 

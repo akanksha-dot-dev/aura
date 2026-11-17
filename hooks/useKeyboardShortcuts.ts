@@ -29,6 +29,8 @@ export interface KeyboardShortcutsHandlers {
   onToggleResolve?: () => void;
   /** A key: Toggle Analytics Dashboard Tab */
   onToggleAnalyticsTab?: () => void;
+  /** I key: Toggle Gemini AI Insights Tab */
+  onToggleInsightsTab?: () => void;
   /** G key: Open Postmortem Report if incident is resolved */
   onOpenPostmortemIfResolved?: () => void;
 }
@@ -97,6 +99,8 @@ export function useKeyboardShortcuts(handlers: KeyboardShortcutsHandlers): void 
         handlersRef.current.onToggleResolve?.();
       } else if (e.key === 'a' || e.key === 'A') {
         handlersRef.current.onToggleAnalyticsTab?.();
+      } else if (e.key === 'i' || e.key === 'I') {
+        handlersRef.current.onToggleInsightsTab?.();
       } else if (e.key === 'g' || e.key === 'G') {
         handlersRef.current.onOpenPostmortemIfResolved?.();
       }

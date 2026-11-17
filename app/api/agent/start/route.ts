@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { UniversalRtcTokenBuilder, RtcRole } from '@/lib/agoraToken';
 import { getIncidentState, initializeLiveIncident } from '@/lib/incidentStore';
 import { PRESET_SCENARIOS } from '@/lib/scenarios';
-import { AURA_SYSTEM_PROMPT, buildEffectiveSystemPrompt } from '@/lib/promptBuilder';
+import { buildEffectiveSystemPrompt } from '@/lib/promptBuilder';
 
 export const runtime = 'edge';
 

@@ -107,6 +107,7 @@ describe('API Route: /api/agent (app/api/agent/start, stop & interrupt routes)',
       process.env.AGORA_CUSTOMER_KEY = 'test_key';
       process.env.AGORA_CUSTOMER_SECRET = 'test_secret';
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let capturedPayload: any = null;
       global.fetch = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
         if (url.includes('conversational-ai-agent/v2/projects')) {
@@ -310,6 +311,7 @@ describe('API Route: /api/agent (app/api/agent/start, stop & interrupt routes)',
       process.env.AGORA_CUSTOMER_KEY = 'test_key';
       process.env.AGORA_CUSTOMER_SECRET = 'test_secret';
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let capturedUpdatePayload: any = null;
       global.fetch = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
         if (url.includes('/update')) {

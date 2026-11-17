@@ -39,6 +39,8 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
+import type { AIPostmortemResponse } from '@/app/api/incidents/ai-postmortem/route';
+
 export function PostmortemModal({
   isOpen,
   onClose,
@@ -48,8 +50,26 @@ export function PostmortemModal({
   // Capture snapshot timestamp on mount to keep render calculations pure
   const [snapshotTimestamp] = useState<number>(() => Date.now());
   const [copiedMd, setCopiedMd] = useState(false);
-  const [savedToDb, setSavedToDb] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const [aiSynthesis, setAiSynthesis] = useState<AIPostmortemResponse | null>(null);
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+
+  const handleGenerateAiSynthesis = async () => {
+    setIsGeneratingAi(true);
+    try {
+      const res = await fetch('/api/incidents/ai-postmortem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ incident, costRate }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data: AIPostmortemResponse = await res.json();
+      setAiSynthesis(data);
+    } catch (err) {
+      console.error('[PostmortemModal] Failed to generate AI synthesis:', err);
+    } finally {
+      setIsGeneratingAi(false);
+    }
+  };
 
   // Close on Escape key
   useEffect(() => {
@@ -151,7 +171,7 @@ ${incident.evidenceItems.map(item => `| ${formatClockTime(item.timestamp)} | ${i
 
 ## 4. Remediation & Action Item Audit
 ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act.content}** — Owner: ${act.assignedTo || 'Unassigned'}`).join('\n')}
-
+${aiSynthesis ? `\n---\n\n${aiSynthesis.markdownSummary}\n` : ''}
 ---
 *Report generated automatically by AURA AI Incident Commander on ${new Date().toISOString()}.*
 `;
@@ -656,6 +676,25 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
                 <button
                   type="button"
                   className="sre-action-btn"
+                  onClick={handleGenerateAiSynthesis}
+                  disabled={isGeneratingAi}
+                  title="Generate Gemini 2.5 Pro Deep Systemic RCA (Swiss Cheese & 5-Whys)"
+                  style={{
+                    background: 'rgba(212, 168, 83, 0.16)',
+                    borderColor: 'rgba(212, 168, 83, 0.45)',
+                    color: '#D4A853',
+                    fontWeight: 700,
+                  }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                  </svg>
+                  <span>{isGeneratingAi ? 'Synthesizing...' : '✨ Gemini Deep RCA'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="sre-action-btn"
                   onClick={handleCopyMarkdown}
                   title="Copy markdown to clipboard"
                 >
@@ -1010,6 +1049,63 @@ ${actionItems.map(act => `- [${act.actionStatus === 'done' ? 'x' : ' '}] **${act
                   ))}
                 </div>
               </section>
+
+              {/* Section 6: Google Gemini 2.5 Pro Deep Systemic RCA */}
+              {aiSynthesis && (
+                <section className="sre-section" style={{ border: '1px solid rgba(212, 168, 83, 0.3)', borderRadius: 8, padding: 16, background: 'rgba(212, 168, 83, 0.03)' }}>
+                  <h3 className="sre-section-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(212, 168, 83, 0.2)' }}>
+                    <span>6. Google Gemini 2.5 Pro Deep Systemic RCA</span>
+                    <span style={{ fontSize: '9px', color: '#D4A853', fontFamily: 'var(--font-mono)' }}>{aiSynthesis.engine}</span>
+                  </h3>
+                  
+                  {/* Executive Failure Summary */}
+                  <div style={{ fontSize: '12.5px', lineHeight: 1.6, color: 'var(--text-secondary)' }}>
+                    {aiSynthesis.executiveSummary}
+                  </div>
+
+                  {/* 5-Whys */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
+                    <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#D4A853' }}>5-WHYS ROOT CAUSE CHAIN</span>
+                    {aiSynthesis.rootCause5Whys.map((w) => (
+                      <div key={w.step} style={{ background: 'rgba(255,255,255,0.02)', padding: '6px 10px', borderRadius: 4, fontSize: '12px' }}>
+                        <span style={{ color: '#D4A853', fontWeight: 600 }}>Why {w.step}: </span>
+                        <span>{w.why}</span>
+                        <div style={{ color: 'var(--text-secondary)', marginLeft: 16, fontSize: '11.5px', marginTop: 2 }}>↳ <em>Finding:</em> {w.finding}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Swiss Cheese Model Analysis */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 10, marginTop: 10 }}>
+                    <div style={{ background: 'rgba(244, 63, 94, 0.05)', border: '1px solid rgba(244, 63, 94, 0.2)', padding: 10, borderRadius: 6 }}>
+                      <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#F43F5E' }}>LATENT SYSTEM DEFICIENCIES</span>
+                      <ul style={{ margin: '6px 0 0', paddingLeft: 16, fontSize: '11.5px', color: 'var(--text-secondary)' }}>
+                        {aiSynthesis.swissCheeseDefects.latentDeficiencies.map((d, i) => <li key={i}>{d}</li>)}
+                      </ul>
+                    </div>
+                    <div style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)', padding: 10, borderRadius: 6 }}>
+                      <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#10B981' }}>RETAINED SAFEGUARDS</span>
+                      <ul style={{ margin: '6px 0 0', paddingLeft: 16, fontSize: '11.5px', color: 'var(--text-secondary)' }}>
+                        {aiSynthesis.swissCheeseDefects.retainedSafeguards.map((s, i) => <li key={i}>{s}</li>)}
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Preventative Hardening Actions */}
+                  <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#D4A853' }}>PREVENTATIVE HARDENING ROADMAP</span>
+                    {aiSynthesis.preventativeActions.map((act) => (
+                      <div key={act.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '6px 10px', borderRadius: 4, fontSize: '12px' }}>
+                        <div>
+                          <strong style={{ color: act.priority === 'P0' ? '#F43F5E' : '#F59E0B' }}>[{act.priority}] </strong>
+                          <span>{act.title}</span>
+                          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Owner: {act.ownerTeam} • Effort: {act.estimatedEffort}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
             </div>
           </motion.div>
         </div>

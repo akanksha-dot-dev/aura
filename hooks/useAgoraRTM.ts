@@ -238,7 +238,7 @@ export function useAgoraRTM({
             if (activeSession.subscribedChannel) {
               await activeSession.client.unsubscribe(activeSession.subscribedChannel);
             }
-            await (activeSession.client as any).subscribe(channelName, {
+            await (activeSession.client as unknown as { subscribe: (channel: string, options?: Record<string, unknown>) => Promise<unknown> }).subscribe(channelName, {
               withMessage: true,
               withPresence: false,
               withMetadata: false,
@@ -823,7 +823,7 @@ export function useAgoraRTM({
         }
 
         // Subscribe to incident channel with withPresence: false to prevent -13001
-        await (client as any).subscribe(channelName, {
+        await (client as unknown as { subscribe: (channel: string, options?: Record<string, unknown>) => Promise<unknown> }).subscribe(channelName, {
           withMessage: true,
           withPresence: false,
           withMetadata: false,

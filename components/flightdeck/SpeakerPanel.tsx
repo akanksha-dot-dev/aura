@@ -820,8 +820,8 @@ function AuraAgentRow({
 
   useEffect(() => {
     if (agentIsSpeaking || agentLastSpokeAt <= 0) {
-      setIsProcessing(false);
-      return;
+      const id = setTimeout(() => setIsProcessing(false), 0);
+      return () => clearTimeout(id);
     }
     const check = () => {
       setIsProcessing((Date.now() - agentLastSpokeAt) < 4000);
@@ -857,6 +857,7 @@ function AuraAgentRow({
             }}
           >
             {isActive && <AuraNeuralRing isSpeaking={isActive} radius={18} />}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/logo.png"
               alt="AURA"

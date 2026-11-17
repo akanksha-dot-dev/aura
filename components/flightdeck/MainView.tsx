@@ -5,6 +5,7 @@ import { EvidenceItem, TopologyNode, TopologyEdge, IncidentState } from '@/lib/t
 import { TimelineFeed } from './TimelineFeed';
 import { IncidentTopology } from './IncidentTopology';
 import { AnalyticsDashboard } from '@/components/common/AnalyticsDashboard';
+import { AIInsightsPanel } from './AIInsightsPanel';
 import { SimilarIncidentBanner } from '@/components/indicators/SimilarIncidentBanner';
 
 export interface MainViewProps {
@@ -13,8 +14,8 @@ export interface MainViewProps {
   nodes: TopologyNode[];
   edges: TopologyEdge[];
   isResolved?: boolean;
-  activeTab?: 'timeline' | 'topology' | 'analytics';
-  onTabChange?: (tab: 'timeline' | 'topology' | 'analytics') => void;
+  activeTab?: 'timeline' | 'topology' | 'analytics' | 'insights';
+  onTabChange?: (tab: 'timeline' | 'topology' | 'analytics' | 'insights') => void;
   // Analytics props
   incident?: IncidentState;
   costRate?: number;
@@ -23,6 +24,7 @@ export interface MainViewProps {
   scenarioSummary?: string;
   currentSpeakerName?: string | null;
   currentTranscript?: string;
+  onCreateAction?: (title: string, detail: string) => void;
 }
 
 export function MainView({
@@ -40,11 +42,12 @@ export function MainView({
   scenarioSummary,
   currentSpeakerName,
   currentTranscript,
+  onCreateAction,
 }: MainViewProps) {
-  const [internalActiveTab, setInternalActiveTab] = useState<'timeline' | 'topology' | 'analytics'>('timeline');
+  const [internalActiveTab, setInternalActiveTab] = useState<'timeline' | 'topology' | 'analytics' | 'insights'>('timeline');
   const activeTab = controlledActiveTab ?? internalActiveTab;
 
-  const handleTabSelect = (tab: 'timeline' | 'topology' | 'analytics') => {
+  const handleTabSelect = (tab: 'timeline' | 'topology' | 'analytics' | 'insights') => {
     setInternalActiveTab(tab);
     onTabChange?.(tab);
   };
@@ -381,6 +384,28 @@ export function MainView({
               <span>Analytics</span>
               <span className="main-view__tab-count">{incident?.participants ? Object.keys(incident.participants).length : 4}</span>
             </button>
+
+            {/* Gemini AI Insights Tab */}
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'insights'}
+              id="tab-insights"
+              aria-controls="panel-insights"
+              className={`main-view__tab ${
+                activeTab === 'insights' ? 'main-view__tab--active' : ''
+              }`}
+              onClick={() => handleTabSelect('insights')}
+            >
+              <span className="main-view__tab-icon" aria-hidden="true" style={{ color: '#D4A853' }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg>
+              </span>
+              <span>AI Insights</span>
+              <span className="main-view__tab-count" style={{ color: '#D4A853', background: 'rgba(212,168,83,0.18)' }}>GEMINI</span>
+              {activeTab !== 'insights' && <kbd className="keyboard-hint-badge" title="Press I to switch to AI Insights">I</kbd>}
+            </button>
           </div>
 
           <div className="main-view__meta-hint">
@@ -476,6 +501,28 @@ export function MainView({
         >
           {incident && activeTab === 'analytics' && (
             <AnalyticsDashboard incident={incident} costRate={costRate} />
+          )}
+        </div>
+
+        {/* Gemini AI Insights Panel */}
+        <div
+          role="tabpanel"
+          id="panel-insights"
+          aria-labelledby="tab-insights"
+          className="main-view__panel"
+          style={{
+            display: activeTab === 'insights' ? 'flex' : 'none',
+            flex: 1,
+            minHeight: 0,
+            overflow: 'hidden',
+          }}
+        >
+          {incident && (
+            <AIInsightsPanel
+              incident={incident}
+              channelName={channelName}
+              onCreateAction={onCreateAction}
+            />
           )}
         </div>
       </main>

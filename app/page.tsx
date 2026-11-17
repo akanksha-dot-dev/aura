@@ -48,7 +48,7 @@ function DashboardContent() {
 
   // 1. Modals, views, and settings
   const modals = useWarRoomModals();
-  const [mainViewTab, setMainViewTab] = useState<'timeline' | 'topology' | 'analytics'>('timeline');
+  const [mainViewTab, setMainViewTab] = useState<'timeline' | 'topology' | 'analytics' | 'insights'>('timeline');
   const [isCostPaused, setIsCostPaused] = useState(false);
   const [isSpeakerCollapsed, setIsSpeakerCollapsed] = useState(false);
   const [isActionsCollapsed, setIsActionsCollapsed] = useState(false);
@@ -176,6 +176,7 @@ function DashboardContent() {
     },
     onToggleResolve: () => modals.toggleModal('resolve'),
     onToggleAnalyticsTab: () => setMainViewTab((p) => (p === 'analytics' ? 'timeline' : 'analytics')),
+    onToggleInsightsTab: () => setMainViewTab((p) => (p === 'insights' ? 'timeline' : 'insights')),
     onOpenPostmortemIfResolved: () => {
       if (state.status === 'resolved') {
         modals.toggleModal('postmortem');
@@ -360,6 +361,7 @@ function DashboardContent() {
           scenarioSummary={scenarioConfig?.description || scenarioConfig?.impact}
           currentSpeakerName={telemetry.captionSpeakerName}
           currentTranscript={telemetry.currentTranscript}
+          onCreateAction={logAction}
         />
 
         <ActionTracker

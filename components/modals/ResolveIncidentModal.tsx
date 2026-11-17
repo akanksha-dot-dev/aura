@@ -80,7 +80,8 @@ export function ResolveIncidentModal({
   }, [incident.evidenceItems]);
 
   // SLA info
-  const elapsedMinutes = Math.round((Date.now() - incident.openedAt) / 60_000);
+  const [snapshotNow] = useState(() => Date.now());
+  const elapsedMinutes = Math.round((snapshotNow - incident.openedAt) / 60_000);
   const slaTargetMinutes = SLA_RESOLVE_MINUTES[incident.severity] ?? 240;
   const slaMet = elapsedMinutes <= slaTargetMinutes;
 
@@ -97,11 +98,14 @@ export function ResolveIncidentModal({
   // Reset on open
   useEffect(() => {
     if (isOpen) {
-      setRootCauseCategory('');
-      setRootCauseDescription(suggestedRootCause);
-      setLessonsLearned('');
-      setResult(null);
-      setError(null);
+      const id = setTimeout(() => {
+        setRootCauseCategory('');
+        setRootCauseDescription(suggestedRootCause);
+        setLessonsLearned('');
+        setResult(null);
+        setError(null);
+      }, 0);
+      return () => clearTimeout(id);
     }
   }, [isOpen, suggestedRootCause]);
 
