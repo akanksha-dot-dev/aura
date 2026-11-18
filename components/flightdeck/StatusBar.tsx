@@ -657,6 +657,7 @@ export function StatusBar({
         <div className={`precision-bar__left ${styles.left}`}>
           <div className={`precision-bar__brand ${styles.brand}`}>
             <div className="precision-bar__logo-wrap" aria-hidden="true">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo.png" alt="AURA Logo" width={17} height={17} />
             </div>
             <span className={`precision-bar__brand-text ${styles.brandText}`}>

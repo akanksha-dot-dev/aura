@@ -25,6 +25,7 @@ export interface MainViewProps {
   currentSpeakerName?: string | null;
   currentTranscript?: string;
   onCreateAction?: (title: string, detail: string) => void;
+  onInjectTelemetry?: (source: string, message: string, serviceAffected?: string) => void;
 }
 
 export function MainView({
@@ -43,6 +44,7 @@ export function MainView({
   currentSpeakerName,
   currentTranscript,
   onCreateAction,
+  onInjectTelemetry,
 }: MainViewProps) {
   const [internalActiveTab, setInternalActiveTab] = useState<'timeline' | 'topology' | 'analytics' | 'insights'>('timeline');
   const activeTab = controlledActiveTab ?? internalActiveTab;
@@ -521,7 +523,9 @@ export function MainView({
             <AIInsightsPanel
               incident={incident}
               channelName={channelName}
+              costRate={costRate}
               onCreateAction={onCreateAction}
+              onInjectTelemetry={onInjectTelemetry}
             />
           )}
         </div>

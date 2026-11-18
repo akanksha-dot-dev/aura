@@ -276,7 +276,7 @@ function DashboardContent() {
     transcriptHistory: transcripts.transcriptHistory,
   });
 
-  const { logAction, logQuickCapture, broadcastActionStatus, broadcastClaimIC } = useEvidenceLogger({
+  const { logAction, logQuickCapture, broadcastActionStatus, broadcastClaimIC, logTelemetryAlert } = useEvidenceLogger({
     channel,
     uid,
     name,
@@ -362,6 +362,7 @@ function DashboardContent() {
           currentSpeakerName={telemetry.captionSpeakerName}
           currentTranscript={telemetry.currentTranscript}
           onCreateAction={logAction}
+          onInjectTelemetry={logTelemetryAlert}
         />
 
         <ActionTracker

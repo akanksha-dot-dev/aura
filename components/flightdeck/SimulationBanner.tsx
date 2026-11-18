@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 
 export interface SimulationBannerProps {
   isMockReplay: boolean;
@@ -8,12 +9,13 @@ export interface SimulationBannerProps {
 }
 
 export function SimulationBanner({ isMockReplay, speedMultiplier = 1 }: SimulationBannerProps) {
+  const router = useRouter();
   if (!isMockReplay) return null;
 
   const handleSpeedChange = (nextSpeed: number) => {
     const params = new URLSearchParams(window.location.search);
     params.set('speed', nextSpeed.toString());
-    window.location.assign(`?${params.toString()}`);
+    router.push(`/?${params.toString()}`);
   };
 
   const handleRestart = () => {
@@ -24,7 +26,7 @@ export function SimulationBanner({ isMockReplay, speedMultiplier = 1 }: Simulati
     const params = new URLSearchParams(window.location.search);
     params.delete('__AURA_REPLAY_MOCK_STREAM');
     params.delete('speed');
-    window.location.assign(`/?${params.toString()}`);
+    router.push(`/?${params.toString()}`);
   };
 
   return (

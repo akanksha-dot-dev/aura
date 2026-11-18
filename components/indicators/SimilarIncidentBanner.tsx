@@ -80,7 +80,8 @@ export function SimilarIncidentBanner({ incident, channelName }: SimilarIncident
   // Re-check when evidence doubles
   useEffect(() => {
     if (incident.evidenceItems.length >= 6 && suggestions.length === 0 && hasChecked) {
-      setHasChecked(false); // Allow re-check
+      const id = setTimeout(() => setHasChecked(false), 0); // Allow re-check
+      return () => clearTimeout(id);
     }
   }, [incident.evidenceItems.length, suggestions.length, hasChecked]);
 

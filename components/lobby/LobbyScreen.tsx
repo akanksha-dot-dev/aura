@@ -327,14 +327,20 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
 
   // Sync cost rate from scenario
   useEffect(() => {
-    setSelectedRate(activeScenario.costRate);
-    setCustomRateInput(activeScenario.costRate.toString());
+    const id = setTimeout(() => {
+      setSelectedRate(activeScenario.costRate);
+      setCustomRateInput(activeScenario.costRate.toString());
+    }, 0);
+    return () => clearTimeout(id);
   }, [activeScenario.costRate]);
 
   // Sync persona selection on scenario change
   useEffect(() => {
     if (!isCustomPersonaActive && activeScenario.personas.length > 0) {
-      setSelectedPersonaUid(activeScenario.personas[0].uid);
+      const id = setTimeout(() => {
+        setSelectedPersonaUid(activeScenario.personas[0].uid);
+      }, 0);
+      return () => clearTimeout(id);
     }
   }, [activeScenarioId, activeScenario.personas, isCustomPersonaActive]);
 
@@ -1903,12 +1909,13 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
         <div className="aura-topbar__inner">
           <div className="aura-topbar__brand">
             <div className="aura-topbar__logo-wrap" aria-hidden="true">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo.png" alt="AURA Logo" width={20} height={20} />
             </div>
             <span className="aura-topbar__title">AURA // MISSION CONTROL</span>
             <span className="aura-topbar__status-pill">
               <span className="aura-live-dot" aria-hidden="true" />
-              SD-RTN™ ONLINE
+              GEMINI 2.5 FLASH READY
             </span>
             <span className="aura-topbar__clock" title="Mission Elapsed Time UTC">
               ⏱ {utcTime || '00:00:00 UTC'}
@@ -1978,6 +1985,7 @@ export function LobbyScreen({ onJoin, isConnecting = false }: LobbyScreenProps) 
           <div className="aura-radar-ring-1" aria-hidden="true" />
           <div className="aura-radar-ring-2" aria-hidden="true" />
           <div className="aura-hero-emblem" aria-hidden="true">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo.png" alt="AURA Logo" width={36} height={36} />
           </div>
         </div>

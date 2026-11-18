@@ -134,5 +134,43 @@ export function useEvidenceLogger({
     [channel, eventSeq, processEvent]
   );
 
-  return { logAction, logQuickCapture, broadcastActionStatus, broadcastClaimIC };
+  const logTelemetryAlert = useCallback(
+    (source: string, message: string, serviceAffected?: string) => {
+      const item = {
+        id: `telemetry-${Date.now()}`,
+        category: 'fact' as const,
+        content: `[${source}] ${message}`,
+        speakerUid: 'aura_agent',
+        speakerName: source,
+        confidence: 85,
+        timestamp: Date.now(),
+        ...(serviceAffected ? { serviceAffected } : {}),
+      };
+      processEvent({
+        type: 'dashboard_event',
+        id: item.id,
+        seq: eventSeq + 1,
+        timestamp: Date.now(),
+        eventType: 'evidence_added',
+        payload: item,
+      });
+      fetch('/api/agent/think', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channelName: channel,
+          source,
+          message,
+        }),
+      }).catch(() => {});
+      emitToast({
+        type: 'escalation',
+        title: `Telemetry Ingested: ${source}`,
+        description: message,
+      });
+    },
+    [channel, eventSeq, processEvent]
+  );
+
+  return { logAction, logQuickCapture, broadcastActionStatus, broadcastClaimIC, logTelemetryAlert };
 }
