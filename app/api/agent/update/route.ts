@@ -4,12 +4,15 @@ import { PRESET_SCENARIOS } from '@/lib/scenarios';
 import { buildEffectiveSystemPrompt } from '@/lib/promptBuilder';
 import { EvidenceItem, IncidentState } from '@/lib/types';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 /**
- * POST /api/agent/update — Hot-update the ConvAI agent's context when participants or evidence change.
- * Sends updated participant roster and rich incident context to the active agent while preserving
- * all 16 directives, voice rules, SBAR protocols, and telemetry syntax.
+ * POST /api/agent/update — Hot-update the Gemini Live agent's context when participants
+ * or evidence change. Replaces Agora ConvAI /update REST endpoint.
+ *
+ * Strategy: Writes updated systemInstruction to Firebase RTDB sessions/{channelName}.
+ * The client-side Gemini Live WebSocket hook picks it up and can optionally close+reopen
+ * the session with the new instruction, or the update is reflected on the next turn.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -30,21 +33,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    const appId = process.env.AGORA_APP_ID;
-    const customerKey = process.env.AGORA_CUSTOMER_KEY;
-    const customerSecret = process.env.AGORA_CUSTOMER_SECRET;
-
-    if (!appId || !customerKey || !customerSecret) {
-      return NextResponse.json(
-        { error: 'Agora credentials not configured' },
-        { status: 500 }
-      );
-    }
-
-    const authHeader = `Basic ${Buffer.from(
-      `${customerKey}:${customerSecret}`
-    ).toString('base64')}`;
 
     // 1. Resolve or sync server-side incident state
     let currentState: IncidentState = getIncidentState(channelName);
@@ -103,55 +91,55 @@ export async function POST(request: NextRequest) {
       operatorUid,
     });
 
-    // 4. Use Agora's agent update API to push updated prompt
-    const updatePayload = {
-      properties: {
-        llm: {
-          system_messages: [
-            {
-              role: 'system',
-              content: effectiveSystemPrompt,
-            },
-          ],
+    // 4. Write updated config to Firebase RTDB sessions/{channelName}
+    //    The client-side Gemini Live hook listens to this node and applies updated
+    //    system instruction on next session reconnect or via setConfig() if supported.
+    try {
+      const { adminDb } = await import('@/lib/firebaseAdmin');
+      const { ref, update, push } = await import('firebase-admin/database');
+
+      // Update the session node with new system instruction
+      await update(ref(adminDb, `sessions/${channelName}`), {
+        systemInstruction: effectiveSystemPrompt,
+        updatedAt: Date.now(),
+        agentId,
+        participantCount: Object.keys(currentState.participants).length,
+        evidenceCount: currentState.evidenceItems.length,
+        currentOODAPhase: currentState.currentOODAPhase,
+      });
+
+      // Also broadcast an update event to all dashboards
+      await push(ref(adminDb, `channels/${channelName}/events`), {
+        id: `ctx-update-${Date.now()}`,
+        seq: Date.now(),
+        timestamp: Date.now(),
+        type: 'context_updated',
+        eventType: 'context_updated',
+        payload: {
+          agentId,
+          evidenceCount: currentState.evidenceItems.length,
+          participantCount: Object.keys(currentState.participants).length,
+          phase: currentState.currentOODAPhase,
         },
-      },
-    };
+      });
 
-    const agoraResponse = await fetch(
-      `https://api.agora.io/api/conversational-ai-agent/v2/projects/${appId}/agents/${encodeURIComponent(agentId)}/update`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: authHeader,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updatePayload),
-      }
-    );
-
-    const responseData = await agoraResponse.json().catch(() => ({}));
-
-    if (!agoraResponse.ok && agoraResponse.status !== 404) {
-      console.warn(
-        `[AgentUpdate] Agora update returned HTTP ${agoraResponse.status}:`,
-        responseData
-      );
+      return NextResponse.json({
+        status: 'updated',
+        agentId,
+        evidenceCount: currentState.evidenceItems.length,
+        participantCount: Object.keys(currentState.participants).length,
+        currentOODAPhase: currentState.currentOODAPhase,
+        transport: 'firebase-rtdb',
+      });
+    } catch (fbErr) {
+      console.warn('[AgentUpdate] Firebase RTDB update warning:', fbErr);
+      // Graceful degradation — context was updated server-side even if RTDB write failed
       return NextResponse.json({
         status: 'context_queued',
-        note: 'Agent update queued; context will sync on next turn',
+        note: 'Agent context updated server-side; Firebase sync pending',
         evidenceCount: currentState.evidenceItems.length,
-        details: responseData,
       });
     }
-
-    return NextResponse.json({
-      status: 'updated',
-      agentId,
-      evidenceCount: currentState.evidenceItems.length,
-      participantCount: Object.keys(currentState.participants).length,
-      currentOODAPhase: currentState.currentOODAPhase,
-      details: responseData,
-    });
   } catch (error) {
     return NextResponse.json(
       {

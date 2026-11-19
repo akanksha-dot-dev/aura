@@ -309,7 +309,7 @@ export function AgoraAnalyticsOverlay({
           aria-label="Agora RTC Telemetry and AI Pipeline Latency"
         >
           <div className="agora-telemetry-popover__header">
-            <span className="agora-telemetry-popover__title">Agora Voice Diagnostics</span>
+            <span className="agora-telemetry-popover__title">AURA Voice Diagnostics (Google WebRTC)</span>
             <button
               type="button"
               className="agora-telemetry-popover__close-btn"
@@ -387,7 +387,7 @@ export function AgoraAnalyticsOverlay({
 
           <div className="agora-telemetry-popover__pipeline-row">
             <div className="agora-telemetry-popover__pipeline-meta">
-              <span className="agora-telemetry-popover__label">TTS (MiniMax)</span>
+              <span className="agora-telemetry-popover__label">TTS (Google Journey-F)</span>
               <span className="agora-telemetry-popover__value">{ttsMeta.label}</span>
             </div>
             <div className="agora-telemetry-popover__pipeline-track">

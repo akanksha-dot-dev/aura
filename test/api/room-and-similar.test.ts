@@ -11,7 +11,7 @@ describe('/api/room/info', () => {
 
     const data = await res.json();
     expect(data).toHaveProperty('health');
-    expect(data.health).toHaveProperty('agora');
+    expect(data.health).toHaveProperty('firebase');
     expect(data).toHaveProperty('network');
     expect(data.network).toHaveProperty('primaryLanIp');
     expect(data).toHaveProperty('channel');

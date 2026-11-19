@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 function getLocalIpAddresses(): string[] {
   const ips: string[] = [];
   try {
-    // Dynamically query interfaces if available, fallback safely on Edge/Cloudflare
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const nodeOs = typeof require !== 'undefined' ? require('os') : null;
     const interfaces = nodeOs?.networkInterfaces?.();
@@ -28,19 +27,31 @@ function getLocalIpAddresses(): string[] {
 
 export async function GET(request: NextRequest) {
   try {
-    const agoraAppId = !!process.env.AGORA_APP_ID;
-    const agoraCert = !!process.env.AGORA_APP_CERTIFICATE;
-    const agoraRest = !!(
-      (process.env.AGORA_CUSTOMER_KEY && process.env.AGORA_CUSTOMER_SECRET) ||
-      (process.env.AGORA_REST_KEY && process.env.AGORA_REST_SECRET)
+    // ── Google / Firebase health checks ──────────────────────────────────────
+    const firebaseClientKey = !!(
+      process.env.NEXT_PUBLIC_FIREBASE_API_KEY &&
+      !process.env.NEXT_PUBLIC_FIREBASE_API_KEY.includes('AIza...')
     );
-    const openAiKey = !!process.env.OPENAI_API_KEY;
+    const firebaseAdminKey = !!(
+      process.env.FIREBASE_CLIENT_EMAIL &&
+      process.env.FIREBASE_PRIVATE_KEY &&
+      !process.env.FIREBASE_CLIENT_EMAIL.includes('your-project')
+    );
+    const firebaseRtdbUrl = !!(
+      process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL &&
+      !process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL.includes('your-project')
+    );
+    const geminiKey = !!(
+      process.env.GEMINI_API_KEY &&
+      !process.env.GEMINI_API_KEY.includes('AIza...')
+    );
     const proxySecret = !!process.env.AURA_PROXY_SECRET;
     const proxyUrl = !!process.env.PROXY_URL;
     const mcpUrl = !!process.env.MCP_URL;
     const slackConfigured = !!process.env.SLACK_WEBHOOK_URL;
 
-    const voiceReady = agoraAppId && agoraCert;
+    // Voice is ready when Firebase RTDB + Gemini are configured (WebRTC + Gemini Live)
+    const voiceReady = firebaseClientKey && firebaseAdminKey && firebaseRtdbUrl && geminiKey;
 
     const hostHeader = request.headers.get('host') || 'localhost:3000';
     const protocol = request.headers.get('x-forwarded-proto') || 'http';
@@ -105,19 +116,20 @@ export async function GET(request: NextRequest) {
     const instructions = voiceReady
       ? null
       : [
-          'Set AGORA_APP_ID and AGORA_APP_CERTIFICATE in .env.local to enable live voice.',
-          'Set AGORA_CUSTOMER_KEY and AGORA_CUSTOMER_SECRET to enable server-side agent hot-updates.',
+          'Set NEXT_PUBLIC_FIREBASE_API_KEY and NEXT_PUBLIC_FIREBASE_DATABASE_URL in .env.local for real-time signaling.',
+          'Set FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY (Firebase Admin SDK) for server-side token minting.',
+          'Set GEMINI_API_KEY (from AI Studio) to enable the AURA Gemini Live voice agent.',
         ];
 
     return NextResponse.json({
       health: {
-        agora: {
-          appId: agoraAppId,
-          certificate: agoraCert,
-          restApi: agoraRest,
+        firebase: {
+          clientKey: firebaseClientKey,
+          adminKey: firebaseAdminKey,
+          rtdbUrl: firebaseRtdbUrl,
         },
-        openAi: {
-          key: openAiKey,
+        gemini: {
+          key: geminiKey,
         },
         proxy: {
           secret: proxySecret,

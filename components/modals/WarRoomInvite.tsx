@@ -27,8 +27,8 @@ interface PersonaLink {
 }
 
 interface HealthCheck {
-  agora: { appId: boolean; certificate: boolean; restApi: boolean };
-  openAi: { key: boolean };
+  firebase: { clientKey: boolean; adminKey: boolean; rtdbUrl: boolean };
+  gemini: { key: boolean };
   proxy: { secret: boolean; url: boolean; mcpUrl: boolean };
   slack: { configured: boolean };
 }
@@ -446,7 +446,7 @@ export function WarRoomInvite({ isOpen, onClose }: WarRoomInviteProps) {
                   }}
                 >
                   <span>
-                    ⚡ <strong>Collab &amp; War Room Sharing is Active:</strong> Anyone on your LAN or tunnel can join via the links below. (To enable live Agora cloud voice audio, see the <strong>Credentials Setup</strong> tab).
+                    ⚡ <strong>Collab &amp; War Room Sharing is Active:</strong> Anyone on your LAN or tunnel can join via the links below. (To enable live Google voice AI, see the <strong>Credentials Setup</strong> tab).
                   </span>
                   <button
                     onClick={() => setActiveTab('setup')}
@@ -668,7 +668,7 @@ export function WarRoomInvite({ isOpen, onClose }: WarRoomInviteProps) {
                     <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>
                       {roomInfo.voiceReady
                         ? 'Open the Invite Links tab to share with your team.'
-                        : 'You can share war room links and collaborate right now. Configure keys below only if you want live Agora cloud voice AI.'}
+                        : 'You can share war room links and collaborate right now. Configure keys below only if you want live Google Gemini voice AI.'}
                     </div>
                   </div>
                 </div>
@@ -694,33 +694,33 @@ export function WarRoomInvite({ isOpen, onClose }: WarRoomInviteProps) {
               {/* Credential cards */}
               {[
                 {
-                  title: 'Agora Core',
-                  icon: '🔊',
-                  url: 'https://console.agora.io',
-                  urlLabel: 'Open Agora Console →',
+                  title: 'Firebase (Auth + Realtime DB)',
+                  icon: '🔥',
+                  url: 'https://console.firebase.google.com',
+                  urlLabel: 'Open Firebase Console →',
                   checks: [
-                    { ok: roomInfo.health.agora.appId, label: 'App ID configured' },
-                    { ok: roomInfo.health.agora.certificate, label: 'App Certificate configured' },
-                    { ok: roomInfo.health.agora.restApi, label: 'REST API Key & Secret configured' },
+                    { ok: roomInfo.health.firebase.clientKey, label: 'Firebase API Key configured' },
+                    { ok: roomInfo.health.firebase.adminKey, label: 'Firebase Admin SDK configured' },
+                    { ok: roomInfo.health.firebase.rtdbUrl, label: 'Realtime Database URL configured' },
                   ],
                   envVars: [
-                    'AGORA_APP_ID="your_app_id_here"',
-                    'AGORA_APP_CERTIFICATE="your_certificate_here"',
-                    'AGORA_CUSTOMER_KEY="your_customer_key"',
-                    'AGORA_CUSTOMER_SECRET="your_customer_secret"',
+                    'NEXT_PUBLIC_FIREBASE_API_KEY="AIza..."',
+                    'NEXT_PUBLIC_FIREBASE_DATABASE_URL="https://your-project-default-rtdb.firebaseio.com"',
+                    'FIREBASE_CLIENT_EMAIL="firebase-adminsdk-...@your-project.iam.gserviceaccount.com"',
+                    'FIREBASE_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\\n...\\n-----END RSA PRIVATE KEY-----\\n"',
                   ],
-                  instructions: 'Go to console.agora.io → Create a new project (Security Mode) → Copy the App ID and App Certificate. Then go to RESTful API → Add Customer → copy Key and Secret.',
+                  instructions: 'Go to console.firebase.google.com → Create a project → Add a Web App → Copy the client config keys. Then go to Project Settings → Service Accounts → Generate new private key to get the Admin SDK JSON.',
                 },
                 {
-                  title: 'OpenAI API',
-                  icon: '🧠',
-                  url: 'https://platform.openai.com/api-keys',
-                  urlLabel: 'Open OpenAI Platform →',
+                  title: 'Gemini API (Voice AI + LLM)',
+                  icon: '✨',
+                  url: 'https://aistudio.google.com/app/apikey',
+                  urlLabel: 'Open AI Studio →',
                   checks: [
-                    { ok: roomInfo.health.openAi.key, label: 'OpenAI API key configured (sk-...)' },
+                    { ok: roomInfo.health.gemini.key, label: 'Gemini API key configured (AIza...)' },
                   ],
-                  envVars: ['OPENAI_API_KEY="sk-proj-your_key_here"'],
-                  instructions: 'Go to platform.openai.com/api-keys → Create new secret key → Paste it into OPENAI_API_KEY in .env.local.',
+                  envVars: ['GEMINI_API_KEY="AIza..."'],
+                  instructions: 'Go to aistudio.google.com/app/apikey → Create API key → Paste it into GEMINI_API_KEY in .env.local. This powers both the LLM proxy (Gemini 2.5 Flash) and the AURA voice agent (Gemini Live API).',
                 },
                 {
                   title: 'Public Tunnel URLs',
@@ -863,7 +863,7 @@ export function WarRoomInvite({ isOpen, onClose }: WarRoomInviteProps) {
                 </p>
                 <ul style={{ margin: '10px 0 0', paddingLeft: 18, fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.8 }}>
                   <li>Team members worldwide open the war room in their browser</li>
-                  <li>Agora&apos;s cloud servers call your LLM proxy and MCP tool server</li>
+                  <li>Google&apos;s Gemini Live API reaches your MCP tool server</li>
                   <li>AURA&apos;s voice AI operate fully in live mode</li>
                 </ul>
               </div>

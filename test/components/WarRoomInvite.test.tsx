@@ -5,8 +5,8 @@ import { WarRoomInvite } from '@/components/modals/WarRoomInvite';
 
 const mockRoomInfo = {
   health: {
-    agora: { appId: true, certificate: true, restApi: true },
-    openAi: { key: true },
+    firebase: { clientKey: true, adminKey: true, rtdbUrl: true },
+    gemini: { key: true },
     proxy: { secret: true, url: true, mcpUrl: true },
     slack: { configured: false },
   },
