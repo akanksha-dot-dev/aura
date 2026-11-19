@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 interface AgentStopRequest {
   agentId?: string;
@@ -12,140 +12,28 @@ interface AgentStopRequest {
 export async function POST(request: NextRequest) {
   try {
     let body: AgentStopRequest;
-    try {
-      const rawText = await request.text();
-      body = rawText ? JSON.parse(rawText) : {};
-    } catch {
-      return NextResponse.json(
-        { error: 'Invalid JSON request body' },
-        { status: 400 }
-      );
-    }
-
+    try { const t = await request.text(); body = t ? JSON.parse(t) : {}; } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
     const agentId = body.agentId || body.agent_id;
     const channelName = body.channelName || body.channel_name;
+    if (!agentId && !channelName) return NextResponse.json({ error: 'Missing agentId or channelName' }, { status: 400 });
 
-    if ((!agentId || typeof agentId !== 'string') && (!channelName || typeof channelName !== 'string')) {
-      return NextResponse.json(
-        { error: 'Missing or invalid agentId' },
-        { status: 400 }
-      );
-    }
-
-    const appId = process.env.AGORA_APP_ID;
-    const customerKey = process.env.AGORA_CUSTOMER_KEY;
-    const customerSecret = process.env.AGORA_CUSTOMER_SECRET;
-
-    if (!appId) {
-      return NextResponse.json(
-        { error: 'AGORA_APP_ID not configured' },
-        { status: 500 }
-      );
-    }
-
-    if (!customerKey || !customerSecret) {
-      return NextResponse.json(
-        {
-          error:
-            'Agora REST credentials not configured (AGORA_CUSTOMER_KEY or AGORA_CUSTOMER_SECRET missing)',
-        },
-        { status: 500 }
-      );
-    }
-
-    const authHeader = `Basic ${Buffer.from(
-      `${customerKey}:${customerSecret}`
-    ).toString('base64')}`;
-
-    if (agentId) {
-      const agoraResponse = await fetch(
-        `https://api.agora.io/api/conversational-ai-agent/v2/projects/${appId}/agents/${encodeURIComponent(agentId)}/leave`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: authHeader,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      const responseData = await agoraResponse.json().catch(() => ({}));
-
-      // If agent is not found or already left, consider it a successful idempotent stop
-      if (!agoraResponse.ok && agoraResponse.status !== 404) {
-        return NextResponse.json(
-          {
-            error: 'Failed to stop Agora ConvAI agent',
-            status: agoraResponse.status,
-            details: responseData,
-          },
-          { status: agoraResponse.status }
-        );
+    // Remove Gemini Live session from Firebase RTDB
+    // Replaces: POST https://api.agora.io/.../agents/{agentId}/leave
+    try {
+      const { adminDb } = await import('@/lib/firebaseAdmin');
+      const { ref, remove, push } = await import('firebase-admin/database');
+      if (channelName) {
+        await remove(ref(adminDb, `sessions/${channelName}`));
+        await push(ref(adminDb, `channels/${channelName}/events`), {
+          id: `evt-agent-left-${Date.now()}`, seq: Date.now(), timestamp: Date.now(),
+          type: 'dashboard_event', eventType: 'agent_left', customType: 'dashboard_event',
+          payload: { agentId: agentId || 'aura_agent', channelName },
+        });
       }
+    } catch (e) { console.warn('[AgentStop] Firebase cleanup notice:', e); }
 
-      return NextResponse.json({
-        agentId,
-        status: 'stopped',
-        details: responseData,
-      });
-    }
-
-    // Otherwise, clean up all agents active in the specified channel
-    if (channelName) {
-      const cleanChannelKey = channelName.replace(/[^a-zA-Z0-9-]/g, '-');
-      const listRes = await fetch(
-        `https://api.agora.io/api/conversational-ai-agent/v2/projects/${appId}/agents`,
-        { headers: { Authorization: authHeader } }
-      );
-      if (listRes.ok) {
-        const listData = await listRes.json();
-        const activeList = listData?.data?.list || [];
-        for (const ag of activeList) {
-          try {
-            const detailRes = await fetch(
-              `https://api.agora.io/api/conversational-ai-agent/v2/projects/${appId}/agents/${ag.agent_id}`,
-              { headers: { Authorization: authHeader } }
-            );
-            if (detailRes.ok) {
-              const detail = await detailRes.json();
-              if (
-                detail?.channel === channelName ||
-                (typeof detail?.name === 'string' && detail.name.includes(cleanChannelKey))
-              ) {
-                await fetch(
-                  `https://api.agora.io/api/conversational-ai-agent/v2/projects/${appId}/agents/${ag.agent_id}/leave`,
-                  {
-                    method: 'POST',
-                    headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
-                  }
-                ).catch(() => {});
-              }
-            }
-          } catch {
-            // Ignore individual agent detail error
-          }
-        }
-      }
-
-      return NextResponse.json({
-        channelName,
-        status: 'stopped',
-      });
-    }
-
-    return NextResponse.json(
-      { error: 'Missing or invalid agentId' },
-      { status: 400 }
-    );
+    return NextResponse.json({ agentId: agentId || 'aura_agent', channelName, status: 'stopped' });
   } catch (error) {
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to stop ConvAI agent',
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to stop agent' }, { status: 500 });
   }
 }

@@ -4,95 +4,49 @@ export const runtime = 'edge';
 
 /**
  * POST /api/tts/speak
- *
- * Text-to-speech endpoint for AURA Chrome Extension.
- * Converts AURA's text response to audio bytes using OpenAI TTS
- * and streams them back so the extension can play them in the side panel.
- *
- * Body: { text: string; voice?: string; speed?: number }
- * Returns: audio/mpeg stream
+ * Replaces: OpenAI TTS + Agora ConvAI /speak
+ * Google: Cloud TTS Journey voices (most human-sounding, low latency)
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json() as { text?: string; voice?: string; speed?: number; agentId?: string };
-    const { text, voice = 'nova', speed = 1.0, agentId } = body;
+    const body = await request.json() as { text?: string; isAura?: boolean; voice?: string; speed?: number; agentId?: string };
+    const { text, isAura = true, speed = 1.0 } = body;
+    if (!text || text.trim().length === 0) return NextResponse.json({ error: 'text is required' }, { status: 400 });
 
-    if (!text || text.trim().length === 0) {
-      return NextResponse.json({ error: 'text is required' }, { status: 400 });
-    }
+    const googleTtsKey = process.env.GOOGLE_TTS_API_KEY;
+    const hasValidKey = googleTtsKey && googleTtsKey.startsWith('AIza') && !googleTtsKey.includes('AIza...');
+    if (!hasValidKey) return new NextResponse(null, { status: 204 });
 
-    // 1. If active Agora ConvAI agentId is provided, broadcast directly into RTC channel via Agora /speak
-    const appId = process.env.AGORA_APP_ID;
-    const customerKey = process.env.AGORA_CUSTOMER_KEY;
-    const customerSecret = process.env.AGORA_CUSTOMER_SECRET;
+    // en-US-Journey-F = authoritative female (AURA)
+    // en-US-Journey-D = natural male (human participants)
+    const voiceName = isAura ? 'en-US-Journey-F' : 'en-US-Journey-D';
 
-    if (agentId && appId && customerKey && customerSecret) {
-      const authHeader = `Basic ${Buffer.from(
-        `${customerKey}:${customerSecret}`
-      ).toString('base64')}`;
-
-      const endpoint = `https://api.agora.io/api/conversational-ai-agent/v2/projects/${appId}/agents/${encodeURIComponent(agentId)}/speak`;
-
-      try {
-        const agoraRes = await fetch(endpoint, {
-          method: 'POST',
-          headers: {
-            Authorization: authHeader,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ text: text.trim() }),
-        });
-
-        if (agoraRes.ok) {
-          return NextResponse.json({
-            status: 'spoken_via_agora',
-            agentId,
-            text: text.trim(),
-          });
-        }
-      } catch (err) {
-        console.warn('[/api/tts/speak] Agora /speak broadcast notice:', err);
-      }
-    }
-
-    const openAiKey = process.env.OPENAI_API_KEY || '';
-    const hasValidKey = openAiKey.startsWith('sk-') && !openAiKey.includes('your_openai');
-
-    if (!hasValidKey) {
-      // Return empty 204 in demo mode — extension/client will handle gracefully
-      return new NextResponse(null, { status: 204 });
-    }
-
-    const ttsRes = await fetch('https://api.openai.com/v1/audio/speech', {
+    const ttsRes = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${googleTtsKey}`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAiKey}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'tts-1',
-        input: text.slice(0, 4096), // OpenAI TTS max
-        voice,  // nova: warm, natural female voice
-        speed: Math.max(0.25, Math.min(4.0, speed)),
+        input: { text: text.slice(0, 5000) },
+        voice: { languageCode: 'en-US', name: voiceName },
+        audioConfig: {
+          audioEncoding: 'MP3',
+          speakingRate: Math.max(0.25, Math.min(4.0, speed)),
+          pitch: isAura ? 1.5 : 0.0,
+          effectsProfileId: ['headphone-class-device'],
+        },
       }),
     });
 
     if (!ttsRes.ok) {
       const err = await ttsRes.text();
-      console.error('[/api/tts/speak] OpenAI TTS error:', err);
-      return NextResponse.json({ error: 'TTS error' }, { status: 502 });
+      console.error('[/api/tts/speak] Google Cloud TTS error:', err);
+      return NextResponse.json({ error: 'TTS error', details: err }, { status: 502 });
     }
 
-    // Stream audio bytes back to the extension
-    const audioBuffer = await ttsRes.arrayBuffer();
+    const { audioContent } = await ttsRes.json() as { audioContent: string };
+    const audioBuffer = Buffer.from(audioContent, 'base64');
     return new NextResponse(audioBuffer, {
       status: 200,
-      headers: {
-        'Content-Type': 'audio/mpeg',
-        'Content-Length': String(audioBuffer.byteLength),
-        'Cache-Control': 'no-store',
-        'Access-Control-Allow-Origin': '*',
-      },
+      headers: { 'Content-Type': 'audio/mpeg', 'Content-Length': String(audioBuffer.byteLength), 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' },
     });
   } catch (err) {
     console.error('[/api/tts/speak] Error:', err);
@@ -101,12 +55,5 @@ export async function POST(request: NextRequest) {
 }
 
 export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-  });
+  return new NextResponse(null, { status: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' } });
 }

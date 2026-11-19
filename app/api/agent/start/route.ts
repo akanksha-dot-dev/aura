@@ -1,265 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { UniversalRtcTokenBuilder, RtcRole } from '@/lib/agoraToken';
 import { getIncidentState, initializeLiveIncident } from '@/lib/incidentStore';
 import { PRESET_SCENARIOS } from '@/lib/scenarios';
 import { buildEffectiveSystemPrompt } from '@/lib/promptBuilder';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 // ────────────────────────────────────────────────────────────────────────────────────
-// TTS Configuration Factory
-// Priority: Google Cloud TTS → MiniMax speech-2.6-turbo → Agora managed
-// ────────────────────────────────────────────────────────────────────────────────────
-
-function isValidKey(key: string | undefined): boolean {
-  if (!key) return false;
-  const trimmed = key.trim();
-  return (
-    trimmed.length > 10 &&
-    !trimmed.startsWith('your_') &&
-    !trimmed.includes('placeholder') &&
-    !trimmed.includes('replace_with')
-  );
-}
-
-type TtsConfig = {
-  credential_mode?: string;
-  vendor: string;
-  skip_patterns?: number[];
-  params: Record<string, unknown>;
-};
-
-function buildTtsConfig(): { config: TtsConfig; name: string } {
-  const minimaxKey = process.env.MINIMAX_API_KEY;
-  const hasValidMinimax = isValidKey(minimaxKey);
-
-  // Tier 1: BYOK MiniMax if user configured a real key
-  if (hasValidMinimax) {
-    return {
-      name: 'minimax-byok',
-      config: {
-        vendor: 'minimax',
-        skip_patterns: [4],
-        params: {
-          url: 'wss://api.minimax.io/ws/v1/t2a_v2',
-          api_key: minimaxKey,
-          model: 'speech-2.6-turbo',
-          voice_setting: {
-            voice_id: 'English_captivating_female1',
-            speed: 1.0,
-            vol: 1.0,
-            pitch: 0,
-          },
-          audio_setting: {
-            sample_rate: 24000,
-            bitrate: 128000,
-            format: 'pcm',
-            channel: 1,
-          },
-        },
-      },
-    };
-  }
-
-  // Default: Agora Managed MiniMax (Zero keys required, ultra-low latency, crystal-clear voice)
-  // Verified with Agora ConvAI v2 REST API: returns 200 RUNNING natively
-  return {
-    name: 'agora-managed-minimax',
-    config: {
-      credential_mode: 'managed',
-      vendor: 'minimax',
-      skip_patterns: [4],
-      params: {
-        url: 'wss://api.minimax.io/ws/v1/t2a_v2',
-        model: 'speech-2.6-turbo',
-        voice_setting: {
-          voice_id: 'English_captivating_female1',
-          speed: 1.0,
-        },
-      },
-    },
-  };
-}
-
-// ────────────────────────────────────────────────────────────────────────────────────
-// LLM Configuration Factory
-// Priority: Gemini 2.0 Flash (via proxy) → GPT-4o-mini (via proxy) → Agora managed
-// ────────────────────────────────────────────────────────────────────────────────────
-
-type LlmConfig = Record<string, unknown>;
-
-function buildLlmConfig(
-  rawProxyUrl: string,
-  isLocalhostRequest: boolean,
-  effectiveSystemPrompt: string,
-  dynamicGreeting: string,
-  mcpEndpointWithChannel: string,
-  dynamicOrigin: string,
-): { config: LlmConfig; name: string } {
-  const geminiKey = process.env.GEMINI_API_KEY;
-  const openAIKey = process.env.OPENAI_API_KEY;
-  const hasValidGemini = isValidKey(geminiKey);
-  const hasValidOpenAI = isValidKey(openAIKey) && openAIKey!.startsWith('sk-');
-
-  const allMcpTools = [
-    'log_fact', 'log_hypothesis', 'log_decision', 'log_action_item',
-    'flag_conflict', 'create_jira_ticket', 'post_slack_update',
-    'page_oncall_team', 'search_past_incidents', 'get_incident_history',
-  ];
-
-  const mcpBlock = mcpEndpointWithChannel ? {
-    mcp_servers: [{
-      name: 'auramcp',
-      endpoint: mcpEndpointWithChannel,
-      transport: 'streamable_http',
-      allowed_tools: allMcpTools,
-      timeout_ms: 4000,
-    }],
-  } : {};
-
-  const baseConfig = {
-    greeting_message: dynamicGreeting,
-    failure_message: 'AURA incident commander standing by.',
-    max_history: 30,     // Lean 30-turn context keeps Time-To-First-Token ultra-fast
-    system_messages: [{ role: 'system', content: effectiveSystemPrompt }],
-    ...mcpBlock,
-  };
-
-  // On localhost: Agora cloud servers cannot reach localhost:3001
-  // Always use Agora Managed OpenAI -- works with zero external proxy and zero keys
-  if (isLocalhostRequest) {
-    console.info('[AgentStart] Localhost -> Agora Managed OpenAI');
-    return {
-      name: 'agora-managed-openai',
-      config: {
-        ...baseConfig,
-        credential_mode: 'managed',
-        vendor: 'openai',
-        style: 'openai',
-        url: 'https://api.openai.com/v1/chat/completions',
-        params: { model: 'gpt-4o-mini', temperature: 0.12, max_tokens: 512 },
-      },
-    };
-  }
-
-  // Production: route through AURA proxy
-  const proxyUrl = `${dynamicOrigin}/api/llm/proxy`;
-
-  if (hasValidGemini) {
-    return {
-      name: 'gemini-2.0-flash',
-      config: {
-        ...baseConfig,
-        vendor: 'custom',
-        style: 'openai',
-        url: proxyUrl,
-        api_key: process.env.INTERNAL_PROXY_SECRET || '',
-        params: { model: 'gemini-2.0-flash', temperature: 0.12, max_tokens: 512 },
-      },
-    };
-  }
-
-  if (hasValidOpenAI) {
-    return {
-      name: 'gpt-4o-mini',
-      config: {
-        ...baseConfig,
-        vendor: 'custom',
-        style: 'openai',
-        url: proxyUrl,
-        api_key: process.env.INTERNAL_PROXY_SECRET || '',
-        params: { model: 'gpt-4o-mini', temperature: 0.12, max_tokens: 512 },
-      },
-    };
-  }
-
-  // Agora Managed OpenAI fallback
-  return {
-    name: 'agora-managed-openai',
-    config: {
-      ...baseConfig,
-      credential_mode: 'managed',
-      vendor: 'openai',
-      style: 'openai',
-      url: 'https://api.openai.com/v1/chat/completions',
-      params: { model: 'gpt-4o-mini', temperature: 0.12, max_tokens: 512 },
-    },
-  };
-}
-
-// ──────────────────────────────────────────────────────────────────────────────────
-// VAD / Interruption Config — Sensitive, resilient turn detection
-// ──────────────────────────────────────────────────────────────────────────────────
-
-function buildTurnDetectionConfig() {
-  return {
-    mode: 'default',
-    config: {
-      // Speech energy threshold: 0.35 is sensitive to natural speaking voices (default is 0.5; 0.6 was dropping normal speech)
-      speech_threshold: 0.35,
-
-      start_of_speech: {
-        mode: 'vad',
-        vad_config: {
-          // 160ms of voiced audio declares speech start (Agora recommended standard)
-          interrupt_duration_ms: 160,
-
-          // Tolerance for multi-speaker bridge
-          speaking_interrupt_duration_ms: 400,
-
-          // Prefix padding: capture audio before VAD trigger fires to not clip first syllables
-          prefix_padding_ms: 800,
-        },
-      },
-
-      end_of_speech: {
-        mode: 'vad', // Pure VAD EOS: fires immediately upon utterance completion
-        vad_config: {
-          silence_duration_ms: 400, // 400ms silence closes turn immediately (eliminates 3s semantic wait)
-        },
-      },
-    },
-  };
-}
-
-// ──────────────────────────────────────────────────────────────────────────────────
-// Interruption Config — 160ms protects against acoustic feedback/echo cutting AURA off
-// ──────────────────────────────────────────────────────────────────────────────────
-
-function buildInterruptionConfig() {
-  return {
-    enable: true,
-    mode: 'start_of_speech',
-    config: {
-      interrupt_speech_duration_ms: 300,  // 300ms voiced audio avoids speaker-to-mic feedback interruptions
-    },
-  };
-}
-
-// ──────────────────────────────────────────────────────────────────────────────────
-// ASR Config — Agora Managed Deepgram Nova-3 (clean, verified parameters)
-// ──────────────────────────────────────────────────────────────────────────────────
-
-function buildAsrConfig(language: string) {
-  const lang = language?.trim() || 'en-IN';
-  return {
-    credential_mode: 'managed',
-    vendor: 'deepgram',
-    language: lang,
-    params: {
-      url: 'wss://api.deepgram.com/v1/listen',
-      model: 'nova-3',
-      smart_format: true,
-      punctuate: true,
-      filler_words: true,
-      interim_results: true,
-    },
-  };
-}
-
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Request interface
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ────────────────────────────────────────────────────────────────────────────────────
 
 interface AgentStartRequest {
   channelName?: string;
@@ -286,10 +34,10 @@ interface AgentStartRequest {
   };
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// ──────────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────────────
 // POST /api/agent/start
-// ──────────────────────────────────────────────────────────────────────────────────
+// Replaces: Agora ConvAI REST API → Gemini Live config + Firebase RTDB session storage
+// ────────────────────────────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
   try {
@@ -312,40 +60,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const appId = process.env.AGORA_APP_ID;
-    const appCertificate = process.env.AGORA_APP_CERTIFICATE;
-    const customerKey = process.env.AGORA_CUSTOMER_KEY;
-    const customerSecret = process.env.AGORA_CUSTOMER_SECRET;
-
-    if (!appId || !appCertificate) {
+    // ── Validate Gemini API key (required for Gemini Live agent) ──────────────
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (!geminiKey || !geminiKey.startsWith('AIza') || geminiKey.includes('AIza...')) {
       return NextResponse.json(
-        { error: 'Agora server credentials not configured (AGORA_APP_ID or AGORA_APP_CERTIFICATE missing)' },
+        { error: 'GEMINI_API_KEY not configured. Set a valid key to start the AURA voice agent.' },
         { status: 500 }
       );
     }
 
-    if (!customerKey || !customerSecret) {
-      return NextResponse.json(
-        { error: 'Agora REST credentials not configured (AGORA_CUSTOMER_KEY or AGORA_CUSTOMER_SECRET missing)' },
-        { status: 500 }
-      );
-    }
-
-    const agentUid = '0'; // Agora ConvAI agents must use numeric UID; '0' is the reserved agent slot
-    const expireTimeInSeconds = 3600;
-
-    const agentToken = await UniversalRtcTokenBuilder.buildTokenWithRtm(
-      appId,
-      appCertificate,
-      channelName,
-      agentUid,
-      RtcRole.PUBLISHER,
-      expireTimeInSeconds,
-      expireTimeInSeconds
-    );
-
-    const sessionName = `aura-${channelName.replace(/[^a-zA-Z0-9-]/g, '-')}-${Date.now().toString(36)}`;
-
+    // ── Determine dynamic origin ──────────────────────────────────────────────
     const hostHeader =
       request.headers.get('x-forwarded-host') ||
       request.headers.get('host') ||
@@ -358,6 +82,7 @@ export async function POST(request: NextRequest) {
     const isLocalhostRequest =
       !hostHeader || hostHeader.includes('localhost') || hostHeader.includes('127.0.0.1');
 
+    // ── MCP endpoint probe ────────────────────────────────────────────────────
     const resolvedMcpUrl = !isLocalhostRequest
       ? `${dynamicOrigin}/api/mcp/sse`
       : (process.env.MCP_URL && !process.env.MCP_URL.includes('your_mcp_url')
@@ -382,7 +107,7 @@ export async function POST(request: NextRequest) {
       ? `${resolvedMcpUrl}?channel=${encodeURIComponent(channelName)}`
       : '';
 
-    // â”€â”€ Scenario resolution â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Scenario resolution ───────────────────────────────────────────────────
     const cleanChannel = channelName.trim().toLowerCase();
     const matchedPreset = PRESET_SCENARIOS.find(
       (s) =>
@@ -411,6 +136,7 @@ export async function POST(request: NextRequest) {
       suspectedCause: effectiveScenario.suspectedCause,
     } : undefined;
 
+    // ── Initialize incident store ─────────────────────────────────────────────
     if (userUid) {
       initializeLiveIncident(channelName, {
         uid: userUid,
@@ -426,6 +152,7 @@ export async function POST(request: NextRequest) {
       operatorUid: userUid,
     });
 
+    // ── Build dynamic greeting ────────────────────────────────────────────────
     const responderName = userName || 'Responder';
     const greetingSeverity = effectiveScenario?.severity || 'SEV-1';
     const greetingTitle = effectiveScenario?.title || 'active incident';
@@ -434,163 +161,89 @@ export async function POST(request: NextRequest) {
       : '';
     const dynamicGreeting = `Hey ${responderName}, AURA's online and on the bridge. We've got a ${greetingSeverity} — ${greetingTitle}${affectedSvcs}. I'm monitoring all telemetry. What's the latest from your end?`;
 
-    const rawProxyUrl = !isLocalhostRequest
-      ? `${dynamicOrigin}/api/llm/proxy`
-      : (process.env.PROXY_URL || '');
+    // ── Gemini Live config (replaces Agora ConvAI payload) ───────────────────
+    const agentId = `aura-${channelName.replace(/[^a-zA-Z0-9-]/g, '-')}-${Date.now().toString(36)}`;
 
-    const selectedLlm = buildLlmConfig(
-      rawProxyUrl,
-      isLocalhostRequest,
-      effectiveSystemPrompt,
-      dynamicGreeting,
-      mcpEndpointWithChannel,
-      dynamicOrigin,
-    );
-    const selectedTts = buildTtsConfig();
-
-    // ── Build final Agora ConvAI payload ──────────────────────────────
-    const payload = {
-      name: sessionName,
-      properties: {
-        channel: channelName,
-        token: agentToken,
-        agent_rtc_uid: agentUid,
-        remote_rtc_uids: ['*'],
-        enable_string_uid: true, // Must match human participant mode; agent UID '0' is valid in string mode
-        idle_timeout: 120, // 2-minute safety auto-exit if bridge becomes completely silent
-
-        // ── Agora Advanced Features (AI pipeline) ──────────────────────────
-        advanced_features: {
-          enable_rtm: true,           // RTM transcript broadcasting
-          enable_tools: Boolean(mcpEndpointWithChannel), // MCP tool execution when endpoint available
-          enable_aivad: true,          // AI Voice Activity Detection — more robust than energy VAD
-          enable_ains: true,           // AI Noise Suppression: removes keyboard, HVAC, background
-          enable_aiaec: true,          // AI Acoustic Echo Cancellation: removes AURA's own TTS echo
+    const geminiConfig = {
+      model: 'gemini-2.0-flash-live-001',
+      systemInstruction: effectiveSystemPrompt,
+      generationConfig: {
+        responseModalities: ['AUDIO'],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: { voiceName: 'Journey' },
+          },
         },
-
-        parameters: {
-          data_channel: 'rtm',
-          enable_metrics: true,
-          enable_error_message: true,
-          // aiserver: optimized for conversational AI agent interaction resilience
-          audio_scenario: 'aiserver',
-          noise_suppression_level: 'moderate',
-        },
-
-        // ── Interruption: tuned for filler-word robustness ─────────────────
-        interruption: buildInterruptionConfig(),
-
-        // ── Turn detection: semantic EOS + thinking-pause awareness ────────
-        turn_detection: buildTurnDetectionConfig(),
-
-        // ── ASR: Deepgram Nova-3 + filler_words:true ──────────────────────
-        asr: buildAsrConfig(language || ''),
-
-        // ── LLM: Agora Managed OpenAI (localhost) or Gemini/OpenAI proxy ───
-        llm: selectedLlm.config,
-
-        // ── TTS: Agora Managed MiniMax (or MiniMax BYOK) ───────────────────
-        tts: selectedTts.config,
-
-        // Filler words disabled per D-006 / D-016 to maintain Shadow Monitor Mode silence
-        filler_words: {
-          enable: false,
-        },
+        temperature: 0.12,
+        maxOutputTokens: 512,
       },
     };
 
-    const authHeader = `Basic ${Buffer.from(`${customerKey}:${customerSecret}`).toString('base64')}`;
+    const allMcpTools = [
+      'log_fact', 'log_hypothesis', 'log_decision', 'log_action_item',
+      'flag_conflict', 'create_jira_ticket', 'post_slack_update',
+      'page_oncall_team', 'search_past_incidents', 'get_incident_history',
+    ];
 
-    // ── Prevent Agent Collision: Stop any existing agents in this channel first ──
+    // ── Store Gemini session config in Firebase RTDB ──────────────────────────
+    // Replaces: Agora POST /join — stores config so client can establish Gemini Live WebSocket
     try {
-      const listRes = await fetch(
-        `https://api.agora.io/api/conversational-ai-agent/v2/projects/${appId}/agents`,
-        { headers: { Authorization: authHeader } }
-      );
-      if (listRes.ok) {
-        const listData = await listRes.json();
-        const activeList = listData?.data?.list || [];
-        const cleanChannelKey = channelName.replace(/[^a-zA-Z0-9-]/g, '-');
-        for (const ag of activeList) {
-          try {
-            const detailRes = await fetch(
-              `https://api.agora.io/api/conversational-ai-agent/v2/projects/${appId}/agents/${ag.agent_id}`,
-              { headers: { Authorization: authHeader } }
-            );
-            if (detailRes.ok) {
-              const detail = await detailRes.json();
-              if (
-                detail?.channel === channelName ||
-                (typeof detail?.name === 'string' && detail.name.includes(cleanChannelKey))
-              ) {
-                console.info(`[AgentStart] Clearing stale agent ${ag.agent_id} in channel ${channelName}`);
-                await fetch(
-                  `https://api.agora.io/api/conversational-ai-agent/v2/projects/${appId}/agents/${ag.agent_id}/leave`,
-                  {
-                    method: 'POST',
-                    headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
-                  }
-                ).catch(() => {});
-              }
-            }
-          } catch {
-            // Ignore individual agent detail error
-          }
-        }
-      }
-    } catch (cleanupErr) {
-      console.warn('[AgentStart] Channel pre-cleanup notice:', cleanupErr);
-    }
+      const { adminDb } = await import('@/lib/firebaseAdmin');
+      const { ref, set, push } = await import('firebase-admin/database');
 
-    const agoraResponse = await fetch(
-      `https://api.agora.io/api/conversational-ai-agent/v2/projects/${appId}/join`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: authHeader,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      }
-    );
+      await set(ref(adminDb, `sessions/${channelName}`), {
+        agentId,
+        channelName,
+        status: 'starting',
+        createdAt: Date.now(),
+        geminiConfig,
+        geminiApiKey: geminiKey, // Client reads this to open Live WebSocket
+        greeting: dynamicGreeting,
+        language: language || 'en-IN',
+        mcpEndpoint: mcpEndpointWithChannel,
+        mcpTools: mcpEndpointWithChannel ? allMcpTools : [],
+        userUid: userUid || null,
+        userName: userName || null,
+        userRole: userRole || null,
+        scenario: effectiveScenario || null,
+      });
 
-    const responseData = await agoraResponse.json().catch(() => ({}));
-
-    if (!agoraResponse.ok) {
-      console.error('[AgentStart] Agora ConvAI join error:', agoraResponse.status, JSON.stringify(responseData));
+      await push(ref(adminDb, `channels/${channelName}/events`), {
+        id: `evt-agent-started-${Date.now()}`,
+        seq: Date.now(),
+        timestamp: Date.now(),
+        type: 'dashboard_event',
+        eventType: 'agent_joined',
+        customType: 'dashboard_event',
+        payload: { agentId, channelName, greeting: dynamicGreeting },
+      });
+    } catch (firebaseErr) {
+      console.error('[AgentStart] Firebase session write error:', firebaseErr);
       return NextResponse.json(
-        {
-          error: 'Agora ConvAI API error',
-          status: agoraResponse.status,
-          details: responseData,
-        },
-        { status: agoraResponse.status }
+        { error: 'Failed to initialize Firebase session', details: firebaseErr instanceof Error ? firebaseErr.message : String(firebaseErr) },
+        { status: 500 }
       );
     }
-
-    const agentId = (responseData as Record<string, unknown>)['agent_id'] ||
-                    (responseData as Record<string, unknown>)['agentId'] ||
-                    'aura_agent_active';
 
     return NextResponse.json({
       agentId,
       agent_id: agentId,
       channelName,
       status: 'started',
+      greeting: dynamicGreeting,
       stack: {
-        tts: selectedTts.name,
-        llm: selectedLlm.name,
-        asr: 'deepgram-nova-3',
-        vad: 'agora-aivad',
-        ains: true,
-        aiaec: true,
+        llm: 'gemini-live',
+        tts: 'gemini-live-journey',
+        asr: 'gemini-live-builtin',
+        vad: 'gemini-live-builtin',
+        transport: 'firebase-rtdb',
+        mcp: mcpEndpointWithChannel ? 'enabled' : 'disabled',
       },
-      details: responseData,
     });
   } catch (error) {
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : 'Failed to start ConvAI agent',
+        error: error instanceof Error ? error.message : 'Failed to start AURA agent',
       },
       { status: 500 }
     );

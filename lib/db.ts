@@ -1,14 +1,31 @@
 /**
- * db.ts — Zero-dependency, Edge-compatible In-Memory Incident Store for AURA.
+ * db.ts — Firestore-backed Incident Store for AURA (Google Ecosystem Edition)
  *
  * Stores incident metadata, evidence items, participant records, transcripts,
- * and postmortem reports in memory. Pre-seeded with realistic production outage
- * scenarios from PRESET_SCENARIOS for historical intelligence and similarity lookups.
+ * and postmortem reports. Primary persistence: Cloud Firestore via firebase-admin.
+ * Falls back gracefully to in-memory storage when Firebase is not configured.
  *
- * Fully compatible with Cloudflare Pages (no native C++ addons, no better-sqlite3).
+ * All exported function signatures are identical to the original in-memory version
+ * so no call sites require changes. Async functions are async; originally-sync
+ * functions remain sync via the in-memory layer (Firestore writes fire-and-forget).
  */
 
 import { PRESET_SCENARIOS } from './scenarios';
+
+// ─── Firestore lazy accessor ───
+
+function getFirestore() {
+  try {
+    // Dynamic import avoids bundling firebase-admin on the edge
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { adminFirestore } = require('./firebaseAdmin') as { adminFirestore: FirebaseFirestore.Firestore };
+    const projectId = process.env.FIREBASE_PROJECT_ID;
+    if (!projectId || projectId.includes('your-project')) return null;
+    return adminFirestore;
+  } catch {
+    return null;
+  }
+}
 
 // ─── Interfaces ───
 
@@ -117,7 +134,7 @@ export interface DbIncidentScore {
   created_at: number;
 }
 
-// ─── In-Memory Stores ───
+// ─── In-Memory Stores (always used for read path; Firestore is write-through) ───
 
 const incidentsStore = new Map<string, DbIncident>();
 const evidenceStore = new Map<string, DbEvidenceItem[]>();
@@ -131,6 +148,24 @@ let knowledgeSeq = 1;
 let isSeeded = false;
 const storeStartedAt = Date.now();
 
+// ─── Firestore write helpers (fire-and-forget, never throw) ───
+
+function fsSet(collection: string, docId: string, data: Record<string, unknown>): void {
+  const fs = getFirestore();
+  if (!fs) return;
+  fs.collection(collection).doc(docId).set(data, { merge: true }).catch((err: unknown) => {
+    console.warn(`[db] Firestore set ${collection}/${docId} failed:`, err);
+  });
+}
+
+function fsAdd(collection: string, data: Record<string, unknown>): void {
+  const fs = getFirestore();
+  if (!fs) return;
+  fs.collection(collection).add(data).catch((err: unknown) => {
+    console.warn(`[db] Firestore add ${collection} failed:`, err);
+  });
+}
+
 // ─── Pre-seed Initial Scenarios ───
 
 export function seedHistoricalIncidents(force = false): { seeded: number; message: string } {
@@ -140,7 +175,6 @@ export function seedHistoricalIncidents(force = false): { seeded: number; messag
 
   const now = Date.now();
 
-  // Seed knowledge items from preset scenarios
   for (const scenario of PRESET_SCENARIOS) {
     const incId = `inc-${scenario.id}`;
     const openedAt = now - 86400000 * 2; // 2 days ago
@@ -163,11 +197,12 @@ export function seedHistoricalIncidents(force = false): { seeded: number; messag
       updated_at: resolvedAt,
     };
     incidentsStore.set(incId, inc);
+    // Persist historical incidents to Firestore (best-effort)
+    fsSet('incidents', incId, inc as unknown as Record<string, unknown>);
 
-    // Add playbook resolution steps to knowledge base
     if (scenario.playbook) {
       for (const step of scenario.playbook) {
-        knowledgeBaseStore.push({
+        const ki: DbKnowledgeItem = {
           id: knowledgeSeq++,
           incident_id: incId,
           title: `Playbook: ${step.title}`,
@@ -177,7 +212,9 @@ export function seedHistoricalIncidents(force = false): { seeded: number; messag
           quality_score: step.priority === 'critical' ? 95 : step.priority === 'high' ? 85 : 75,
           times_referenced: 1,
           created_at: now - 86400000,
-        });
+        };
+        knowledgeBaseStore.push(ki);
+        fsAdd('knowledge_base', ki as unknown as Record<string, unknown>);
       }
     }
   }
@@ -226,6 +263,7 @@ export function upsertIncident(incident: {
   };
 
   incidentsStore.set(incident.id, updated);
+  fsSet('incidents', incident.id, updated as unknown as Record<string, unknown>);
 }
 
 export function getIncidentById(id: string): DbIncident | undefined {
@@ -308,6 +346,9 @@ export function insertEvidence(evidence: {
     list.push(item);
   }
   evidenceStore.set(evidence.incidentId, list);
+
+  // Firestore: store under incidents/{incidentId}/evidence/{id}
+  fsSet(`incidents/${evidence.incidentId}/evidence`, item.id, item as unknown as Record<string, unknown>);
 }
 
 export function getEvidenceByIncident(incidentId: string): DbEvidenceItem[] {
@@ -343,6 +384,7 @@ export function upsertParticipant(participant: {
   };
 
   partMap.set(participant.uid, item);
+  fsSet(`incidents/${participant.incidentId}/participants`, participant.uid, item as unknown as Record<string, unknown>);
 }
 
 export function getParticipantsByIncident(incidentId: string): DbParticipant[] {
@@ -375,6 +417,8 @@ export function insertTranscript(entry: {
   const list = transcriptsStore.get(entry.incidentId) ?? [];
   list.push(item);
   transcriptsStore.set(entry.incidentId, list);
+
+  fsAdd(`incidents/${entry.incidentId}/transcripts`, item as unknown as Record<string, unknown>);
 }
 
 export function getTranscriptsByIncident(incidentId: string): DbTranscript[] {
@@ -409,6 +453,7 @@ export function upsertPostmortem(postmortem: {
     published: postmortem.published ? 1 : 0,
   };
   postmortemsStore.set(postmortem.incidentId, item);
+  fsSet('postmortems', postmortem.incidentId, item as unknown as Record<string, unknown>);
 }
 
 export function getPostmortemByIncident(incidentId: string): DbPostmortem | undefined {
@@ -602,6 +647,7 @@ export function getDatabaseHealth(): {
   walSizeBytes: number;
   uptimeSeconds: number;
 } {
+  const firestoreConfigured = !!getFirestore();
   return {
     status: 'healthy',
     tables: {
@@ -611,7 +657,7 @@ export function getDatabaseHealth(): {
       postmortems: postmortemsStore.size,
       knowledge_base: knowledgeBaseStore.length,
     },
-    fileSizeBytes: 0,
+    fileSizeBytes: firestoreConfigured ? -1 : 0, // -1 = cloud (no local file)
     walSizeBytes: 0,
     uptimeSeconds: Math.round((Date.now() - storeStartedAt) / 1000),
   };

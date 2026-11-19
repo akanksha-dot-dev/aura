@@ -5,7 +5,7 @@ import type { IncidentState } from '@/lib/types';
 import { insertTranscript } from '@/lib/db';
 
 export { buildDynamicContext } from '@/lib/incidentStore';
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 // ── Filler Word Detection — 6 classes matching AURA system prompt ──────────
 const FILLER_PATTERNS = {
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
     delete cleanBody.turn_id;
     delete cleanBody.timestamp;
     const isStream = body.stream !== false;
-    const modelToUse = body.model || 'gpt-4o-mini';
+    const modelToUse = body.model || 'gemini-2.5-flash-preview-05-20';
 
     const upstreamPayload = {
       ...cleanBody,
@@ -129,40 +129,33 @@ export async function POST(request: NextRequest) {
       stream: isStream,
     };
 
-    // 5. Route to correct upstream LLM
-    // Priority: Gemini 2.0 Flash (fastest TTFT) → OpenAI GPT-4o-mini
+    // 5. Route to Gemini 2.5 Flash via Google's OpenAI-compatible endpoint
     const geminiKey = process.env.GEMINI_API_KEY;
-    const openAIKey = process.env.OPENAI_API_KEY;
 
-    if (!geminiKey && !openAIKey) {
+    if (!geminiKey) {
       return NextResponse.json(
-        { error: 'No LLM API key configured. Set GEMINI_API_KEY or OPENAI_API_KEY. (OPENAI_API_KEY is not configured)' },
+        { error: 'No LLM API key configured. Set GEMINI_API_KEY.' },
         { status: 502 }
       );
     }
 
-    const isPlaceholderKey =
-      (!geminiKey && openAIKey === 'your_openai_api_key') ||
-      (!geminiKey && !openAIKey?.startsWith('sk-'));
+    const isPlaceholderKey = !geminiKey || !geminiKey.startsWith('AIza') || geminiKey.includes('AIza...');
 
     if (isPlaceholderKey) {
-      const lastUserMsg =
+      const lastMsg =
         [...messages].reverse().find((m) => m.role === 'user')?.content || '';
-      return handleAutonomousIncidentResponse(lastUserMsg, isStream, getIncidentState(channelName), channelName);
+      return handleAutonomousIncidentResponse(lastMsg, isStream, getIncidentState(channelName), channelName);
     }
 
-    // ── Gemini 2.0 Flash via Google's OpenAI-compatible endpoint ────────────
+    // ── Gemini 2.5 Flash via Google's OpenAI-compatible endpoint ────────────
     // Google provides a drop-in OpenAI-compatible API at:
     // https://generativelanguage.googleapis.com/v1beta/openai/
     // This means our proxy forwards in OpenAI format, Google handles it natively.
-    const useGemini = !!(geminiKey && (!openAIKey || !openAIKey.startsWith('sk-')));
-    const upstreamUrl = useGemini
-      ? 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
-      : 'https://api.openai.com/v1/chat/completions';
-    const upstreamKey = useGemini ? geminiKey! : openAIKey!;
-    const upstreamModel = useGemini
-      ? (upstreamPayload.model === 'gpt-4o-mini' ? 'gemini-2.0-flash' : (upstreamPayload.model || 'gemini-2.0-flash'))
-      : upstreamPayload.model;
+    const upstreamUrl = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
+    const upstreamModel =
+      upstreamPayload.model === 'gpt-4o-mini' || upstreamPayload.model === 'gemini-2.0-flash'
+        ? 'gemini-2.5-flash-preview-05-20'
+        : (upstreamPayload.model || 'gemini-2.5-flash-preview-05-20');
 
     const finalUpstreamPayload = { ...upstreamPayload, model: upstreamModel };
 
@@ -173,44 +166,23 @@ export async function POST(request: NextRequest) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${upstreamKey}`,
+          Authorization: `Bearer ${geminiKey}`,
         },
         body: JSON.stringify(finalUpstreamPayload),
         signal: request.signal,
       });
     } catch (err) {
-      // If Gemini fails and OpenAI is available, fallback automatically
-      if (useGemini && openAIKey?.startsWith('sk-')) {
-        console.warn('[LLM Proxy] Gemini unreachable, falling back to OpenAI:', err);
-        try {
-          upstreamResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${openAIKey}`,
-            },
-            body: JSON.stringify({ ...finalUpstreamPayload, model: 'gpt-4o-mini' }),
-            signal: request.signal,
-          });
-        } catch (fallbackErr) {
-          return NextResponse.json(
-            { error: 'Failed to connect to Gemini and OpenAI', details: String(fallbackErr) },
-            { status: 502 }
-          );
-        }
-      } else {
-        return NextResponse.json(
-          { error: 'Failed to connect to LLM API', details: err instanceof Error ? err.message : String(err) },
-          { status: 502 }
-        );
-      }
+      return NextResponse.json(
+        { error: 'Failed to connect to Gemini API. Set GEMINI_API_KEY.', details: err instanceof Error ? err.message : String(err) },
+        { status: 502 }
+      );
     }
 
     if (!upstreamResponse.ok) {
       const errorText = await upstreamResponse.text().catch(() => '');
       return NextResponse.json(
         {
-          error: 'OpenAI API error',
+          error: 'Gemini API error',
           status: upstreamResponse.status,
           details: errorText,
         },
@@ -233,7 +205,7 @@ export async function POST(request: NextRequest) {
     const upstreamBody = upstreamResponse.body;
     if (!upstreamBody) {
       return NextResponse.json(
-        { error: 'OpenAI upstream response has no body' },
+        { error: 'Gemini upstream response has no body' },
         { status: 502 }
       );
     }
@@ -618,7 +590,7 @@ function handleAutonomousIncidentResponse(
       id: completionId,
       object: 'chat.completion',
       created: Math.floor(Date.now() / 1000),
-      model: 'gpt-4o-mini',
+      model: 'gemini-2.5-flash-preview-05-20',
       choices: [
         {
           index: 0,
@@ -637,7 +609,7 @@ function handleAutonomousIncidentResponse(
         id: completionId,
         object: 'chat.completion.chunk',
         created: Math.floor(Date.now() / 1000),
-        model: 'gpt-4o-mini',
+        model: 'gemini-2.5-flash-preview-05-20',
         choices: [
           {
             index: 0,
@@ -652,7 +624,7 @@ function handleAutonomousIncidentResponse(
         id: completionId,
         object: 'chat.completion.chunk',
         created: Math.floor(Date.now() / 1000),
-        model: 'gpt-4o-mini',
+        model: 'gemini-2.5-flash-preview-05-20',
         choices: [{ index: 0, delta: {}, finish_reason: 'stop' }],
       });
       controller.enqueue(encoder.encode(`data: ${doneChunk}\n\n`));
