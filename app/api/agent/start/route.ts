@@ -189,9 +189,9 @@ export async function POST(request: NextRequest) {
     // Replaces: Agora POST /join — stores config so client can establish Gemini Live WebSocket
     try {
       const { adminDb } = await import('@/lib/firebaseAdmin');
-      const { ref, set, push } = await import('firebase-admin/database');
 
-      await set(ref(adminDb, `sessions/${channelName}`), {
+      // Firebase Admin RTDB uses adminDb.ref() — no standalone functions
+      await adminDb.ref(`sessions/${channelName}`).set({
         agentId,
         channelName,
         status: 'starting',
