@@ -82,9 +82,9 @@ export async function POST(request: NextRequest) {
     if (agentId) {
       try {
         const { adminDb } = await import('@/lib/firebaseAdmin');
-        const { ref, push } = await import('firebase-admin/database');
 
-        await push(ref(adminDb, `channels/${channelName}/events`), {
+        // Firebase Admin RTDB uses adminDb.ref() — no standalone functions
+        await adminDb.ref(`channels/${channelName}/events`).push({
           id: `think-${Date.now()}`,
           seq: Date.now(),
           timestamp: Date.now(),

@@ -70,7 +70,7 @@ function dispatchTranscript(entry: RTMTranscriptEntry) {
 function broadcastConnectionState(c: boolean) { connectionStateListeners.forEach((f) => { try { f(c); } catch { /* ignore */ } }); }
 function broadcastError(e: string | null) { errorListeners.forEach((f) => { try { f(e); } catch { /* ignore */ } }); }
 
-function extractAndDispatchEpistemicEvents(rawText: string, channelName: string, uid: string, userName?: string) {
+export function extractAndDispatchEpistemicEvents(rawText: string, channelName: string, uid: string, userName?: string) {
   if (!rawText) return;
   const dispatch = (category: 'fact' | 'hypothesis' | 'decision' | 'action' | 'conflict', content: string, extra: { confidence?: number; service?: string; decidingMetric?: string; rationale?: string; assignedTo?: string; eta?: number; hypothesisA?: string; hypothesisB?: string } = {}) => {
     const clean = content.trim().replace(/^["']|["']$/g, '');

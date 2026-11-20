@@ -26,6 +26,9 @@ export interface MainViewProps {
   currentTranscript?: string;
   onCreateAction?: (title: string, detail: string) => void;
   onInjectTelemetry?: (source: string, message: string, serviceAffected?: string) => void;
+  onSpeakPhrase?: (phrase: string) => void;
+  isListening?: boolean;
+  onToggleMic?: () => void;
 }
 
 export function MainView({
@@ -45,6 +48,9 @@ export function MainView({
   currentTranscript,
   onCreateAction,
   onInjectTelemetry,
+  onSpeakPhrase,
+  isListening,
+  onToggleMic,
 }: MainViewProps) {
   const [internalActiveTab, setInternalActiveTab] = useState<'timeline' | 'topology' | 'analytics' | 'insights'>('timeline');
   const activeTab = controlledActiveTab ?? internalActiveTab;
@@ -188,6 +194,68 @@ export function MainView({
           z-index: 8;
           flex-shrink: 0;
           transition: all 0.2s ease;
+        }
+
+        .acoustic-hud__actions {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-shrink: 0;
+        }
+
+        .acoustic-hud__btn {
+          font-family: var(--font-mono);
+          font-size: 10px;
+          font-weight: 600;
+          padding: 3px 8px;
+          background: rgba(255, 255, 255, 0.06);
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          border-radius: 4px;
+          color: var(--text-base);
+          cursor: pointer;
+          transition: all 0.15s ease;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+        }
+
+        .acoustic-hud__btn:hover {
+          background: rgba(212, 168, 83, 0.15);
+          border-color: #D4A853;
+          color: #D4A853;
+        }
+
+        .acoustic-hud__btn--active {
+          background: rgba(16, 185, 129, 0.2);
+          border-color: #10B981;
+          color: #10B981;
+          box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+        }
+
+        .acoustic-hud__chips {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+
+        .acoustic-chip {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          font-weight: 500;
+          padding: 2px 7px;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 3px;
+          color: var(--text-muted);
+          cursor: pointer;
+          transition: all 0.15s ease;
+          white-space: nowrap;
+        }
+
+        .acoustic-chip:hover {
+          background: rgba(56, 189, 248, 0.12);
+          border-color: #38BDF8;
+          color: #38BDF8;
         }
 
         [data-theme="light"] .main-view__acoustic-hud {
@@ -418,10 +486,10 @@ export function MainView({
         {/* Dynamic Live Acoustic Intel Banner */}
         <div className="main-view__acoustic-hud" role="region" aria-label="Real-time acoustic intel">
           <div className="acoustic-hud__speaker-badge">
-            <span className={`acoustic-hud__pulse-dot ${hasVoiceActivity ? 'acoustic-hud__pulse-dot--active' : ''}`} aria-hidden="true" />
-            <span className="acoustic-hud__speaker-name">{currentSpeakerName || 'AURA'}</span>
+            <span className={`acoustic-hud__pulse-dot ${hasVoiceActivity || isListening ? 'acoustic-hud__pulse-dot--active' : ''}`} aria-hidden="true" />
+            <span className="acoustic-hud__speaker-name">{currentSpeakerName || (isListening ? 'VOICE INGRESS' : 'AURA')}</span>
             <span className="acoustic-hud__role-tag">
-              {isAura ? 'AI COMMANDER' : currentSpeakerName ? 'VOICE INGRESS' : 'STANDBY'}
+              {isAura ? 'AI COMMANDER' : isListening ? 'LISTENING' : currentSpeakerName ? 'VOICE INGRESS' : 'STANDBY'}
             </span>
           </div>
 
@@ -433,10 +501,52 @@ export function MainView({
             </div>
             <div className="acoustic-hud__text-wrap">
               <span className="acoustic-hud__text">
-                {currentTranscript || 'AURA real-time voice intelligence monitoring Agora SD-RTN™ audio bridge. Push-to-Talk or speak freely.'}
+                {currentTranscript || (isListening ? 'Listening to your microphone... Speak now, or click a quick prompt.' : 'AURA voice bridge ready. Speak into mic, hold Space, or click any prompt.')}
               </span>
               {currentTranscript && <span className="acoustic-hud__cursor" aria-hidden="true" />}
             </div>
+          </div>
+
+          {/* Quick Voice & Command Actions */}
+          <div className="acoustic-hud__actions">
+            {onToggleMic && (
+              <button
+                type="button"
+                className={`acoustic-hud__btn ${isListening ? 'acoustic-hud__btn--active' : ''}`}
+                onClick={onToggleMic}
+                title="Toggle Live Voice Recognition"
+              >
+                {isListening ? '🔴 Mic Live' : '🎙️ Mic Active'}
+              </button>
+            )}
+            {onSpeakPhrase && (
+              <div className="acoustic-hud__chips">
+                <button
+                  type="button"
+                  className="acoustic-chip"
+                  onClick={() => onSpeakPhrase('AURA, what is the incident status?')}
+                  title="Ask AURA for status update"
+                >
+                  📢 Status
+                </button>
+                <button
+                  type="button"
+                  className="acoustic-chip"
+                  onClick={() => onSpeakPhrase('We suspect high database connection pool exhaustion on postgres')}
+                  title="Log database saturation hypothesis"
+                >
+                  🔍 DB Saturation
+                </button>
+                <button
+                  type="button"
+                  className="acoustic-chip"
+                  onClick={() => onSpeakPhrase('Let us prepare a rollback of the latest deployment')}
+                  title="Propose rollback action"
+                >
+                  🛡️ Rollback
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

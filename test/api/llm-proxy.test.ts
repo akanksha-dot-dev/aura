@@ -114,9 +114,9 @@ describe('API Route: /api/llm/proxy (app/api/llm/proxy/route.ts)', () => {
       expect(data.error).toBe('Invalid JSON request body');
     });
 
-    it('returns 502 when OPENAI_API_KEY is not configured', async () => {
+    it('returns 502 when GEMINI_API_KEY is not configured', async () => {
       delete process.env.INTERNAL_PROXY_SECRET;
-      delete process.env.OPENAI_API_KEY;
+      delete process.env.GEMINI_API_KEY;
 
       const req = new NextRequest('http://localhost:3000/api/llm/proxy', {
         method: 'POST',
@@ -129,14 +129,14 @@ describe('API Route: /api/llm/proxy (app/api/llm/proxy/route.ts)', () => {
       const res = await POST(req);
       expect(res.status).toBe(502);
       const data = await res.json();
-      expect(data.error).toContain('OPENAI_API_KEY is not configured');
+      expect(data.error).toContain('GEMINI_API_KEY');
     });
   });
 
   describe('Shadow Monitor Mode & Response Suppression (D-028)', () => {
     it('suppresses NO_RESPONSE in non-streaming mode by returning empty content', async () => {
       delete process.env.INTERNAL_PROXY_SECRET;
-      process.env.OPENAI_API_KEY = 'sk-test-key-mock';
+      process.env.GEMINI_API_KEY = 'AIzaTestMockKey';
 
       // Mock fetch to OpenAI API returning NO_RESPONSE
       global.fetch = vi.fn().mockResolvedValue({
@@ -171,7 +171,7 @@ describe('API Route: /api/llm/proxy (app/api/llm/proxy/route.ts)', () => {
 
     it('suppresses NO_RESPONSE in SSE streaming mode by emitting empty content delta', async () => {
       delete process.env.INTERNAL_PROXY_SECRET;
-      process.env.OPENAI_API_KEY = 'sk-test-key-mock';
+      process.env.GEMINI_API_KEY = 'AIzaTestMockKey';
 
       const sseChunks = [
         'data: {"id":"chatcmpl-1","choices":[{"delta":{"role":"assistant"}}]}\n\n',

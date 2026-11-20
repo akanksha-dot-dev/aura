@@ -208,7 +208,7 @@ export async function POST(request: NextRequest) {
         scenario: effectiveScenario || null,
       });
 
-      await push(ref(adminDb, `channels/${channelName}/events`), {
+      await adminDb.ref(`channels/${channelName}/events`).push({
         id: `evt-agent-started-${Date.now()}`,
         seq: Date.now(),
         timestamp: Date.now(),

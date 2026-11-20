@@ -13,9 +13,11 @@ function getAdminApp(): App {
   const projectId = process.env.FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  const databaseURL = process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL;
+  const databaseURL =
+    process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL ||
+    `https://${projectId || 'aura-dev-default-rtdb'}.firebaseio.com`;
   if (!projectId || !clientEmail || !privateKey) {
-    console.warn('[FirebaseAdmin] Service account not configured. Using default credentials.');
+    console.warn('[FirebaseAdmin] Service account not configured. Using dev-mode fallback.');
     return initializeApp({ projectId: projectId || 'aura-dev', databaseURL });
   }
   return initializeApp({ credential: cert({ projectId, clientEmail, privateKey }), databaseURL });

@@ -1,26 +1,67 @@
 /**
- * tts.ts — Web Speech API Text-to-Speech for AURA mock replay.
+ * tts.ts — Web Speech API Text-to-Speech for AURA.
  *
- * Speaks AURA lines in a distinct voice (higher pitch, slightly slower rate)
+ * Speaks AURA lines in a distinct voice (higher pitch, authoritative rate)
  * and human participant lines in a neutral voice.
  *
- * Gracefully no-ops when speechSynthesis is unavailable (SSR / unsupported browser).
+ * Designed with robust defenses against Chromium Windows bugs:
+ * - Garbage collection prevention via persistent window reference
+ * - Automatic speech resumption on user gesture (click/keydown)
+ * - Anti-stall watchdog timer ensuring queue never permanently locks
+ * - Periodic resume ping to prevent Windows Chromium 15s freeze
  */
 
 let voicesLoaded = false;
+let activeUtterance: SpeechSynthesisUtterance | null = null;
+let watchdogTimer: ReturnType<typeof setTimeout> | null = null;
+let resumeInterval: ReturnType<typeof setInterval> | null = null;
+
+// Ensure browser audio/speech context resumes as soon as user interacts
+if (typeof window !== 'undefined') {
+  const unlockAudioAndSpeech = () => {
+    try {
+      if (window.speechSynthesis) {
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+      }
+    } catch {
+      // Ignored
+    }
+  };
+
+  window.addEventListener('click', unlockAudioAndSpeech, { passive: true });
+  window.addEventListener('keydown', unlockAudioAndSpeech, { passive: true });
+  window.addEventListener('touchstart', unlockAudioAndSpeech, { passive: true });
+}
+
+function startResumeWatcher() {
+  if (typeof window === 'undefined' || !window.speechSynthesis || resumeInterval) return;
+  resumeInterval = setInterval(() => {
+    try {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        if (window.speechSynthesis.paused && isSpeaking) {
+          window.speechSynthesis.resume();
+        }
+      }
+    } catch {
+      // Ignored
+    }
+  }, 2000);
+}
 
 function ensureVoices(): Promise<SpeechSynthesisVoice[]> {
-  if (voicesLoaded) {
-    return Promise.resolve(window.speechSynthesis.getVoices());
+  if (typeof window === 'undefined' || !window.speechSynthesis) {
+    return Promise.resolve([]);
   }
+
+  const existing = window.speechSynthesis.getVoices();
+  if (existing.length > 0) {
+    voicesLoaded = true;
+    return Promise.resolve(existing);
+  }
+
   return new Promise((resolve) => {
-    const voices = window.speechSynthesis.getVoices();
-    if (voices.length > 0) {
-      voicesLoaded = true;
-      resolve(voices);
-      return;
-    }
-    // Chrome fires onvoiceschanged asynchronously
     const onChanged = () => {
       const v = window.speechSynthesis.getVoices();
       if (v.length > 0) {
@@ -30,8 +71,11 @@ function ensureVoices(): Promise<SpeechSynthesisVoice[]> {
       }
     };
     window.speechSynthesis.addEventListener('voiceschanged', onChanged);
-    // Fallback: resolve after 500 ms even if event never fires
-    setTimeout(() => resolve(window.speechSynthesis.getVoices()), 500);
+    // Fallback: resolve after 400 ms even if event never fires
+    setTimeout(() => {
+      window.speechSynthesis.removeEventListener('voiceschanged', onChanged);
+      resolve(window.speechSynthesis.getVoices());
+    }, 400);
   });
 }
 
@@ -43,6 +87,8 @@ function pickVoice(
   voices: SpeechSynthesisVoice[],
   isAura: boolean
 ): SpeechSynthesisVoice | null {
+  if (!voices || voices.length === 0) return null;
+
   const en = voices.filter((v) => v.lang.startsWith('en'));
   if (en.length === 0) return voices[0] ?? null;
 
@@ -79,6 +125,7 @@ function pickVoice(
         v.name.toLowerCase().includes('david') ||
         v.name.toLowerCase().includes('mark') ||
         v.name.toLowerCase().includes('daniel') ||
+        v.name.toLowerCase().includes('george') ||
         v.name.toLowerCase().includes('alex')
     );
     return male ?? pool[Math.min(1, pool.length - 1)] ?? null;
@@ -94,15 +141,13 @@ function drainQueue() {
   const next = queue.shift();
   if (next) {
     isSpeaking = true;
+    startResumeWatcher();
     next();
   }
 }
 
 /**
- * Speak `text` aloud.
- * @param text       The text to read.
- * @param isAura     Whether the speaker is the AURA agent (distinct voice profile).
- * @param speedMultiplier  Replay speed — used to shorten pauses; speech rate is NOT scaled.
+ * Speak `text` aloud using browser SpeechSynthesis with full error recovery.
  */
 export async function speakLine(
   text: string,
@@ -116,64 +161,77 @@ export async function speakLine(
 
   return new Promise((resolve) => {
     queue.push(() => {
-      // Cancel any stale utterance that might have got stuck
-      window.speechSynthesis.cancel();
+      try {
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
 
-      const utter = new SpeechSynthesisUtterance(text);
+        const utter = new SpeechSynthesisUtterance(text);
+        activeUtterance = utter;
+        if (typeof window !== 'undefined') {
+          (window as unknown as { __aura_utterance?: SpeechSynthesisUtterance }).__aura_utterance = utter;
+        }
 
-      // AURA: slightly faster rate, higher pitch — clinical, authoritative
-      // Human: normal rate and pitch
-      if (isAura) {
-        utter.rate = Math.min(1.3, 1.05 * Math.max(1, speedMultiplier * 0.6));
-        utter.pitch = 1.15;
-        utter.volume = 1;
-      } else {
-        utter.rate = Math.min(1.2, 1.0 * Math.max(1, speedMultiplier * 0.5));
-        utter.pitch = 0.95;
-        utter.volume = 0.85;
+        if (isAura) {
+          utter.rate = Math.min(1.25, 1.05 * Math.max(0.9, speedMultiplier * 0.6));
+          utter.pitch = 1.15;
+          utter.volume = 1;
+        } else {
+          utter.rate = Math.min(1.2, 1.0 * Math.max(0.85, speedMultiplier * 0.5));
+          utter.pitch = 0.95;
+          utter.volume = 0.85;
+        }
+
+        const voice = pickVoice(voices, isAura);
+        if (voice) utter.voice = voice;
+
+        let finished = false;
+        const cleanup = () => {
+          if (finished) return;
+          finished = true;
+          if (watchdogTimer) {
+            clearTimeout(watchdogTimer);
+            watchdogTimer = null;
+          }
+          activeUtterance = null;
+          isSpeaking = false;
+          resolve();
+          drainQueue();
+        };
+
+        utter.onend = cleanup;
+        utter.onerror = (e) => {
+          console.warn('[AURA TTS] Utterance notification:', e.error);
+          cleanup();
+        };
+
+        // Anti-stall watchdog: if browser fails to trigger onend, auto-unblock
+        const estimatedDurationMs = Math.max(2000, (text.length * 85) / Math.max(0.5, speedMultiplier) + 1200);
+        watchdogTimer = setTimeout(cleanup, estimatedDurationMs);
+
+        window.speechSynthesis.speak(utter);
+      } catch (err) {
+        console.warn('[AURA TTS] Speak error:', err);
+        isSpeaking = false;
+        resolve();
+        drainQueue();
       }
-
-      const voice = pickVoice(voices, isAura);
-      if (voice) utter.voice = voice;
-
-      utter.onend = () => {
-        isSpeaking = false;
-        resolve();
-        drainQueue();
-      };
-
-      utter.onerror = () => {
-        isSpeaking = false;
-        resolve();
-        drainQueue();
-      };
-
-      window.speechSynthesis.speak(utter);
     });
 
     drainQueue();
   });
 }
 
-// ── Prosody-Modulated TTS (Pillar 1: Human-Like Conversational AI) ──────────
+// ── Prosody-Modulated TTS ──────────────────────────────────────────────────
 
-/**
- * ToneAdjustment from the conversational intelligence engine.
- */
 export interface ProsodyOptions {
-  /** Speech rate multiplier (0.75–1.3). Default 1.0 */
   rateMultiplier?: number;
-  /** Pitch shift relative to base (0.7–1.3). Default 1.15 for AURA */
   pitchShift?: number;
-  /** Volume multiplier (0.5–1.2). Default 1.0 */
   volumeMultiplier?: number;
-  /** Pause duration between clauses in ms (0–400). Default 150 */
   clausePauseMs?: number;
-  /** Response style hint for selecting tone */
   style?: 'calm_authoritative' | 'urgent_focused' | 'empathetic_steady' | 'energized_collaborative';
 }
 
-/** Critical terms that should be emphasized (spoken slightly louder/slower) */
 const EMPHASIS_TERMS = new Set([
   'sev-0', 'sev-1', 'sev-2', 'sev-3', 'rollback', 'deploy', 'deployment',
   'outage', 'downtime', 'root cause', 'mitigation', 'escalate', 'escalation',
@@ -183,22 +241,12 @@ const EMPHASIS_TERMS = new Set([
   'circuit breaker', 'failover', 'canary', 'hotfix',
 ]);
 
-/**
- * Insert natural micro-pauses between clauses to simulate breathing.
- *
- * Splits text at natural clause boundaries (commas, semicolons, colons,
- * periods, dashes) and speaks each clause with a brief pause between.
- */
 function splitIntoClauses(text: string): string[] {
-  // Split at natural pause points while preserving the text
   return text
     .split(/(?<=[.!?;:])\s+|(?<=,)\s+(?=[A-Z])|(?:\s+—\s+)|(?:\s+-\s+)/)
-    .filter(c => c.trim().length > 0);
+    .filter((c) => c.trim().length > 0);
 }
 
-/**
- * Detect if a word is a critical term that should be emphasized.
- */
 function containsEmphasisTerm(clause: string): boolean {
   const lower = clause.toLowerCase();
   for (const term of EMPHASIS_TERMS) {
@@ -207,20 +255,10 @@ function containsEmphasisTerm(clause: string): boolean {
   return false;
 }
 
-/**
- * Speak text with prosody modulation, breathing simulation, and emphasis.
- *
- * This is the enhanced version of speakLine that integrates with the
- * conversational intelligence engine's ToneAdjustment output.
- *
- * @param text The text to speak
- * @param prosody Prosody modulation options from the conversational intelligence engine
- * @param speedMultiplier Replay speed multiplier (default 1)
- */
 export async function speakWithProsody(
   text: string,
   prosody: ProsodyOptions = {},
-  speedMultiplier = 1,
+  speedMultiplier = 1
 ): Promise<void> {
   if (typeof window === 'undefined' || !window.speechSynthesis) return;
   if (!text || text === 'NO_RESPONSE' || text.startsWith('[Monitoring')) return;
@@ -233,20 +271,16 @@ export async function speakWithProsody(
     style = 'calm_authoritative',
   } = prosody;
 
-  // Style-based base adjustments
   const styleAdjustments: Record<string, { rate: number; pitch: number; pause: number }> = {
-    calm_authoritative:     { rate: 1.0,  pitch: 1.15, pause: 150 },
-    urgent_focused:         { rate: 1.1,  pitch: 1.1,  pause: 80  },
-    empathetic_steady:      { rate: 0.9,  pitch: 1.05, pause: 200 },
-    energized_collaborative: { rate: 1.05, pitch: 1.2,  pause: 100 },
+    calm_authoritative: { rate: 1.0, pitch: 1.15, pause: 150 },
+    urgent_focused: { rate: 1.1, pitch: 1.1, pause: 80 },
+    empathetic_steady: { rate: 0.9, pitch: 1.05, pause: 200 },
+    energized_collaborative: { rate: 1.05, pitch: 1.2, pause: 100 },
   };
 
   const adj = styleAdjustments[style] || styleAdjustments.calm_authoritative;
-
   const voices = await ensureVoices();
   const voice = pickVoice(voices, true);
-
-  // Split text into clauses for breathing simulation
   const clauses = splitIntoClauses(text);
 
   for (let i = 0; i < clauses.length; i++) {
@@ -257,50 +291,64 @@ export async function speakWithProsody(
 
     await new Promise<void>((resolve) => {
       queue.push(() => {
-        window.speechSynthesis.cancel();
+        try {
+          if (window.speechSynthesis.paused) {
+            window.speechSynthesis.resume();
+          }
 
-        const utter = new SpeechSynthesisUtterance(clause);
+          const utter = new SpeechSynthesisUtterance(clause);
+          activeUtterance = utter;
 
-        // Apply prosody modulation
-        utter.rate = Math.min(1.3, Math.max(0.75,
-          adj.rate * rateMultiplier * Math.max(1, speedMultiplier * 0.6) *
-          (hasEmphasis ? 0.92 : 1.0) // Slow down slightly for emphasis terms
-        ));
-        utter.pitch = Math.min(1.3, Math.max(0.7,
-          adj.pitch * (pitchShift / 1.15) *
-          (hasEmphasis ? 1.05 : 1.0) // Slightly higher pitch for emphasis
-        ));
-        utter.volume = Math.min(1, Math.max(0.3,
-          1.0 * volumeMultiplier *
-          (hasEmphasis ? 1.1 : 1.0) // Slightly louder for emphasis
-        ));
+          utter.rate = Math.min(1.3, Math.max(0.75,
+            adj.rate * rateMultiplier * Math.max(1, speedMultiplier * 0.6) *
+            (hasEmphasis ? 0.92 : 1.0)
+          ));
+          utter.pitch = Math.min(1.3, Math.max(0.7,
+            adj.pitch * (pitchShift / 1.15) *
+            (hasEmphasis ? 1.05 : 1.0)
+          ));
+          utter.volume = Math.min(1, Math.max(0.3,
+            1.0 * volumeMultiplier *
+            (hasEmphasis ? 1.1 : 1.0)
+          ));
 
-        if (voice) utter.voice = voice;
+          if (voice) utter.voice = voice;
 
-        utter.onend = () => {
+          let finished = false;
+          const cleanup = () => {
+            if (finished) return;
+            finished = true;
+            if (watchdogTimer) {
+              clearTimeout(watchdogTimer);
+              watchdogTimer = null;
+            }
+            activeUtterance = null;
+            isSpeaking = false;
+            resolve();
+            drainQueue();
+          };
+
+          utter.onend = cleanup;
+          utter.onerror = cleanup;
+
+          const estDuration = Math.max(1500, (clause.length * 85) + 1000);
+          watchdogTimer = setTimeout(cleanup, estDuration);
+
+          window.speechSynthesis.speak(utter);
+        } catch {
           isSpeaking = false;
           resolve();
           drainQueue();
-        };
-
-        utter.onerror = () => {
-          isSpeaking = false;
-          resolve();
-          drainQueue();
-        };
-
-        window.speechSynthesis.speak(utter);
+        }
       });
 
       drainQueue();
     });
 
-    // Breathing simulation: insert a natural pause between clauses
     if (i < clauses.length - 1) {
       const effectivePause = clausePauseMs || adj.pause;
-      // Random variation (±30%) for natural feel
       const jitter = effectivePause * (0.7 + Math.random() * 0.6);
-      await new Promise(r => setTimeout(r, Math.round(jitter)));
+      await new Promise((r) => setTimeout(r, Math.round(jitter)));
     }
   }
 }
@@ -312,6 +360,14 @@ export function stopSpeech(): void {
   if (typeof window === 'undefined' || !window.speechSynthesis) return;
   queue.length = 0;
   isSpeaking = false;
-  window.speechSynthesis.cancel();
+  if (watchdogTimer) {
+    clearTimeout(watchdogTimer);
+    watchdogTimer = null;
+  }
+  activeUtterance = null;
+  try {
+    window.speechSynthesis.cancel();
+  } catch {
+    // Ignored
+  }
 }
-

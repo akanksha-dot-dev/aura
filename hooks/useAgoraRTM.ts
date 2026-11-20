@@ -17,4 +17,5 @@ export {
   useAgoraRTM,
   setRtmIncidentState,
   getRtmIncidentState,
+  extractAndDispatchEpistemicEvents,
 } from './useFirebaseRTM';

@@ -8,6 +8,7 @@ import {
   PRESET_SCENARIOS,
   PersonaDefinition,
 } from '@/lib/scenarios';
+import { speakLine } from '@/lib/tts';
 
 export interface UseAuraAgentOptions {
   channel: string;
@@ -99,6 +100,8 @@ export function useAuraAgent({
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
           console.info('[useAuraAgent] AURA live agent standby:', errData);
+          const fallbackGreeting = `AURA online and on the bridge. I'm monitoring all incident telemetry. Operational calm protocol engaged.`;
+          speakLine(fallbackGreeting, true, 1.0).catch(() => {});
           return;
         }
 
@@ -117,6 +120,9 @@ export function useAuraAgent({
           activeAgentChannelRef.current = channel;
           setActiveAgentId(data.agentId);
           console.info('[useAuraAgent] AURA agent active in channel:', data.agentId);
+          if (data.greeting) {
+            speakLine(data.greeting, true, 1.0).catch(() => {});
+          }
         }
       } catch (err) {
         console.warn('[useAuraAgent] AURA agent launch notice:', err);

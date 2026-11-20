@@ -49,7 +49,11 @@ describe('API Route: /api/token (app/api/token/route.ts — Firebase custom toke
     expect(data.error).toBe('Missing or invalid uid');
   });
 
-  it('returns 500 when Firebase Admin credentials are not configured in environment', async () => {
+  it('returns dev-mode token (200) when Firebase Admin credentials are not configured', async () => {
+    // The route gracefully degrades: when Firebase creds are absent/placeholder,
+    // it returns a dev-mode token (200) instead of a 500. This allows local
+    // development without a live Firebase project.
+    // See route.ts: "Firebase Admin not configured. Returning dev-mode token."
     delete process.env.FIREBASE_PROJECT_ID;
     delete process.env.FIREBASE_CLIENT_EMAIL;
     delete process.env.FIREBASE_PRIVATE_KEY;
@@ -63,8 +67,12 @@ describe('API Route: /api/token (app/api/token/route.ts — Firebase custom toke
       headers: { 'Content-Type': 'application/json' },
     });
     const res = await POST(req);
-    expect(res.status).toBe(500);
+    // Dev-mode fallback returns 200 with a prefixed dev token
+    expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data.error).toMatch(/Firebase|credentials not configured/i);
+    expect(data.token).toMatch(/^dev-token-sarah_oncall-/);
+    expect(data.mode).toBe('dev');
+    expect(data.uid).toBe('sarah_oncall');
+    expect(data.channelName).toBe('incident-sev1-4821');
   });
 });

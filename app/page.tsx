@@ -3,7 +3,7 @@
 import React, { Suspense, useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAgoraRTC } from '@/hooks/useAgoraRTC';
-import { setRtmIncidentState } from '@/hooks/useAgoraRTM';
+import { setRtmIncidentState, extractAndDispatchEpistemicEvents } from '@/hooks/useAgoraRTM';
 import { useIncidentState } from '@/hooks/useIncidentState';
 import { useWarRoomModals } from '@/hooks/useWarRoomModals';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
@@ -32,6 +32,7 @@ import {
   emitToast,
 } from '@/components';
 import { playResolutionEarcon } from '@/lib/audioCues';
+import { speakLine } from '@/lib/tts';
 
 function DashboardContent() {
   const router = useRouter();
@@ -126,7 +127,7 @@ function DashboardContent() {
   const toggleMute = useCallback(() => {
     if (!localAudioTrack) return;
     const nextState = !localAudioTrack.enabled;
-    localAudioTrack.setEnabled(nextState);
+    localAudioTrack.enabled = nextState; // MediaStreamTrack uses .enabled property
     emitToast({
       type: 'info',
       title: nextState ? 'Microphone Active' : 'Microphone Muted',
@@ -143,9 +144,56 @@ function DashboardContent() {
     enabled: isValidSession,
   });
 
-  useSpeechRecognitionFallback({
+  const isAgentRespondingRef = useRef(false);
+
+  const handleUserSpokenPhrase = useCallback(async (speaker: string, text: string) => {
+    if (!text || text.trim().length < 3) return;
+    if (isAgentRespondingRef.current) return;
+
+    transcripts.appendTranscript(speaker, text);
+    transcripts.setLiveTranscriptText(text);
+    transcripts.setLiveTranscriptSpeaker(speaker);
+
+    try {
+      isAgentRespondingRef.current = true;
+      const res = await fetch(`/api/llm/proxy?channel=${encodeURIComponent(channel)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stream: false,
+          messages: [{ role: 'user', content: text }],
+        }),
+      });
+
+      if (!res.ok) {
+        console.warn('[AURA Voice] LLM proxy notice:', res.status);
+        return;
+      }
+
+      const data = await res.json();
+      const content = data?.choices?.[0]?.message?.content || '';
+      if (!content || content === 'NO_RESPONSE') return;
+
+      extractAndDispatchEpistemicEvents(content, channel, uid, name);
+
+      const cleanSpoken = content.replace(/\[(?:LOG_[A-Z]+|SILENT)[^\]]*\]/gi, '').trim();
+      if (cleanSpoken && cleanSpoken !== 'NO_RESPONSE') {
+        transcripts.appendTranscript('AURA', cleanSpoken);
+        transcripts.setLiveTranscriptText(cleanSpoken);
+        transcripts.setLiveTranscriptSpeaker('AURA');
+        setMockSpeaker('AURA');
+        await speakLine(cleanSpoken, true, 1.0);
+        setMockSpeaker(null);
+      }
+    } catch (err) {
+      console.warn('[AURA Voice] Processing user voice notice:', err);
+    } finally {
+      isAgentRespondingRef.current = false;
+    }
+  }, [channel, uid, name, transcripts]);
+
+  const speechRec = useSpeechRecognitionFallback({
     isMockReplay,
-    isJoined,
     speakerName: name,
     voiceLang,
     volumeLevels,
@@ -153,6 +201,7 @@ function DashboardContent() {
       transcripts.setLiveTranscriptText(txt);
       transcripts.setLiveTranscriptSpeaker(spk);
     },
+    onTranscriptFinal: handleUserSpokenPhrase,
   });
 
   // 4. Hotkeys & Mock Replay
@@ -363,6 +412,12 @@ function DashboardContent() {
           currentTranscript={telemetry.currentTranscript}
           onCreateAction={logAction}
           onInjectTelemetry={logTelemetryAlert}
+          onSpeakPhrase={(phrase) => handleUserSpokenPhrase(name, phrase)}
+          isListening={speechRec.isListening}
+          onToggleMic={() => {
+            if (speechRec.isListening) speechRec.stopListening();
+            else speechRec.startListening();
+          }}
         />
 
         <ActionTracker

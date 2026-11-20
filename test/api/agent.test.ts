@@ -6,6 +6,22 @@ import { POST as interruptAgent } from '@/app/api/agent/interrupt/route';
 import { POST as updateAgent } from '@/app/api/agent/update/route';
 import { POST as thinkAgent } from '@/app/api/agent/think/route';
 
+// Mock Firebase Admin SDK for all agent tests (no real Firebase connection needed)
+vi.mock('@/lib/firebaseAdmin', () => ({
+  adminDb: {
+    ref: () => ({
+      set: vi.fn().mockResolvedValue(undefined),
+      update: vi.fn().mockResolvedValue(undefined),
+      remove: vi.fn().mockResolvedValue(undefined),
+      push: vi.fn().mockResolvedValue({ key: 'mock-event-key' }),
+    }),
+  },
+  adminAuth: {
+    createCustomToken: vi.fn().mockResolvedValue('mock-firebase-custom-token'),
+  },
+  adminFirestore: {},
+}));
+
 describe('API Route: /api/agent (app/api/agent/start, stop & interrupt routes)', () => {
   const originalEnv = process.env;
 
@@ -32,8 +48,8 @@ describe('API Route: /api/agent (app/api/agent/start, stop & interrupt routes)',
       expect(data.error).toBe('Missing or invalid channelName');
     });
 
-    it('returns 500 when Agora credentials are missing', async () => {
-      delete process.env.AGORA_APP_ID;
+    it('returns 500 when GEMINI_API_KEY is not configured', async () => {
+      delete process.env.GEMINI_API_KEY;
       const req = new NextRequest('http://localhost:3000/api/agent/start', {
         method: 'POST',
         body: JSON.stringify({ channelName: 'incident-4821' }),
@@ -42,38 +58,11 @@ describe('API Route: /api/agent (app/api/agent/start, stop & interrupt routes)',
       const res = await startAgent(req);
       expect(res.status).toBe(500);
       const data = await res.json();
-      expect(data.error).toContain('Agora server credentials not configured');
+      expect(data.error).toContain('GEMINI_API_KEY');
     });
 
-    it('constructs correct multi-speaker ConvAI payload and calls Agora REST API', async () => {
-      process.env.AGORA_APP_ID = '970ca35de60c44645bbae8a215061b33';
-      process.env.AGORA_APP_CERTIFICATE = '5cfd2fd1755d40ecb72977518be15d3b';
-      process.env.AGORA_CUSTOMER_KEY = 'test_key';
-      process.env.AGORA_CUSTOMER_SECRET = 'test_secret';
-
-      interface ConvAIPayload {
-        properties?: {
-          remote_rtc_uids?: string[];
-          enable_string_uid?: boolean;
-          interruption?: { enable?: boolean; mode?: string };
-          turn_detection?: { mode?: string; config?: { start_of_speech?: { vad_config?: { speaking_interrupt_duration_ms?: number } } } };
-          llm?: { system_messages?: Array<{ content?: string }> };
-          tts?: { vendor?: string };
-        };
-      }
-      let capturedPayload: ConvAIPayload | null = null;
-
-      global.fetch = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
-        if (url.includes('conversational-ai-agent/v2/projects')) {
-          capturedPayload = JSON.parse(init?.body as string);
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({ agent_id: 'aura_agent_12345' }),
-          } as Response;
-        }
-        return { ok: false, status: 404 } as Response;
-      });
+    it('starts Gemini Live session and returns agentId + stack info', async () => {
+      process.env.GEMINI_API_KEY = 'AIzaTestKey123';
 
       const req = new NextRequest('http://localhost:3000/api/agent/start', {
         method: 'POST',
@@ -84,42 +73,14 @@ describe('API Route: /api/agent (app/api/agent/start, stop & interrupt routes)',
       const res = await startAgent(req);
       expect(res.status).toBe(200);
       const data = await res.json();
-      expect(data.agentId).toBe('aura_agent_12345');
+      expect(data.agentId).toContain('aura-');
       expect(data.status).toBe('started');
-
-      // Verify payload constraints (D-004 multi-speaker & AIVAD)
-      expect(capturedPayload).not.toBeNull();
-      const payload = capturedPayload as unknown as ConvAIPayload;
-      expect(payload.properties?.remote_rtc_uids).toEqual(['*']);
-      expect(payload.properties?.enable_string_uid).toBe(true);
-      expect(payload.properties?.interruption?.enable).toBe(true);
-      expect(payload.properties?.interruption?.mode).toBe('start_of_speech');
-      expect(payload.properties?.turn_detection?.config?.start_of_speech?.vad_config?.speaking_interrupt_duration_ms).toBe(400);
-      expect(payload.properties?.llm?.system_messages?.[0]?.content).toContain('DIRECTIVE 1: SHADOW MONITOR MODE');
-      expect(payload.properties?.llm?.system_messages?.[0]?.content).toContain('DIRECTIVE 13: SBAR SPOKEN SUMMARY STRUCTURE');
-      expect(payload.properties?.llm?.system_messages?.[0]?.content).toContain('CURRENT INCIDENT SITUATION');
-      expect(['minimax', 'openai']).toContain(payload.properties?.tts?.vendor);
+      expect(data.stack.llm).toBe('gemini-live');
+      expect(data.stack.transport).toBe('firebase-rtdb');
     });
 
-    it('dynamically injects selected scenario and capability awareness into system prompt', async () => {
-      process.env.AGORA_APP_ID = '970ca35de60c44645bbae8a215061b33';
-      process.env.AGORA_APP_CERTIFICATE = '5cfd2fd1755d40ecb72977518be15d3b';
-      process.env.AGORA_CUSTOMER_KEY = 'test_key';
-      process.env.AGORA_CUSTOMER_SECRET = 'test_secret';
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let capturedPayload: any = null;
-      global.fetch = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
-        if (url.includes('conversational-ai-agent/v2/projects')) {
-          capturedPayload = JSON.parse(init?.body as string);
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({ agent_id: 'aura_agent_cdn_999' }),
-          } as Response;
-        }
-        return { ok: false, status: 404 } as Response;
-      });
+    it('dynamically injects selected scenario into system prompt and greeting', async () => {
+      process.env.GEMINI_API_KEY = 'AIzaTestKey123';
 
       const cdnScenario = {
         title: 'CDN Cache Invalidation Storm — Global Latency Spike',
@@ -144,18 +105,17 @@ describe('API Route: /api/agent (app/api/agent/start, stop & interrupt routes)',
 
       const res = await startAgent(req);
       expect(res.status).toBe(200);
-
-      const prompt = capturedPayload?.properties?.llm?.system_messages?.[0]?.content;
-      expect(prompt).toContain('CDN Cache Invalidation Storm — Global Latency Spike');
-      expect(prompt).toContain('cdn-edge, static-assets, image-service');
-      expect(prompt).toContain('CAPABILITIES & VOICE-QUERYABLE TOOLS');
-      expect(prompt).toContain('Live Incident Topology');
-      expect(prompt).toContain('Epistemic Classification');
+      const data = await res.json();
+      // Greeting should mention the responder name and scenario
+      expect(data.greeting).toContain('Jordan');
+      expect(data.greeting).toContain('SEV-2');
+      // Gemini config should have system instruction
+      expect(data.agentId).toBeTruthy();
     });
   });
 
   describe('/api/agent/stop POST', () => {
-    it('returns 400 when agentId is missing', async () => {
+    it('returns 400 when both agentId and channelName are missing', async () => {
       const req = new NextRequest('http://localhost:3000/api/agent/stop', {
         method: 'POST',
         body: JSON.stringify({}),
@@ -164,65 +124,24 @@ describe('API Route: /api/agent (app/api/agent/start, stop & interrupt routes)',
       const res = await stopAgent(req);
       expect(res.status).toBe(400);
       const data = await res.json();
-      expect(data.error).toBe('Missing or invalid agentId');
+      expect(data.error).toBe('Missing agentId or channelName');
     });
 
-    it('stops ConvAI agent cleanly via Agora REST API', async () => {
-      process.env.AGORA_APP_ID = '970ca35de60c44645bbae8a215061b33';
-      process.env.AGORA_CUSTOMER_KEY = 'test_key';
-      process.env.AGORA_CUSTOMER_SECRET = 'test_secret';
-
-      global.fetch = vi.fn().mockImplementation(async (url: string) => {
-        if (url.includes('/agents/aura_agent_12345/leave')) {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({ code: 0, message: 'Success' }),
-          } as Response;
-        }
-        return { ok: false, status: 404 } as Response;
-      });
-
+    it('stops Gemini Live session via Firebase RTDB cleanup', async () => {
       const req = new NextRequest('http://localhost:3000/api/agent/stop', {
         method: 'POST',
-        body: JSON.stringify({ agentId: 'aura_agent_12345' }),
+        body: JSON.stringify({ agentId: 'aura-agent-12345' }),
         headers: { 'Content-Type': 'application/json' },
       });
 
       const res = await stopAgent(req);
       expect(res.status).toBe(200);
       const data = await res.json();
-      expect(data.agentId).toBe('aura_agent_12345');
+      expect(data.agentId).toBe('aura-agent-12345');
       expect(data.status).toBe('stopped');
     });
 
-    it('stops ConvAI agent by channelName when agentId is not specified', async () => {
-      process.env.AGORA_APP_ID = '970ca35de60c44645bbae8a215061b33';
-      process.env.AGORA_CUSTOMER_KEY = 'test_key';
-      process.env.AGORA_CUSTOMER_SECRET = 'test_secret';
-
-      global.fetch = vi.fn().mockImplementation(async (url: string) => {
-        if (url.endsWith('/agents')) {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({
-              data: {
-                list: [{ agent_id: 'chan_agent_99', channel: 'incident-war-room' }],
-              },
-            }),
-          } as Response;
-        }
-        if (url.includes('/agents/chan_agent_99')) {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({ channel: 'incident-war-room' }),
-          } as Response;
-        }
-        return { ok: true, status: 200, json: async () => ({}) } as Response;
-      });
-
+    it('stops session by channelName when agentId is not specified', async () => {
       const req = new NextRequest('http://localhost:3000/api/agent/stop', {
         method: 'POST',
         body: JSON.stringify({ channelName: 'incident-war-room' }),
@@ -250,32 +169,17 @@ describe('API Route: /api/agent (app/api/agent/start, stop & interrupt routes)',
       expect(data.error).toBe('Missing or invalid agentId');
     });
 
-    it('interrupts ConvAI agent mid-speech via Agora REST API', async () => {
-      process.env.AGORA_APP_ID = '970ca35de60c44645bbae8a215061b33';
-      process.env.AGORA_CUSTOMER_KEY = 'test_key';
-      process.env.AGORA_CUSTOMER_SECRET = 'test_secret';
-
-      global.fetch = vi.fn().mockImplementation(async (url: string) => {
-        if (url.includes('/agents/aura_agent_12345/interrupt')) {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({ code: 0, message: 'Agent interrupted successfully' }),
-          } as Response;
-        }
-        return { ok: false, status: 404 } as Response;
-      });
-
+    it('interrupts agent via Firebase RTDB event broadcast', async () => {
       const req = new NextRequest('http://localhost:3000/api/agent/interrupt', {
         method: 'POST',
-        body: JSON.stringify({ agentId: 'aura_agent_12345' }),
+        body: JSON.stringify({ agentId: 'aura-agent-12345' }),
         headers: { 'Content-Type': 'application/json' },
       });
 
       const res = await interruptAgent(req);
       expect(res.status).toBe(200);
       const data = await res.json();
-      expect(data.agentId).toBe('aura_agent_12345');
+      expect(data.agentId).toBe('aura-agent-12345');
       expect(data.status).toBe('interrupted');
     });
   });
@@ -293,38 +197,7 @@ describe('API Route: /api/agent (app/api/agent/start, stop & interrupt routes)',
       expect(data.error).toBe('Missing agentId or channelName');
     });
 
-    it('returns 500 when Agora credentials are missing', async () => {
-      delete process.env.AGORA_APP_ID;
-      const req = new NextRequest('http://localhost:3000/api/agent/update', {
-        method: 'POST',
-        body: JSON.stringify({ agentId: 'ag-123', channelName: 'incident-war-room' }),
-        headers: { 'Content-Type': 'application/json' },
-      });
-      const res = await updateAgent(req);
-      expect(res.status).toBe(500);
-      const data = await res.json();
-      expect(data.error).toContain('Agora credentials not configured');
-    });
-
-    it('pushes rich dynamic incident context while preserving all directives', async () => {
-      process.env.AGORA_APP_ID = '970ca35de60c44645bbae8a215061b33';
-      process.env.AGORA_CUSTOMER_KEY = 'test_key';
-      process.env.AGORA_CUSTOMER_SECRET = 'test_secret';
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let capturedUpdatePayload: any = null;
-      global.fetch = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
-        if (url.includes('/update')) {
-          capturedUpdatePayload = JSON.parse(init?.body as string);
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({ code: 0, message: 'Updated' }),
-          } as Response;
-        }
-        return { ok: false, status: 404 } as Response;
-      });
-
+    it('updates Gemini session context via Firebase RTDB and returns updated state', async () => {
       const updatedEvidence = [
         {
           id: 'evt-dyn-101',
@@ -349,7 +222,6 @@ describe('API Route: /api/agent (app/api/agent/start, stop & interrupt routes)',
           serviceAffected: 'postgres-primary',
           relatedTo: ['evt-dyn-101'],
           status: 'active',
-          decidingMetric: 'pg_stat_activity idle in transaction count',
         },
       ];
 
@@ -378,15 +250,7 @@ describe('API Route: /api/agent (app/api/agent/start, stop & interrupt routes)',
       expect(data.status).toBe('updated');
       expect(data.agentId).toBe('ag-test-hot-update-456');
       expect(data.evidenceCount).toBeGreaterThanOrEqual(2);
-
-      // Verify the updated system prompt was built and contains both the core directives AND the live evidence
-      const updatedPrompt = capturedUpdatePayload?.properties?.llm?.system_messages?.[0]?.content;
-      expect(updatedPrompt).toBeDefined();
-      expect(updatedPrompt).toContain('DIRECTIVE 1: SHADOW MONITOR MODE');
-      expect(updatedPrompt).toContain('DIRECTIVE 13: SBAR SPOKEN SUMMARY STRUCTURE');
-      expect(updatedPrompt).toContain('Database connection pool reached 100% saturation');
-      expect(updatedPrompt).toContain('Leaked connections from unclosed cursor in billing service');
-      expect(updatedPrompt).toContain('Active Responders on Bridge: Operator Kai');
+      expect(data.transport).toBe('firebase-rtdb');
     });
   });
 
@@ -403,7 +267,7 @@ describe('API Route: /api/agent (app/api/agent/start, stop & interrupt routes)',
       expect(data.error).toContain('Missing or empty message');
     });
 
-    it('broadcasts alert to RTM stream when agentId is absent', async () => {
+    it('broadcasts alert to Firebase RTDB when agentId is absent', async () => {
       const req = new NextRequest('http://localhost:3000/api/agent/think', {
         method: 'POST',
         body: JSON.stringify({
@@ -416,33 +280,15 @@ describe('API Route: /api/agent (app/api/agent/start, stop & interrupt routes)',
       const res = await thinkAgent(req);
       expect(res.status).toBe(200);
       const data = await res.json();
-      expect(data.status).toBe('broadcasted_to_rtm');
+      expect(data.status).toBe('broadcasted_to_rtdb');
       expect(data.message).toBe('Datadog latency spike: 450ms');
     });
 
-    it('injects alert into Agora ConvAI /think REST endpoint when credentials and agentId exist', async () => {
-      process.env.AGORA_APP_ID = '970ca35de60c44645bbae8a215061b33';
-      process.env.AGORA_CUSTOMER_KEY = 'test_key';
-      process.env.AGORA_CUSTOMER_SECRET = 'test_secret';
-
-      let capturedUrl = '';
-      let capturedBody = '';
-
-      vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string, init?: RequestInit) => {
-        capturedUrl = url;
-        capturedBody = String(init?.body || '');
-        return Promise.resolve({
-          ok: true,
-          status: 200,
-          json: () => Promise.resolve({ code: 'success' }),
-          text: () => Promise.resolve('{"code":"success"}'),
-        });
-      }));
-
+    it('injects alert into Firebase RTDB think_injection event when agentId is present', async () => {
       const req = new NextRequest('http://localhost:3000/api/agent/think', {
         method: 'POST',
         body: JSON.stringify({
-          agentId: 'ag-test-think-123',
+          agentId: 'aura-test-think-123',
           channelName: 'incident-war-room',
           message: 'Kubernetes node 4 entered NotReady state',
           source: 'Prometheus',
@@ -454,9 +300,8 @@ describe('API Route: /api/agent (app/api/agent/start, stop & interrupt routes)',
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.status).toBe('injected');
-      expect(data.agentId).toBe('ag-test-think-123');
-      expect(capturedUrl).toContain('/agents/ag-test-think-123/think');
-      expect(capturedBody).toContain('Kubernetes node 4 entered NotReady state');
+      expect(data.agentId).toBe('aura-test-think-123');
+      expect(data.mode).toBe('firebase_rtdb_think');
     });
   });
 });

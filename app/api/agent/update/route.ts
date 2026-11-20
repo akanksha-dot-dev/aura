@@ -96,10 +96,9 @@ export async function POST(request: NextRequest) {
     //    system instruction on next session reconnect or via setConfig() if supported.
     try {
       const { adminDb } = await import('@/lib/firebaseAdmin');
-      const { ref, update, push } = await import('firebase-admin/database');
 
-      // Update the session node with new system instruction
-      await update(ref(adminDb, `sessions/${channelName}`), {
+      // Firebase Admin RTDB uses adminDb.ref() — no standalone functions
+      await adminDb.ref(`sessions/${channelName}`).update({
         systemInstruction: effectiveSystemPrompt,
         updatedAt: Date.now(),
         agentId,
@@ -109,7 +108,7 @@ export async function POST(request: NextRequest) {
       });
 
       // Also broadcast an update event to all dashboards
-      await push(ref(adminDb, `channels/${channelName}/events`), {
+      await adminDb.ref(`channels/${channelName}/events`).push({
         id: `ctx-update-${Date.now()}`,
         seq: Date.now(),
         timestamp: Date.now(),

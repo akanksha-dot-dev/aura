@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
+
+// ────────────────────────────────────────────────────────────────────────────────────
+// POST /api/agent/interrupt
+// Replaces: Agora ConvAI POST /agents/{agentId}/interrupt
+// Now: Broadcasts an `agent_interrupted` event to Firebase RTDB so the Gemini Live
+//     client-side WebSocket handler can call session.close() / abort the response.
+// ────────────────────────────────────────────────────────────────────────────────────
 
 interface AgentInterruptRequest {
   agentId?: string;
   agent_id?: string;
+  channelName?: string;
+  channel_name?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -20,6 +29,7 @@ export async function POST(request: NextRequest) {
     }
 
     const agentId = body.agentId || body.agent_id;
+    const channelName = body.channelName || body.channel_name;
 
     if (!agentId || typeof agentId !== 'string') {
       return NextResponse.json(
@@ -28,52 +38,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const appId = process.env.AGORA_APP_ID;
-    const customerKey = process.env.AGORA_CUSTOMER_KEY;
-    const customerSecret = process.env.AGORA_CUSTOMER_SECRET;
+    // ── Broadcast interrupt event via Firebase RTDB ───────────────────────────
+    // Replaces: POST https://api.agora.io/.../agents/{agentId}/interrupt
+    // The client-side Gemini Live WebSocket handler listens on:
+    //   channels/{channelName}/events → eventType === 'agent_interrupted'
+    // and calls session.close() to abort the current speech turn.
+    try {
+      const { adminDb } = await import('@/lib/firebaseAdmin');
 
-    if (!appId || !customerKey || !customerSecret) {
-      return NextResponse.json(
-        {
-          error:
-            'Agora REST credentials not configured (AGORA_APP_ID, AGORA_CUSTOMER_KEY or AGORA_CUSTOMER_SECRET missing)',
-        },
-        { status: 500 }
-      );
-    }
+      // Derive channelName from agentId if not provided
+      // agentId format: aura-{channelName-slug}-{timestamp36}
+      const resolvedChannel = channelName || (() => {
+        const parts = agentId.replace(/^aura-/, '').split('-');
+        // Drop the last segment (timestamp36) and rejoin
+        parts.pop();
+        return parts.join('-') || agentId;
+      })();
 
-    const authHeader = `Basic ${Buffer.from(
-      `${customerKey}:${customerSecret}`
-    ).toString('base64')}`;
+      // Firebase Admin RTDB: use adminDb.ref() — no standalone functions
+      await adminDb.ref(`channels/${resolvedChannel}/events`).push({
+        id: `evt-interrupt-${Date.now()}`,
+        seq: Date.now(),
+        timestamp: Date.now(),
+        type: 'dashboard_event',
+        eventType: 'agent_interrupted',
+        customType: 'dashboard_event',
+        payload: { agentId, channelName: resolvedChannel, source: 'api' },
+      });
 
-    const agoraResponse = await fetch(
-      `https://api.agora.io/api/conversational-ai-agent/v2/projects/${appId}/agents/${encodeURIComponent(agentId)}/interrupt`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: authHeader,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    const responseData = await agoraResponse.json().catch(() => ({}));
-
-    if (!agoraResponse.ok) {
-      return NextResponse.json(
-        {
-          error: 'Failed to interrupt Agora ConvAI agent',
-          status: agoraResponse.status,
-          details: responseData,
-        },
-        { status: agoraResponse.status }
-      );
+      // Also update session status so new listeners see it
+      await adminDb.ref(`sessions/${resolvedChannel}/status`).set('interrupted');
+    } catch (firebaseErr) {
+      // Non-fatal: log and continue — the interrupt event failing shouldn't
+      // block the response (agent may already be silent)
+      console.warn('[AgentInterrupt] Firebase RTDB write warning:', firebaseErr);
     }
 
     return NextResponse.json({
       agentId,
       status: 'interrupted',
-      details: responseData,
+      transport: 'firebase-rtdb',
     });
   } catch (error) {
     return NextResponse.json(
@@ -81,7 +85,7 @@ export async function POST(request: NextRequest) {
         error:
           error instanceof Error
             ? error.message
-            : 'Failed to interrupt ConvAI agent',
+            : 'Failed to interrupt AURA agent',
       },
       { status: 500 }
     );
