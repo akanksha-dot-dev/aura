@@ -934,14 +934,52 @@ export function StatusBar({
                   }}
                 >
                   <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#D4A853', boxShadow: '0 0 6px #D4A853' }} />
-                  GEMINI 2.5 FLASH
+                  GOOGLE GEMINI 2.5 FLASH
+                </span>
+              </div>
+
+              {/* Real-time Signaling Engine */}
+              <div className="precision-bar__setting-row">
+                <span className="precision-bar__setting-label">State Signaling</span>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    color: '#F59E0B',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                  }}
+                >
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#F59E0B', boxShadow: '0 0 6px #F59E0B' }} />
+                  FIREBASE RTDB (SUB-100MS)
+                </span>
+              </div>
+
+              {/* Voice TTS Model */}
+              <div className="precision-bar__setting-row">
+                <span className="precision-bar__setting-label">Voice Synthesis</span>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    color: '#38BDF8',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                  }}
+                >
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#38BDF8', boxShadow: '0 0 6px #38BDF8' }} />
+                  GOOGLE CLOUD JOURNEY-F
                 </span>
               </div>
 
               {/* Voice Model Accent */}
               {onVoiceLangChange && (
                 <div className="precision-bar__setting-row">
-                  <span className="precision-bar__setting-label">Voice ASR Accent</span>
+                  <span className="precision-bar__setting-label">Speech Recognition</span>
                   <div className="precision-bar__setting-segmented" role="radiogroup">
                     <button
                       type="button"
@@ -971,7 +1009,7 @@ export function StatusBar({
 
               {/* Audio Mesh Quality */}
               <div className="precision-bar__setting-row">
-                <span className="precision-bar__setting-label">SD-RTN™ Audio Mesh</span>
+                <span className="precision-bar__setting-label">Voice RTC Mesh</span>
                 <span
                   style={{
                     fontFamily: 'var(--font-mono)',
@@ -980,19 +1018,11 @@ export function StatusBar({
                     color: connectionColor,
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 4,
+                    gap: 5,
                   }}
                 >
-                  <span
-                    style={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: '50%',
-                      backgroundColor: connectionColor,
-                      boxShadow: `0 0 6px ${connectionColor}`,
-                    }}
-                  />
-                  {connectionQuality.toUpperCase()}
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: connectionColor }} />
+                  GOOGLE STUN WEBRTC ({connectionQuality.toUpperCase()})
                 </span>
               </div>
             </div>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { EvidenceItem, ActionStatus } from '@/lib/types';
 import { PlaybookStep } from '@/lib/scenarios';
 import { SmartPlaybook } from './SmartPlaybook';
+import { playActionCompletedEarcon } from '@/lib/audioCues';
 
 export interface ActionTrackerProps {
   actions: EvidenceItem[];
@@ -49,6 +50,7 @@ export function ActionTracker({
       next = 'in_progress';
     } else if (current === 'in_progress') {
       next = 'done';
+      playActionCompletedEarcon();
     } else {
       next = 'pending';
     }

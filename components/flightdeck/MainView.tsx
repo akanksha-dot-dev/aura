@@ -54,6 +54,15 @@ export function MainView({
 }: MainViewProps) {
   const [internalActiveTab, setInternalActiveTab] = useState<'timeline' | 'topology' | 'analytics' | 'insights'>('timeline');
   const activeTab = controlledActiveTab ?? internalActiveTab;
+  const [directiveInput, setDirectiveInput] = useState('');
+
+  const handleDirectiveSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = directiveInput.trim();
+    if (!trimmed) return;
+    onSpeakPhrase?.(trimmed);
+    setDirectiveInput('');
+  };
 
   const handleTabSelect = (tab: 'timeline' | 'topology' | 'analytics' | 'insights') => {
     setInternalActiveTab(tab);
@@ -230,6 +239,56 @@ export function MainView({
           border-color: #10B981;
           color: #10B981;
           box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+        }
+
+        .acoustic-hud__input-form {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          flex: 1;
+          max-width: 290px;
+        }
+
+        .acoustic-hud__input {
+          font-family: var(--font-sans);
+          font-size: 11px;
+          padding: 3px 8px;
+          border-radius: var(--radius-xs);
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          color: var(--text-base);
+          width: 100%;
+          outline: none;
+          transition: all 0.15s ease;
+        }
+
+        .acoustic-hud__input:focus {
+          border-color: #D4A853;
+          background: rgba(212, 168, 83, 0.08);
+          box-shadow: 0 0 8px rgba(212, 168, 83, 0.2);
+        }
+
+        .acoustic-hud__submit-btn {
+          font-family: var(--font-mono);
+          font-size: 11px;
+          font-weight: 700;
+          padding: 3px 7px;
+          border-radius: var(--radius-xs);
+          background: rgba(212, 168, 83, 0.18);
+          border: 1px solid rgba(212, 168, 83, 0.35);
+          color: #D4A853;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+
+        .acoustic-hud__submit-btn:hover:not(:disabled) {
+          background: #D4A853;
+          color: #0E1015;
+        }
+
+        .acoustic-hud__submit-btn:disabled {
+          opacity: 0.3;
+          cursor: not-allowed;
         }
 
         .acoustic-hud__chips {
@@ -514,11 +573,32 @@ export function MainView({
                 type="button"
                 className={`acoustic-hud__btn ${isListening ? 'acoustic-hud__btn--active' : ''}`}
                 onClick={onToggleMic}
-                title="Toggle Live Voice Recognition"
+                title="Toggle Live Voice Recognition (or hold Space for Push-to-Talk)"
               >
                 {isListening ? '🔴 Mic Live' : '🎙️ Mic Active'}
               </button>
             )}
+
+            {onSpeakPhrase && (
+              <form onSubmit={handleDirectiveSubmit} className="acoustic-hud__input-form">
+                <input
+                  type="text"
+                  className="acoustic-hud__input"
+                  placeholder="Direct AURA (e.g., 'What is our burn rate?')..."
+                  value={directiveInput}
+                  onChange={(e) => setDirectiveInput(e.target.value)}
+                />
+                <button
+                  type="submit"
+                  className="acoustic-hud__submit-btn"
+                  title="Send directive to AURA"
+                  disabled={!directiveInput.trim()}
+                >
+                  ↵
+                </button>
+              </form>
+            )}
+
             {onSpeakPhrase && (
               <div className="acoustic-hud__chips">
                 <button
@@ -536,6 +616,14 @@ export function MainView({
                   title="Log database saturation hypothesis"
                 >
                   🔍 DB Saturation
+                </button>
+                <button
+                  type="button"
+                  className="acoustic-chip"
+                  onClick={() => onSpeakPhrase('Flag conflict between database connection pool and load balancer latency')}
+                  title="Flag active hypothesis conflict"
+                >
+                  ⚡ Conflict
                 </button>
                 <button
                   type="button"
@@ -595,6 +683,7 @@ export function MainView({
           <IncidentTopology
             nodes={nodes}
             edges={edges}
+            onInvestigateNode={onSpeakPhrase}
           />
         </div>
 

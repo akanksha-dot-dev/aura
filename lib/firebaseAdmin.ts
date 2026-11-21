@@ -16,11 +16,23 @@ function getAdminApp(): App {
   const databaseURL =
     process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL ||
     `https://${projectId || 'aura-dev-default-rtdb'}.firebaseio.com`;
-  if (!projectId || !clientEmail || !privateKey) {
+  if (
+    !projectId ||
+    !clientEmail ||
+    !privateKey ||
+    privateKey.includes('your_private_key') ||
+    projectId.includes('your-project') ||
+    !privateKey.includes('BEGIN')
+  ) {
     console.warn('[FirebaseAdmin] Service account not configured. Using dev-mode fallback.');
     return initializeApp({ projectId: projectId || 'aura-dev', databaseURL });
   }
-  return initializeApp({ credential: cert({ projectId, clientEmail, privateKey }), databaseURL });
+  try {
+    return initializeApp({ credential: cert({ projectId, clientEmail, privateKey }), databaseURL });
+  } catch (err) {
+    console.warn('[FirebaseAdmin] Certificate parse warning. Using dev-mode fallback:', err);
+    return initializeApp({ projectId: projectId || 'aura-dev', databaseURL });
+  }
 }
 
 export const adminApp = getAdminApp();

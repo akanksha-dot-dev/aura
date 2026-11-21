@@ -59,6 +59,7 @@ export interface IncidentTopologyProps {
   edges: TopologyEdge[];
   onNodeHover?: (nodeId: string | null) => void;
   onNodeClick?: (nodeId: string) => void;
+  onInvestigateNode?: (content: string) => void;
 }
 
 interface SimulationNode extends TopologyNode, SimulationNodeDatum {}
@@ -137,6 +138,7 @@ export function IncidentTopology({
   edges,
   onNodeHover,
   onNodeClick,
+  onInvestigateNode,
 }: IncidentTopologyProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 700, height: 450 });
@@ -700,6 +702,30 @@ export function IncidentTopology({
           padding-top: 6px;
         }
 
+        .topology-inspector__investigate-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 5px 10px;
+          border-radius: var(--radius-xs);
+          background: rgba(212, 168, 83, 0.12);
+          border: 1px solid rgba(212, 168, 83, 0.35);
+          color: #D4A853;
+          font-family: var(--font-mono);
+          font-size: 10px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all var(--duration-fast) var(--ease-standard);
+          width: 100%;
+          justify-content: center;
+        }
+
+        .topology-inspector__investigate-btn:hover {
+          background: rgba(212, 168, 83, 0.22);
+          border-color: #D4A853;
+          box-shadow: 0 0 10px rgba(212, 168, 83, 0.25);
+        }
+
         .topology-inspector__relations {
           display: flex;
           flex-direction: column;
@@ -1144,6 +1170,18 @@ export function IncidentTopology({
             <span>•</span>
             <span>{formatTime(selectedNode.timestamp)}</span>
           </div>
+          {onInvestigateNode && (
+            <div style={{ marginTop: 6 }}>
+              <button
+                type="button"
+                className="topology-inspector__investigate-btn"
+                onClick={() => onInvestigateNode(`Investigate ${selectedNode.category}: ${selectedNode.fullContent || selectedNode.content}`)}
+                title="Ask AURA to assess this item"
+              >
+                ⚡ Investigate With AURA
+              </button>
+            </div>
+          )}
           {(selectedNeighbors.sources.length > 0 || selectedNeighbors.targets.length > 0) && (
             <div className="topology-inspector__relations">
               {selectedNeighbors.sources.length > 0 && (
