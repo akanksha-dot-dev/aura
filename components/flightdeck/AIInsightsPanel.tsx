@@ -5,6 +5,7 @@ import type { IncidentState } from '@/lib/types';
 import type { AIInsightsResponse, RecommendedAction } from '@/app/api/incidents/ai-insights/route';
 import type { AICommsResponse, CommsAudience } from '@/app/api/incidents/ai-comms/route';
 import { emitToast } from '@/components/indicators/NotificationToast';
+import { speakLine, stopSpeech } from '@/lib/tts';
 
 export interface AIInsightsPanelProps {
   incident: IncidentState;
@@ -82,6 +83,43 @@ export function AIInsightsPanel({
   const [customService, setCustomService] = useState(incident.affectedServices[0] || 'payment-api');
   const [customAlertText, setCustomAlertText] = useState('');
   const [injectedCount, setInjectedCount] = useState(0);
+
+  const [isSpeakingSbar, setIsSpeakingSbar] = useState(false);
+  const [isSpeakingComms, setIsSpeakingComms] = useState(false);
+
+  const handleReadSbarAloud = async () => {
+    if (isSpeakingSbar) {
+      stopSpeech();
+      setIsSpeakingSbar(false);
+      return;
+    }
+    const situation = data?.sbar.situation || 'Active crisis assessment in progress';
+    const background = data?.sbar.background || 'Gathering incoming telemetry';
+    const assessment = data?.sbar.assessment || 'Establishing root cause';
+    const recommendation = data?.sbar.recommendation || 'Verify service status';
+    const text = `Situation: ${situation}. Background: ${background}. Assessment: ${assessment}. Recommendation: ${recommendation}.`;
+    setIsSpeakingSbar(true);
+    try {
+      await speakLine(text, true, 1.0);
+    } finally {
+      setIsSpeakingSbar(false);
+    }
+  };
+
+  const handleReadCommsAloud = async () => {
+    if (!commsData?.message) return;
+    if (isSpeakingComms) {
+      stopSpeech();
+      setIsSpeakingComms(false);
+      return;
+    }
+    setIsSpeakingComms(true);
+    try {
+      await speakLine(commsData.message, true, 1.0);
+    } finally {
+      setIsSpeakingComms(false);
+    }
+  };
 
   const requestInsights = useCallback(async (customQuery?: string): Promise<AIInsightsResponse | null> => {
     const res = await fetch('/api/incidents/ai-insights', {
@@ -427,6 +465,35 @@ export function AIInsightsPanel({
           background: rgba(255, 255, 255, 0.1);
           border-color: rgba(212, 168, 83, 0.4);
           color: #D4A853;
+        }
+
+        .ai-insights__voice-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 3px 8px;
+          background: rgba(212, 168, 83, 0.12);
+          border: 1px solid rgba(212, 168, 83, 0.35);
+          border-radius: 4px;
+          color: #D4A853;
+          font-family: var(--font-mono);
+          font-size: 10px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+
+        .ai-insights__voice-btn:hover {
+          background: rgba(212, 168, 83, 0.22);
+          border-color: #D4A853;
+          box-shadow: 0 0 8px rgba(212, 168, 83, 0.3);
+        }
+
+        .ai-insights__voice-btn--active {
+          background: rgba(244, 63, 94, 0.2);
+          border-color: #F43F5E;
+          color: #F43F5E;
+          box-shadow: 0 0 8px rgba(244, 63, 94, 0.3);
         }
 
         .ai-insights__grid {
