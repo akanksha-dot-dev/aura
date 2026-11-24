@@ -41,6 +41,7 @@ export interface StatusBarProps {
   cognitiveLoadScore?: number;
   onResolve?: () => void;
   onInvite?: () => void;
+  onOpenPitchTour?: () => void;
 }
 
 function formatTimer(totalSeconds: number): string {
@@ -73,10 +74,30 @@ export function StatusBar({
   cognitiveLoadScore = 0,
   onResolve,
   onInvite,
+  onOpenPitchTour,
 }: StatusBarProps) {
   const [activeElapsed, setActiveElapsed] = useState<number>(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const theme = useSyncExternalStore(subscribeTheme, getThemeSnapshot, getServerThemeSnapshot);
+
+  // Keyboard shortcut: 'P' to open Pitch Tour
+  useEffect(() => {
+    if (!onOpenPitchTour) return;
+    const handleKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
+      if (e.key === 'p' || e.key === 'P') {
+        if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+          e.preventDefault();
+          onOpenPitchTour();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [onOpenPitchTour]);
 
   // AURA Pulse: status bar breathes based on cognitive load & incident status
   const pulseClass = status === 'resolved'
@@ -832,6 +853,28 @@ export function StatusBar({
               </svg>
               <span>Resolve</span>
               <kbd>R</kbd>
+            </button>
+          )}
+
+          {/* 60-Second Buildathon Pitch Tour Button */}
+          {onOpenPitchTour && (
+            <button
+              type="button"
+              className="precision-bar__btn-chip"
+              onClick={onOpenPitchTour}
+              title="Launch 60-Second Buildathon Pitch Tour (P)"
+              aria-label="Launch Pitch Tour"
+              style={{
+                background: 'linear-gradient(135deg, rgba(212, 168, 83, 0.22) 0%, rgba(245, 158, 11, 0.15) 100%)',
+                borderColor: '#D4A853',
+                color: '#F59E0B',
+                fontWeight: 700,
+                boxShadow: '0 0 10px rgba(212, 168, 83, 0.2)',
+              }}
+            >
+              <span style={{ fontSize: '11px' }}>✨</span>
+              <span>Pitch Tour</span>
+              <kbd style={{ background: 'rgba(212,168,83,0.2)', color: '#D4A853', borderColor: 'rgba(212,168,83,0.4)' }}>P</kbd>
             </button>
           )}
 

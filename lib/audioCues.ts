@@ -129,3 +129,35 @@ export function playResolutionEarcon() {
     // Ignored
   }
 }
+
+/**
+ * Subtle upward arpeggio for guided pitch tour step transitions.
+ * 440Hz -> 660Hz (sine, 80ms)
+ */
+export function playPitchStepEarcon() {
+  if (!isAudioEnabled) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  try {
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(440, now);
+    osc.frequency.exponentialRampToValueAtTime(660, now + 0.08);
+
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(0.04, now + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.1);
+  } catch {
+    // Ignored
+  }
+}

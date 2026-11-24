@@ -9,6 +9,7 @@ import { WarRoomInvite } from './WarRoomInvite';
 import { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
 import { QuickCapture, QuickCapturePayload } from './QuickCapture';
 import { TranscriptDrawer, TranscriptEntry } from './TranscriptDrawer';
+import { PitchTourModal } from './PitchTourModal';
 import { NotificationToastContainer } from '@/components/indicators/NotificationToast';
 import { playResolutionEarcon } from '@/lib/audioCues';
 
@@ -21,6 +22,10 @@ export interface WarRoomModalsProps {
   effectiveTranscripts: TranscriptEntry[];
   speakerName: string;
   onQuickCaptureSubmit: (payload: QuickCapturePayload) => void;
+  onSimulateOutage?: () => void;
+  onFocusTopology?: () => void;
+  onTriggerConflict?: () => void;
+  onExecuteAction?: () => void;
 }
 
 export function WarRoomModals({
@@ -32,9 +37,22 @@ export function WarRoomModals({
   effectiveTranscripts,
   speakerName,
   onQuickCaptureSubmit,
+  onSimulateOutage,
+  onFocusTopology,
+  onTriggerConflict,
+  onExecuteAction,
 }: WarRoomModalsProps) {
   return (
     <>
+      <PitchTourModal
+        isOpen={modals.isPitchTourOpen}
+        onClose={() => modals.closeModal('pitchTour')}
+        onSimulateOutage={onSimulateOutage}
+        onFocusTopology={onFocusTopology}
+        onTriggerConflict={onTriggerConflict}
+        onExecuteAction={onExecuteAction}
+        onOpenPostmortem={() => modals.openModal('postmortem')}
+      />
       <PostmortemModal
         isOpen={modals.isPostmortemOpen}
         onClose={() => modals.closeModal('postmortem')}

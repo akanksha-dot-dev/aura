@@ -965,7 +965,17 @@ export function AIInsightsPanel({
             <div className="ai-card">
               <div className="ai-card__title">
                 <span>SBAR Tactical Briefing</span>
-                <span style={{ fontSize: '9.5px', color: '#D4A853' }}>Emergency Protocol</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <button
+                    type="button"
+                    className={`ai-insights__voice-btn ${isSpeakingSbar ? 'ai-insights__voice-btn--active' : ''}`}
+                    onClick={handleReadSbarAloud}
+                    title="Listen to SBAR voice briefing"
+                  >
+                    {isSpeakingSbar ? '⏹ Stop' : '🔊 Read Aloud'}
+                  </button>
+                  <span style={{ fontSize: '9.5px', color: '#D4A853' }}>Emergency Protocol</span>
+                </div>
               </div>
               <div className="sbar-section">
                 <div className="sbar-row">
@@ -1126,8 +1136,18 @@ export function AIInsightsPanel({
 
             {queryResponse && (
               <div className="ai-query-response">
-                <strong>Gemini Copilot: </strong>
-                {queryResponse}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <strong>Gemini Copilot:</strong>
+                  <button
+                    type="button"
+                    className="ai-insights__voice-btn"
+                    onClick={() => speakLine(queryResponse, true, 1.0)}
+                    title="Listen to Gemini response"
+                  >
+                    🔊 Read Answer
+                  </button>
+                </div>
+                <div>{queryResponse}</div>
               </div>
             )}
           </div>
@@ -1167,6 +1187,14 @@ export function AIInsightsPanel({
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                 <strong style={{ fontSize: '13px', color: 'var(--text-primary)' }}>{commsData.subject}</strong>
                 <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    type="button"
+                    className={`ai-insights__voice-btn ${isSpeakingComms ? 'ai-insights__voice-btn--active' : ''}`}
+                    onClick={handleReadCommsAloud}
+                    title="Listen to Comms broadcast draft"
+                  >
+                    {isSpeakingComms ? '⏹ Stop' : '🔊 Read Aloud'}
+                  </button>
                   <button
                     type="button"
                     className="ai-insights__refresh-btn"

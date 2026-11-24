@@ -372,6 +372,7 @@ function DashboardContent() {
           }}
           cognitiveLoadScore={state.cognitiveLoadScore}
           onResolve={() => modals.openModal('resolve')}
+          onOpenPitchTour={() => modals.openModal('pitchTour')}
         />
 
         <SpeakerPanel
@@ -470,6 +471,17 @@ function DashboardContent() {
           effectiveTranscripts={telemetry.effectiveTranscripts}
           speakerName={name}
           onQuickCaptureSubmit={logQuickCapture}
+          onSimulateOutage={() => {
+            handleUserSpokenPhrase('Marcus Vance', 'Observing heavy 504 gateway timeouts on checkout service.');
+          }}
+          onFocusTopology={() => setMainViewTab('topology')}
+          onTriggerConflict={() => {
+            handleUserSpokenPhrase('Elena Rostova', '[LOG_HYPOTHESIS] Connection pool exhaustion in auth-db');
+            handleUserSpokenPhrase('Sarah Chen', '[LOG_HYPOTHESIS] Upstream cloud payment gateway rate limiting us');
+          }}
+          onExecuteAction={() => {
+            logAction('Roll back PR #492 - revert unindexed query in checkout handler', 'marcus_devops');
+          }}
         />
       </div>
     </>

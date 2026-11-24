@@ -152,7 +152,8 @@ function drainQueue() {
 export async function speakLine(
   text: string,
   isAura: boolean,
-  speedMultiplier = 1
+  speedMultiplier = 1,
+  onEnd?: () => void
 ): Promise<void> {
   if (typeof window === 'undefined' || !window.speechSynthesis) return;
   if (!text || text === 'NO_RESPONSE' || text.startsWith('[Monitoring')) return;
@@ -195,6 +196,11 @@ export async function speakLine(
           }
           activeUtterance = null;
           isSpeaking = false;
+          try {
+            onEnd?.();
+          } catch {
+            // Ignored
+          }
           resolve();
           drainQueue();
         };

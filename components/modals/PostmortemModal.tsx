@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { IncidentState, TopologyEdge } from '@/lib/types';
 import { springs } from '@/lib/springs';
+import { speakLine, stopSpeech } from '@/lib/tts';
 
 export interface PostmortemModalProps {
   isOpen: boolean;
@@ -52,6 +53,14 @@ export function PostmortemModal({
   const [copiedMd, setCopiedMd] = useState(false);
   const [aiSynthesis, setAiSynthesis] = useState<AIPostmortemResponse | null>(null);
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+  const [isSpeakingSummary, setIsSpeakingSummary] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      stopSpeech();
+      setIsSpeakingSummary(false);
+    }
+  }, [isOpen]);
 
   const handleGenerateAiSynthesis = async () => {
     setIsGeneratingAi(true);
@@ -235,6 +244,19 @@ ${aiSynthesis ? `\n---\n\n${aiSynthesis.markdownSummary}\n` : ''}
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleReadExecutiveSummary = () => {
+    if (isSpeakingSummary) {
+      stopSpeech();
+      setIsSpeakingSummary(false);
+      return;
+    }
+    const textToRead = `Executive Summary. Incident ${incident.title}. Duration ${duration}. Total downtime cost saved, approximately ${formatCurrency(costSavings)}. Confirmed root cause: ${confirmedHypothesis?.content || 'Database connection pool exhaustion caused by unoptimized query in pull request 492.'}. Investigation concluded with ${factsCount} facts established, ${confirmedCount} hypotheses confirmed, and ${actionCompletedCount} of ${actionItems.length} remediations completed.`;
+    setIsSpeakingSummary(true);
+    speakLine(textToRead, true, 1.0, () => {
+      setIsSpeakingSummary(false);
+    });
   };
 
   // Simplified left-to-right evidence chain stages
@@ -804,7 +826,23 @@ ${aiSynthesis ? `\n---\n\n${aiSynthesis.markdownSummary}\n` : ''}
             <div className="sre-body">
               {/* Section 1: Executive Summary & Root Cause */}
               <section className="sre-section">
-                <h3 className="sre-section-title">1. Executive Summary & Root Cause Isolation</h3>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+                  <h3 className="sre-section-title" style={{ margin: 0 }}>1. Executive Summary & Root Cause Isolation</h3>
+                  <button
+                    type="button"
+                    className="sre-action-btn"
+                    style={{
+                      background: isSpeakingSummary ? 'rgba(239, 68, 68, 0.15)' : 'rgba(212, 168, 83, 0.15)',
+                      borderColor: isSpeakingSummary ? '#ef4444' : '#D4A853',
+                      color: isSpeakingSummary ? '#ef4444' : '#D4A853',
+                      gap: 4
+                    }}
+                    onClick={handleReadExecutiveSummary}
+                    title="Listen to AURA read the executive summary"
+                  >
+                    <span>{isSpeakingSummary ? '⏹ Stop Voice' : '🔊 Listen to Summary'}</span>
+                  </button>
+                </div>
                 <p className="sre-summary-prose">
                   During this incident, error rates spiked across services. AURA voice telemetry monitoring and epistemic contradiction detection prevented prolonged dead-ends, leading to rapid root cause isolation and mitigation.
                 </p>

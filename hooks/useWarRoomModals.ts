@@ -9,7 +9,8 @@ export type WarRoomModalKey =
   | 'quickCapture'
   | 'shortcuts'
   | 'analytics'
-  | 'transcript';
+  | 'transcript'
+  | 'pitchTour';
 
 export interface UseWarRoomModalsReturn {
   // State flags
@@ -22,6 +23,7 @@ export interface UseWarRoomModalsReturn {
   isAnalyticsCollapsed: boolean;
   isTranscriptOpen: boolean;
   isTranscriptDrawerOpen: boolean;
+  isPitchTourOpen: boolean;
 
   // Direct state setters
   setIsInviteOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
@@ -33,6 +35,7 @@ export interface UseWarRoomModalsReturn {
   setIsAnalyticsCollapsed: (collapsed: boolean | ((prev: boolean) => boolean)) => void;
   setIsTranscriptOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
   setIsTranscriptDrawerOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
+  setIsPitchTourOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
 
   // Canonical memoized action dispatchers
   openModal: (modal: WarRoomModalKey) => void;
@@ -52,6 +55,7 @@ export function useWarRoomModals(): UseWarRoomModalsReturn {
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [isTranscriptOpen, setIsTranscriptOpen] = useState(false);
+  const [isPitchTourOpen, setIsPitchTourOpen] = useState(false);
 
   const openModal = useCallback((modal: WarRoomModalKey) => {
     switch (modal) {
@@ -75,6 +79,9 @@ export function useWarRoomModals(): UseWarRoomModalsReturn {
         break;
       case 'transcript':
         setIsTranscriptOpen(true);
+        break;
+      case 'pitchTour':
+        setIsPitchTourOpen(true);
         break;
     }
   }, []);
@@ -102,6 +109,9 @@ export function useWarRoomModals(): UseWarRoomModalsReturn {
       case 'transcript':
         setIsTranscriptOpen(false);
         break;
+      case 'pitchTour':
+        setIsPitchTourOpen(false);
+        break;
     }
   }, []);
 
@@ -128,6 +138,9 @@ export function useWarRoomModals(): UseWarRoomModalsReturn {
       case 'transcript':
         setIsTranscriptOpen((prev) => !prev);
         break;
+      case 'pitchTour':
+        setIsPitchTourOpen((prev) => !prev);
+        break;
     }
   }, []);
 
@@ -139,6 +152,7 @@ export function useWarRoomModals(): UseWarRoomModalsReturn {
     setIsShortcutsOpen(false);
     setIsAnalyticsOpen(false);
     setIsTranscriptOpen(false);
+    setIsPitchTourOpen(false);
   }, []);
 
   const isAnalyticsCollapsed = !isAnalyticsOpen;
@@ -162,6 +176,7 @@ export function useWarRoomModals(): UseWarRoomModalsReturn {
     isAnalyticsCollapsed,
     isTranscriptOpen,
     isTranscriptDrawerOpen: isTranscriptOpen,
+    isPitchTourOpen,
 
     setIsInviteOpen,
     setIsResolveOpen,
@@ -172,6 +187,7 @@ export function useWarRoomModals(): UseWarRoomModalsReturn {
     setIsAnalyticsCollapsed,
     setIsTranscriptOpen,
     setIsTranscriptDrawerOpen: setIsTranscriptOpen,
+    setIsPitchTourOpen,
 
     openModal,
     closeModal,

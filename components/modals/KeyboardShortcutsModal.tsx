@@ -31,6 +31,7 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
     items: [
       { key: 'Space', description: 'Push-to-Talk (Hold while speaking to stream audio)' },
       { key: 'J', description: 'Toggle Live Speech-to-Text Transcript Drawer' },
+      { key: 'P', description: 'Launch 60-Second Buildathon Pitch Tour' },
     ],
   },
   {

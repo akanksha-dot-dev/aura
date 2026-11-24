@@ -4,4 +4,5 @@ export * from './WarRoomInvite';
 export * from './KeyboardShortcutsModal';
 export * from './QuickCapture';
 export * from './TranscriptDrawer';
+export * from './PitchTourModal';
 export * from './WarRoomModals';
