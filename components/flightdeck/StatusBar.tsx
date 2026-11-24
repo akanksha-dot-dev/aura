@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useSyncExternalStore, useCallback } from 'react';
 import { Severity, IncidentStatus, OODAPhase } from '@/lib/types';
 import { CostCounter } from '@/components/indicators/CostCounter';
+import { toggleAmbientDrone, isAmbientDroneActive } from '@/lib/audioCues';
 import styles from './StatusBar.module.css';
 
 const subscribeTheme = (callback: () => void) => {
@@ -78,26 +79,40 @@ export function StatusBar({
 }: StatusBarProps) {
   const [activeElapsed, setActiveElapsed] = useState<number>(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [ambientActive, setAmbientActive] = useState<boolean>(false);
   const theme = useSyncExternalStore(subscribeTheme, getThemeSnapshot, getServerThemeSnapshot);
 
-  // Keyboard shortcut: 'P' to open Pitch Tour
   useEffect(() => {
-    if (!onOpenPitchTour) return;
+    setAmbientActive(isAmbientDroneActive());
+  }, []);
+
+  const handleToggleAmbient = useCallback(() => {
+    const nextState = toggleAmbientDrone();
+    setAmbientActive(nextState);
+  }, []);
+
+  // Keyboard shortcut: 'P' to open Pitch Tour, 'M' for War Room Atmosphere
+  useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
         return;
       }
-      if (e.key === 'p' || e.key === 'P') {
+      if ((e.key === 'p' || e.key === 'P') && onOpenPitchTour) {
         if (!e.ctrlKey && !e.metaKey && !e.altKey) {
           e.preventDefault();
           onOpenPitchTour();
+        }
+      } else if (e.key === 'm' || e.key === 'M') {
+        if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+          e.preventDefault();
+          handleToggleAmbient();
         }
       }
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [onOpenPitchTour]);
+  }, [onOpenPitchTour, handleToggleAmbient]);
 
   // AURA Pulse: status bar breathes based on cognitive load & incident status
   const pulseClass = status === 'resolved'
@@ -1017,6 +1032,26 @@ export function StatusBar({
                   <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#38BDF8', boxShadow: '0 0 6px #38BDF8' }} />
                   GOOGLE CLOUD JOURNEY-F
                 </span>
+              </div>
+
+              {/* Mission Control Soundscape */}
+              <div className="precision-bar__setting-row">
+                <span className="precision-bar__setting-label">War Room Atmosphere</span>
+                <button
+                  type="button"
+                  className="precision-bar__btn-chip"
+                  onClick={handleToggleAmbient}
+                  title="Toggle low-frequency operational acoustic hum (55Hz sub-bass, 0.007 gain) (M)"
+                  style={{
+                    padding: '2px 8px',
+                    borderColor: ambientActive ? '#10B981' : undefined,
+                    color: ambientActive ? '#10B981' : 'var(--text-muted)',
+                    background: ambientActive ? 'rgba(16, 185, 129, 0.12)' : undefined,
+                  }}
+                >
+                  <span>{ambientActive ? '🎧 Atmosphere Active' : '🔇 Atmosphere Muted'}</span>
+                  <kbd>M</kbd>
+                </button>
               </div>
 
               {/* Voice Model Accent */}

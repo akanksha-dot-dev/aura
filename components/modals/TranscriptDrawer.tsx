@@ -23,6 +23,20 @@ export function TranscriptDrawer({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyTranscript = async () => {
+    const text = entries
+      .map((e) => `[${new Date(e.timestamp).toLocaleTimeString()}] ${e.speakerName}: ${e.text}`)
+      .join('\n');
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Ignored
+    }
+  };
 
   // Close on Escape key press, focus search on '/'
   useEffect(() => {
@@ -382,14 +396,27 @@ export function TranscriptDrawer({
               </span>
             </div>
 
-            <button
-              type="button"
-              className="transcript-close-btn"
-              onClick={onClose}
-              aria-label="Close transcript drawer"
-            >
-              ✕ Close
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {entries.length > 0 && (
+                <button
+                  type="button"
+                  className="transcript-close-btn"
+                  onClick={handleCopyTranscript}
+                  title="Copy full transcript log to clipboard"
+                  style={{ color: copied ? '#10B981' : undefined }}
+                >
+                  {copied ? '✓ Copied' : '📋 Copy Log'}
+                </button>
+              )}
+              <button
+                type="button"
+                className="transcript-close-btn"
+                onClick={onClose}
+                aria-label="Close transcript drawer"
+              >
+                ✕ Close
+              </button>
+            </div>
           </div>
 
           {/* Search Filter Input */}

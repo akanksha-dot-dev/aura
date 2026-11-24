@@ -161,3 +161,88 @@ export function playPitchStepEarcon() {
     // Ignored
   }
 }
+
+let ambientOsc: OscillatorNode | null = null;
+let ambientFilter: BiquadFilterNode | null = null;
+let ambientGain: GainNode | null = null;
+let isAmbientPlaying = false;
+
+export function isAmbientDroneActive(): boolean {
+  return isAmbientPlaying;
+}
+
+/**
+ * Toggle low-frequency operational acoustic hum (55Hz sub-bass, 0.007 gain)
+ * simulating an authentic NASA / SpaceX flight deck war room atmosphere.
+ */
+export function toggleAmbientDrone(): boolean {
+  if (isAmbientPlaying) {
+    stopAmbientDrone();
+    return false;
+  } else {
+    startAmbientDrone();
+    return true;
+  }
+}
+
+export function startAmbientDrone() {
+  if (typeof window === 'undefined') return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  if (isAmbientPlaying) return;
+
+  try {
+    const now = ctx.currentTime;
+    ambientOsc = ctx.createOscillator();
+    ambientFilter = ctx.createBiquadFilter();
+    ambientGain = ctx.createGain();
+
+    // 55Hz warm resonant sub-bass drone (A1 note)
+    ambientOsc.type = 'sine';
+    ambientOsc.frequency.setValueAtTime(55, now);
+
+    // Gentle low-pass filter
+    ambientFilter.type = 'lowpass';
+    ambientFilter.frequency.setValueAtTime(140, now);
+    ambientFilter.Q.setValueAtTime(2, now);
+
+    // Gentle, non-intrusive level (0.007 gain)
+    ambientGain.gain.setValueAtTime(0.0001, now);
+    ambientGain.gain.linearRampToValueAtTime(0.007, now + 1.2);
+
+    ambientOsc.connect(ambientFilter);
+    ambientFilter.connect(ambientGain);
+    ambientGain.connect(ctx.destination);
+
+    ambientOsc.start(now);
+    isAmbientPlaying = true;
+  } catch {
+    isAmbientPlaying = false;
+  }
+}
+
+export function stopAmbientDrone() {
+  if (!isAmbientPlaying || !ambientGain || !ambientOsc) return;
+  try {
+    const ctx = getAudioContext();
+    if (ctx) {
+      const now = ctx.currentTime;
+      ambientGain.gain.linearRampToValueAtTime(0.0001, now + 0.8);
+      setTimeout(() => {
+        ambientOsc?.stop();
+        ambientOsc?.disconnect();
+        ambientFilter?.disconnect();
+        ambientGain?.disconnect();
+        ambientOsc = null;
+        ambientFilter = null;
+        ambientGain = null;
+        isAmbientPlaying = false;
+      }, 850);
+    } else {
+      ambientOsc.stop();
+      isAmbientPlaying = false;
+    }
+  } catch {
+    isAmbientPlaying = false;
+  }
+}

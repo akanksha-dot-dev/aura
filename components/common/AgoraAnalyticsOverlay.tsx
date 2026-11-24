@@ -270,9 +270,9 @@ export function AgoraAnalyticsOverlay({
         type="button"
         className={`agora-telemetry-pill ${!isCollapsed ? 'agora-telemetry-pill--active' : ''}`}
         onClick={onToggle}
-        title="Agora RTC Telemetry (Click to expand AI Pipeline Latency)"
+        title="Voice Telemetry (Click to expand Google AI Pipeline Latency)"
         aria-expanded={!isCollapsed}
-        aria-label="Agora RTC Telemetry"
+        aria-label="Google WebRTC Voice Diagnostics"
       >
         <span className="agora-telemetry-pill__signal" style={{ color: getMosColor(mos) }}>
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -306,10 +306,10 @@ export function AgoraAnalyticsOverlay({
         <aside
           className="agora-telemetry-popover"
           role="region"
-          aria-label="Agora RTC Telemetry and AI Pipeline Latency"
+          aria-label="Google WebRTC Voice Diagnostics and AI Pipeline Latency"
         >
           <div className="agora-telemetry-popover__header">
-            <span className="agora-telemetry-popover__title">AURA Voice Diagnostics (Google WebRTC)</span>
+            <span className="agora-telemetry-popover__title">AURA Diagnostics (Google WebRTC & Gemini)</span>
             <button
               type="button"
               className="agora-telemetry-popover__close-btn"
@@ -351,11 +351,11 @@ export function AgoraAnalyticsOverlay({
           <div className="agora-telemetry-popover__divider" />
 
           {/* AI Pipeline Latency */}
-          <div className="agora-telemetry-popover__pipeline-title">AI Pipeline Latency</div>
+          <div className="agora-telemetry-popover__pipeline-title">Google AI Pipeline Latency</div>
 
           <div className="agora-telemetry-popover__pipeline-row">
             <div className="agora-telemetry-popover__pipeline-meta">
-              <span className="agora-telemetry-popover__label">STT (Speech)</span>
+              <span className="agora-telemetry-popover__label">STT (Web Speech / ASR)</span>
               <span className="agora-telemetry-popover__value">{sttMeta.label}</span>
             </div>
             <div className="agora-telemetry-popover__pipeline-track">
@@ -371,7 +371,7 @@ export function AgoraAnalyticsOverlay({
 
           <div className="agora-telemetry-popover__pipeline-row">
             <div className="agora-telemetry-popover__pipeline-meta">
-              <span className="agora-telemetry-popover__label">LLM (Reasoning)</span>
+              <span className="agora-telemetry-popover__label">LLM (Gemini 2.5 Flash)</span>
               <span className="agora-telemetry-popover__value">{llmMeta.label}</span>
             </div>
             <div className="agora-telemetry-popover__pipeline-track">
@@ -387,7 +387,7 @@ export function AgoraAnalyticsOverlay({
 
           <div className="agora-telemetry-popover__pipeline-row">
             <div className="agora-telemetry-popover__pipeline-meta">
-              <span className="agora-telemetry-popover__label">TTS (Google Journey-F)</span>
+              <span className="agora-telemetry-popover__label">TTS (Google Cloud Journey-F)</span>
               <span className="agora-telemetry-popover__value">{ttsMeta.label}</span>
             </div>
             <div className="agora-telemetry-popover__pipeline-track">

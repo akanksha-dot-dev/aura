@@ -78,4 +78,21 @@ describe('TranscriptDrawer Component (components/modals/TranscriptDrawer.tsx)', 
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledTimes(2);
   });
+
+  it('renders Copy Log button and copies text to clipboard', async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: writeTextMock,
+      },
+    });
+
+    render(<TranscriptDrawer isOpen={true} onClose={() => {}} entries={mockEntries} />);
+
+    const copyBtn = screen.getByRole('button', { name: /Copy Log/i });
+    expect(copyBtn).toBeInTheDocument();
+    fireEvent.click(copyBtn);
+    expect(writeTextMock).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText('✓ Copied')).toBeInTheDocument();
+  });
 });
